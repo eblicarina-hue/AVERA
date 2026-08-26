@@ -234,12 +234,64 @@
     });
   }
 
-  function statusButtonsHtml(currentStatus) {
-    return Object.keys(AVERA_DATA.STATUS)
-      .map(function (statusKey) {
-        var s = AVERA_DATA.STATUS[statusKey];
-        var active = statusKey === currentStatus ? " active" : "";
-        return '<button class="status-btn status-' + statusKey + active + '" data-status="' + statusKey + '">' + s.label + "</button>";
+  function statusBadgeHtml(status) {
+    var s = AVERA_DATA.STATUS[status] || AVERA_DATA.STATUS.offen;
+    return '<span class="status-badge status-' + status + '">' + s.label + "</span>";
+  }
+
+  function diagnoseHtml(station, stState) {
+    var answers = stState.diagnose || {};
+    return station.diagnose
+      .map(function (frage, qi) {
+        var chosen = answers[qi];
+        var optsHtml = frage.optionen
+          .map(function (opt, oi) {
+            var active = chosen === oi ? " active" : "";
+            return (
+              '<button type="button" class="chip diag-chip' + active + '" data-diag-q="' + qi + '" data-diag-opt="' + oi + '">' +
+              escapeHtml(opt.label) +
+              "</button>"
+            );
+          })
+          .join("");
+        return '<div class="diagnose-item"><p class="diagnose-frage">' + escapeHtml(frage.frage) + '</p><div class="chip-row">' + optsHtml + "</div></div>";
+      })
+      .join("");
+  }
+
+  function diagnoseResults(station, stState) {
+    var answers = stState.diagnose || {};
+    return station.diagnose
+      .map(function (frage, qi) {
+        var oi = answers[qi];
+        if (oi === undefined || oi === null || !frage.optionen[oi]) return null;
+        return { frage: frage.frage, opt: frage.optionen[oi] };
+      })
+      .filter(function (r) { return r !== null; });
+  }
+
+  function empfehlungenHtml(results) {
+    if (!results.length) {
+      return '<p class="hint-text">Beantwortet oben die Fragen zur Standortbestimmung – daraus leitet die App konkrete Handlungsempfehlungen für dieses Element ab.</p>';
+    }
+    var groups = [
+      { list: results.filter(function (r) { return r.opt.score === 0; }), cls: "severity-hoch", tag: "Dringend" },
+      { list: results.filter(function (r) { return r.opt.score === 1; }), cls: "severity-mittel", tag: "Im Blick behalten" },
+      { list: results.filter(function (r) { return r.opt.score === 2; }), cls: "severity-gut", tag: "Läuft bereits gut" }
+    ];
+    return groups
+      .map(function (g) {
+        return g.list
+          .map(function (r) {
+            return (
+              '<div class="empfehlung-card ' + g.cls + '">' +
+              '<span class="empfehlung-tag">' + g.tag + "</span>" +
+              '<p class="empfehlung-frage">' + escapeHtml(r.frage) + "</p>" +
+              '<p class="empfehlung-text">' + escapeHtml(r.opt.empfehlung) + "</p>" +
+              "</div>"
+            );
+          })
+          .join("");
       })
       .join("");
   }
@@ -251,7 +303,10 @@
       navigate("#/rad/" + id);
       return;
     }
-    var stState = init.stations[key] || { status: "offen", checked: [], answers: {}, objekte: [], notiz: "" };
+    var stState = init.stations[key] || { status: "offen", diagnose: {}, checked: [], answers: {}, objekte: [], notiz: "" };
+    var results = diagnoseResults(station, stState);
+    var answeredCount = results.length;
+    var totalCount = station.diagnose.length;
 
     var checklistHtml = station.wasZuTun
       .map(function (item, i) {
@@ -327,34 +382,21 @@
       '<span class="station-num">' + escapeHtml(station.num) + "</span>" +
       "<h1>" + escapeHtml(station.title) + "</h1>" +
       '<p class="station-subtitle">' + escapeHtml(station.subtitle) + "</p>" +
-      '<div class="status-btns">' + statusButtonsHtml(stState.status) + "</div>" +
+      '<div class="status-line">' + statusBadgeHtml(stState.status) +
+      '<span class="diagnose-progress">' + answeredCount + " / " + totalCount + " Fragen beantwortet</span></div>" +
       "</header>" +
 
       '<p class="station-intro">' + escapeHtml(station.intro) + "</p>" +
 
       '<section class="panel">' +
-      "<h2>Was ist zu tun?</h2>" +
-      '<ul class="checklist">' + checklistHtml + "</ul>" +
+      "<h2>Standortbestimmung</h2>" +
+      "<p class='hint-text'>Beantwortet die Fragen so, wie es aktuell tatsächlich ist – daraus berechnet sich der Status dieses Elements automatisch.</p>" +
+      diagnoseHtml(station, stState) +
       "</section>" +
 
       '<section class="panel">' +
-      "<h2>Hinweise zur Gestaltung</h2>" +
-      "<ul>" + hinweiseHtml + "</ul>" +
-      "</section>" +
-
-      '<section class="panel">' +
-      "<h2>Achtung Falle!</h2>" +
-      '<div class="fallen-grid">' + fallenHtml + "</div>" +
-      "</section>" +
-
-      (beobachtungHtml
-        ? '<section class="panel"><h2>Beobachtungshinweise</h2>' + beobachtungHtml + "</section>"
-        : "") +
-
-      '<section class="panel">' +
-      "<h2>Reflexion im Team</h2>" +
-      '<p class="kernfrage">Kernfrage: ' + escapeHtml(station.kernfrage) + "</p>" +
-      reflexionHtml +
+      "<h2>Handlungsempfehlungen</h2>" +
+      empfehlungenHtml(results) +
       "</section>" +
 
       '<section class="panel">' +
@@ -368,10 +410,42 @@
       "</form>" +
       "</section>" +
 
-      '<section class="panel">' +
+      "<details class='reference-details'>" +
+      "<summary>Hintergrund aus dem AVERA-Framework</summary>" +
+      "<div class='details-body'>" +
+
+      "<div class='subsection'>" +
+      "<h2>Was ist grundsätzlich zu tun?</h2>" +
+      '<ul class="checklist">' + checklistHtml + "</ul>" +
+      "</div>" +
+
+      "<div class='subsection'>" +
+      "<h2>Hinweise zur Gestaltung</h2>" +
+      "<ul>" + hinweiseHtml + "</ul>" +
+      "</div>" +
+
+      "<div class='subsection'>" +
+      "<h2>Achtung Falle!</h2>" +
+      '<div class="fallen-grid">' + fallenHtml + "</div>" +
+      "</div>" +
+
+      (beobachtungHtml
+        ? "<div class='subsection'><h2>Beobachtungshinweise</h2>" + beobachtungHtml + "</div>"
+        : "") +
+
+      "<div class='subsection'>" +
+      "<h2>Freie Reflexion im Team</h2>" +
+      '<p class="kernfrage">Kernfrage: ' + escapeHtml(station.kernfrage) + "</p>" +
+      reflexionHtml +
+      "</div>" +
+
+      "<div class='subsection'>" +
       "<h2>Notiz</h2>" +
       '<textarea id="station-notiz" rows="3" placeholder="Freie Notizen zu diesem Element…">' + escapeHtml(stState.notiz || "") + "</textarea>" +
-      "</section>" +
+      "</div>" +
+
+      "</div>" +
+      "</details>" +
 
       '<div class="station-nav">' +
       (prevKey ? '<a class="btn btn-ghost" href="#/station/' + id + "/" + prevKey + '">← ' + escapeHtml(AVERA_DATA.getStation(prevKey).title) + "</a>" : "<span></span>") +
@@ -380,9 +454,11 @@
       "</div>";
 
     // Event wiring
-    root.querySelectorAll(".status-btn").forEach(function (btn) {
+    root.querySelectorAll("[data-diag-q]").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        AVERA_STORE.setStatus(id, key, btn.getAttribute("data-status"));
+        var qIndex = parseInt(btn.getAttribute("data-diag-q"), 10);
+        var optIndex = parseInt(btn.getAttribute("data-diag-opt"), 10);
+        AVERA_STORE.setDiagnoseAnswer(id, key, qIndex, optIndex);
         renderStation(id, key);
       });
     });

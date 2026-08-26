@@ -12,7 +12,27 @@
   }
 
   function emptyStationState() {
-    return { status: "offen", checked: [], answers: {}, objekte: [], notiz: "" };
+    return { status: "offen", diagnose: {}, checked: [], answers: {}, objekte: [], notiz: "" };
+  }
+
+  // Der Status eines Elements wird nicht mehr manuell gesetzt, sondern aus
+  // den Antworten der Standortbestimmung abgeleitet: je Frage 0 (Nein) bis
+  // 2 (Ja), gemittelt über alle bereits beantworteten Fragen der Station.
+  function computeStatusFromDiagnose(stationKey, diagnoseAnswers) {
+    var station = AVERA_DATA.getStation(stationKey);
+    if (!station || !diagnoseAnswers) return "offen";
+    var scores = [];
+    station.diagnose.forEach(function (frage, i) {
+      var chosen = diagnoseAnswers[i];
+      if (chosen !== undefined && chosen !== null && frage.optionen[chosen]) {
+        scores.push(frage.optionen[chosen].score);
+      }
+    });
+    if (!scores.length) return "offen";
+    var avg = scores.reduce(function (a, b) { return a + b; }, 0) / scores.length;
+    if (avg >= 1.6) return "etabliert";
+    if (avg >= 0.8) return "in_arbeit";
+    return "offen";
   }
 
   function newInitiative(name, org) {
@@ -109,6 +129,15 @@
     });
   }
 
+  function setDiagnoseAnswer(id, stationKey, questionIndex, optionIndex) {
+    return update(id, function (init) {
+      var st = init.stations[stationKey] || (init.stations[stationKey] = emptyStationState());
+      if (!st.diagnose) st.diagnose = {};
+      st.diagnose[questionIndex] = optionIndex;
+      st.status = computeStatusFromDiagnose(stationKey, st.diagnose);
+    });
+  }
+
   function toggleChecklist(id, stationKey, index, checked) {
     return update(id, function (init) {
       var st = init.stations[stationKey] || (init.stations[stationKey] = emptyStationState());
@@ -164,6 +193,8 @@
     remove: remove,
     rename: rename,
     setStatus: setStatus,
+    setDiagnoseAnswer: setDiagnoseAnswer,
+    computeStatusFromDiagnose: computeStatusFromDiagnose,
     toggleChecklist: toggleChecklist,
     setAnswer: setAnswer,
     setNotiz: setNotiz,

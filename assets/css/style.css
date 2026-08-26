@@ -315,22 +315,70 @@ a { color: var(--accent); }
 .station-subtitle { color: var(--text-muted); margin-top: -4px; font-family: var(--font-mono); font-size: 0.85rem; }
 .station-intro { font-size: 1.08rem; max-width: 72ch; }
 
-.status-btns { display: flex; gap: 8px; margin: 14px 0 4px; flex-wrap: wrap; }
-.status-btn {
-  border: 1px solid var(--border-strong);
-  background: var(--panel-bg);
-  color: var(--text);
-  border-radius: var(--radius-sm);
-  padding: 7px 14px;
-  font-size: 0.72rem;
+.status-line { display: flex; align-items: center; gap: 10px; margin: 14px 0 4px; flex-wrap: wrap; }
+.status-badge {
+  display: inline-block;
   font-family: var(--font-mono);
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  cursor: pointer;
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
 }
-.status-btn.active.status-offen { background: var(--status-offen); border-color: var(--status-offen); }
-.status-btn.active.status-in_arbeit { background: var(--status-in-arbeit); border-color: var(--status-in-arbeit); color: #fff; }
-.status-btn.active.status-etabliert { background: var(--status-etabliert); border-color: var(--status-etabliert); color: #fff; }
+.status-badge.status-offen { background: var(--status-offen); border-color: var(--status-offen); }
+.status-badge.status-in_arbeit { background: var(--status-in-arbeit); border-color: var(--status-in-arbeit); color: #fff; }
+.status-badge.status-etabliert { background: var(--status-etabliert); border-color: var(--status-etabliert); color: #fff; }
+.diagnose-progress { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+
+.diagnose-item { margin-bottom: 18px; }
+.diagnose-item:last-child { margin-bottom: 0; }
+.diagnose-frage { font-size: 0.96rem; margin: 0 0 8px; max-width: 62ch; }
+.diag-chip { padding: 7px 14px; }
+
+.empfehlung-card {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: var(--bg);
+}
+.empfehlung-card:last-child { margin-bottom: 0; }
+.empfehlung-card.severity-hoch { border-left-color: var(--dim-wollen); }
+.empfehlung-card.severity-mittel { border-left-color: var(--status-in-arbeit); }
+.empfehlung-card.severity-gut { border-left-color: var(--status-etabliert); background: var(--panel-bg); }
+.empfehlung-tag { display: block; font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; color: var(--text-muted); }
+.empfehlung-card.severity-hoch .empfehlung-tag { color: var(--dim-wollen); }
+.empfehlung-card.severity-mittel .empfehlung-tag { color: var(--status-in-arbeit); }
+.empfehlung-card.severity-gut .empfehlung-tag { color: var(--status-etabliert); }
+.empfehlung-frage { font-size: 0.82rem; font-style: italic; color: var(--text-muted); margin: 0 0 5px; }
+.empfehlung-text { margin: 0; font-size: 0.93rem; }
+
+.reference-details {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+.reference-details > summary {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--accent);
+  padding: 20px 24px;
+  cursor: pointer;
+  list-style: none;
+}
+.reference-details > summary::-webkit-details-marker { display: none; }
+.reference-details > summary::before { content: "▸  "; }
+.reference-details[open] > summary::before { content: "▾  "; }
+.reference-details .details-body { padding: 0 24px 24px; }
+.reference-details .subsection { margin-bottom: 24px; }
+.reference-details .subsection:last-child { margin-bottom: 0; }
 
 .checklist { list-style: none; padding: 0; margin: 0; }
 .checklist-item { padding: 4px 0; }

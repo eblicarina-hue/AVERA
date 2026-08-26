@@ -30,11 +30,41 @@
 
     order.forEach(function (key) {
       var station = AVERA_DATA.getStation(key);
-      var st = (initiative.stations && initiative.stations[key]) || { status: "offen", answers: {}, objekte: [], notiz: "" };
+      var st = (initiative.stations && initiative.stations[key]) || { status: "offen", diagnose: {}, answers: {}, objekte: [], notiz: "" };
+      var diagnoseAnswers = st.diagnose || {};
 
       lines.push("## " + station.num + " " + station.title);
       lines.push("_" + station.subtitle + "_ — Status: **" + statusLabel(st.status) + "**");
       lines.push("");
+
+      var diagnoseResults = station.diagnose
+        .map(function (frage, i) {
+          var oi = diagnoseAnswers[i];
+          if (oi === undefined || oi === null || !frage.optionen[oi]) return null;
+          return { frage: frage.frage, opt: frage.optionen[oi] };
+        })
+        .filter(function (r) { return r !== null; });
+
+      if (diagnoseResults.length) {
+        lines.push("**Standortbestimmung:**");
+        diagnoseResults.forEach(function (r) {
+          lines.push("- " + r.frage + " → **" + r.opt.label + "**");
+        });
+        lines.push("");
+
+        var dringend = diagnoseResults.filter(function (r) { return r.opt.score === 0; });
+        var imBlick = diagnoseResults.filter(function (r) { return r.opt.score === 1; });
+        if (dringend.length || imBlick.length) {
+          lines.push("**Handlungsempfehlungen:**");
+          dringend.forEach(function (r) {
+            lines.push("- _Dringend:_ " + r.opt.empfehlung);
+          });
+          imBlick.forEach(function (r) {
+            lines.push("- _Im Blick behalten:_ " + r.opt.empfehlung);
+          });
+          lines.push("");
+        }
+      }
 
       var answered = false;
       station.reflexionsfragen.forEach(function (frage, i) {

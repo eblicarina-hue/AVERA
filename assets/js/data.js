@@ -26,6 +26,32 @@
       subtitle: "Der Nullpunkt jeder Gestaltung",
       dimension: "ursprung",
       intro: "Jede Veränderung beginnt mit einer Intention – nicht mit einer Maßnahme. Sie beschreibt, was anders werden soll, warum das bedeutsam ist und welche Wirkung entstehen soll. Ohne tragfähige Intention wird schnell alles beliebig.",
+      diagnose: [
+        {
+          frage: "Können alle im Kernteam die Intention in einem Satz gleich wiedergeben?",
+          optionen: [
+            { label: "Ja", score: 2, empfehlung: "Sehr gut – eine geteilte, prägnante Intention ist die seltenste und wichtigste Grundlage. Haltet sie sichtbar (z. B. als Leitsatz in jedem Kickoff) und prüft sie bei jeder größeren Entscheidung erneut." },
+            { label: "Teilweise", score: 1, empfehlung: "Es gibt eine Richtung, aber noch keine gemeinsame Sprache dafür. Setzt einen Termin an, an dem ihr die Intention gemeinsam in einem Satz formuliert – nicht top-down verordnet, sondern mit den relevanten Perspektiven geschärft." },
+            { label: "Nein", score: 0, empfehlung: "Ihr steckt in der Beliebigkeitsfalle: Ohne gemeinsames Verständnis interpretiert jede:r die Veränderung anders, und einzelne Maßnahmen verlieren ihre Kraft. Bevor irgendetwas anderes geplant wird: Intention klären und schriftlich fixieren." }
+          ]
+        },
+        {
+          frage: "Wisst ihr, welches Problem oder welche Chance den Ausschlag für dieses Vorhaben gegeben hat – über die reine Kennzahl hinaus?",
+          optionen: [
+            { label: "Ja", score: 2, empfehlung: "Ihr kennt das Wozu hinter dem Was. Nutzt dieses Motiv aktiv in der Kommunikation – es trägt weiter als jede Zahl." },
+            { label: "Teilweise", score: 1, empfehlung: "Es gibt eine Kennzahl oder einen Auftrag, aber das dahinterliegende Motiv ist noch nicht klar benannt. Fragt: Was passiert, wenn wir nichts tun? Das schärft das eigentliche Motiv." },
+            { label: "Nein", score: 0, empfehlung: "Ihr steckt in der Kennzahlenfalle: Eine Kennzahl ersetzt keine gemeinsame Vorstellung davon, was sich wirklich verändern soll. Klärt zuerst das Motiv, bevor Maßnahmen geplant werden." }
+          ]
+        },
+        {
+          frage: "Verfolgt ihr aktuell genau eine klar priorisierte Intention – nicht mehrere parallel?",
+          optionen: [
+            { label: "Ja", score: 2, empfehlung: "Fokus ist da. Achtet darauf, neue Themen nicht einfach zusätzlich draufzupacken, sondern bewusst gegen die Intention zu prüfen." },
+            { label: "Teilweise", score: 1, empfehlung: "Es gibt mehrere Stoßrichtungen, die noch nicht klar zueinander in Beziehung stehen. Ordnet sie: Was ist die eine übergeordnete Intention, welche anderen sind Unterpunkte oder sollten verschoben werden?" },
+            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Aktivitätsfalle: mehrere parallele Vorhaben ohne gemeinsamen Nenner schwächen sich gegenseitig. Bringt die Verantwortlichen zusammen und einigt euch auf eine führende Intention." }
+          ]
+        }
+      ],
       wasZuTun: [
         "Intention klären und so abgrenzen, dass sie konkret und bearbeitbar bleibt.",
         "Das Wozu offenlegen – das Motiv ist der Kern der Veränderung.",
@@ -61,6 +87,32 @@
       subtitle: "schafft Bedeutung",
       dimension: "wollen",
       intro: "Menschen folgen selten Strategien – sie folgen Geschichten. Eine gemeinsame Geschichte macht verständlich, warum Veränderung notwendig ist, und lädt dazu ein, Teil davon zu werden.",
+      diagnose: [
+        {
+          frage: "Gibt es eine erzählbare Geschichte der Veränderung (woher – warum – wohin), die Mitarbeitende in eigenen Worten weitererzählen können?",
+          optionen: [
+            { label: "Ja", score: 2, empfehlung: "Die Geschichte lebt. Beobachtet weiter, wie sie sich im Alltag verändert, und schreibt bewusst mit." },
+            { label: "Teilweise", score: 1, empfehlung: "Es gibt Kommunikation, aber noch keine Geschichte, die hängen bleibt. Sammelt konkrete Szenen und Beispiele aus dem Alltag statt abstrakter Botschaften – daraus entsteht die Erzählung." },
+            { label: "Nein", score: 0, empfehlung: "Ihr steckt in der Kommunikationsfalle: Informationen wurden verteilt, aber es gibt keine Geschichte, die Bedeutung erzeugt. Startet mit einer einfachen Frage im Team: Wie würden wir das einem Kollegen in der Kaffeeküche erklären?" }
+          ]
+        },
+        {
+          frage: "Ist eure interne Sprache zur Veränderung konsistent – oder kursieren widersprüchliche Begriffe und Buzzwords?",
+          optionen: [
+            { label: "Konsistent", score: 2, empfehlung: "Gute Basis. Ein kleines Glossar der Leitbegriffe hilft, das auch bei neuen Mitarbeitenden konsistent zu halten." },
+            { label: "Teilweise", score: 1, empfehlung: "Es gibt erste gemeinsame Begriffe, aber noch Verwirrung. Einigt euch auf drei bis fünf Leitbegriffe und nutzt sie konsequent in jeder Kommunikation." },
+            { label: "Widersprüchlich", score: 0, empfehlung: "Ihr seid in der Framingfalle: Unklare oder widersprüchliche Begriffe erzeugen Unsicherheit statt Orientierung. Klärt zuerst intern eine gemeinsame Sprache, bevor mehr kommuniziert wird." }
+          ]
+        },
+        {
+          frage: "Erleben Mitarbeitende die Geschichte auch im Alltag – oder bleibt sie auf Hochglanz-Kommunikation (Townhall, Newsletter) beschränkt?",
+          optionen: [
+            { label: "Auch im Alltag", score: 2, empfehlung: "Erzählung und Erfahrung passen zusammen – das schafft Glaubwürdigkeit. Sammelt weiter Alltagsbeispiele, die die Geschichte bestätigen." },
+            { label: "Teilweise", score: 1, empfehlung: "Die große Erzählung existiert, aber der Alltag hinkt hinterher. Prüft im Element Führung & Alltag, wo genau die Lücke entsteht." },
+            { label: "Nur Hochglanz", score: 0, empfehlung: "Ihr seid in der Hochglanzfalle: eine perfekt erzählte Geschichte, die im Alltag nicht einlösbar ist, untergräbt Vertrauen. Reduziert die Kommunikation, bis Führung & Alltag nachgezogen haben." }
+          ]
+        }
+      ],
       wasZuTun: [
         "Die Geschichte der Veränderung schreiben: Woher kommen wir, warum verändern wir uns, wohin wollen wir?",
         "Ein tragfähiges Narrativ entwickeln, das Vergangenheit, Gegenwart und Zukunft verbindet.",
@@ -103,6 +155,32 @@
       subtitle: "schafft Möglichkeiten",
       dimension: "duerfen",
       intro: "Verhalten entsteht selten allein aus Überzeugung. Es entsteht im Zusammenspiel organisationaler Bedingungen – Strukturen, Routinen, Regeln und kulturellen Mustern. Wer Verhalten verändern will, muss Organisation gestalten.",
+      diagnose: [
+        {
+          frage: "Wurden Strukturen, Prozesse oder Zielsysteme bereits konkret verändert, um das neue Verhalten zu ermöglichen – oder wird vor allem appelliert?",
+          optionen: [
+            { label: "Konkret verändert", score: 2, empfehlung: "Die Bedingungen ziehen mit. Prüft regelmäßig, ob neue Routinen tatsächlich stabil werden." },
+            { label: "Teilweise", score: 1, empfehlung: "Erste Anpassungen laufen, aber die zentralen Strukturen (Ziele, Prozesse, Entscheidungswege) sind noch unverändert. Identifiziert die ein bis zwei wichtigsten Strukturhebel und plant deren Anpassung konkret." },
+            { label: "Nur Appell", score: 0, empfehlung: "Ihr seid in der Schönwetterfalle: Verhalten soll sich ändern, ohne dass sich die organisationalen Bedingungen ändern. Das trägt nicht. Benennt konkret, welche Struktur oder welcher Prozess dem gewünschten Verhalten aktuell widerspricht." }
+          ]
+        },
+        {
+          frage: "Werden Widersprüche zwischen offizieller Botschaft und gelebter Praxis offen angesprochen?",
+          optionen: [
+            { label: "Ja", score: 2, empfehlung: "Ihr nutzt Widersprüche als Gestaltungshinweis – genau richtig. Macht das sichtbar (z. B. in Retros), damit es Routine wird." },
+            { label: "Teilweise", score: 1, empfehlung: "Widersprüche werden bemerkt, aber selten offen besprochen. Schafft ein festes Format (z. B. eine Retro), in dem das explizit Thema ist." },
+            { label: "Nein", score: 0, empfehlung: "Widersprüche zwischen Organisation und Intention bleiben unausgesprochen – das untergräbt Glaubwürdigkeit. Fragt aktiv nach: Wo passt unser Alltag nicht zur Story?" }
+          ]
+        },
+        {
+          frage: "Wird das gewünschte Verhalten eher trainiert (den Menschen beigebracht) oder werden die organisationalen Rahmenbedingungen dafür verändert?",
+          optionen: [
+            { label: "Rahmenbedingungen", score: 2, empfehlung: "Ihr setzt an der richtigen Stelle an. Kombiniert das weiterhin mit gezielten Lerngelegenheiten (Entdecken & Aneignen), aber die Struktur bleibt die Basis." },
+            { label: "Beides, unkoordiniert", score: 1, empfehlung: "Beides passiert parallel, aber unkoordiniert. Klärt: Welches Problem ist strukturell, welches ist wirklich ein Lernthema?" },
+            { label: "Vor allem Training", score: 0, empfehlung: "Ihr seid in der Trainingsfalle: ein organisationales Problem wird zum Lernproblem erklärt. Kein Training kompensiert dauerhaft fehlende strukturelle Voraussetzungen." }
+          ]
+        }
+      ],
       wasZuTun: [
         "Die Eigenlogik der Organisation erkennen: formelle und informelle Regeln, Routinen, Überzeugungen.",
         "Beim Business ansetzen – dort, wo Wertschöpfung stattfindet.",
@@ -144,6 +222,32 @@
       subtitle: "schafft Relevanz – der Zündfunke",
       dimension: "koennen",
       intro: "Veränderung entsteht im Alltag – dort, wo Menschen entscheiden, zusammenarbeiten und Prioritäten setzen. Führung übersetzt die Intention in den Arbeitsalltag und beantwortet: Was bedeutet das für mich?",
+      diagnose: [
+        {
+          frage: "Sprechen Führungskräfte im Alltag – nicht nur in offiziellen Terminen – aktiv über die Veränderung?",
+          optionen: [
+            { label: "Ja", score: 2, empfehlung: "Der Zündfunke ist da. Achtet darauf, dass das über alle Führungsebenen hinweg konsistent bleibt." },
+            { label: "Teilweise", score: 1, empfehlung: "Einzelne Führungskräfte tun das, andere nicht. Macht es konkret erwartbar: Was genau sollen Führungskräfte im Alltag ansprechen?" },
+            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Delegationsfalle: Veränderung wird an HR oder Corporate Learning abgegeben, Führung hält sich raus. Ohne Führung im Alltag bleibt die Intention ein strategisches Versprechen." }
+          ]
+        },
+        {
+          frage: "Haben Führungskräfte im Tagesgeschäft tatsächlich Zeit und Priorität für Reflexion und Ausprobieren eingeräumt – oder frisst das Tagesgeschäft alles auf?",
+          optionen: [
+            { label: "Ja, geschützt", score: 2, empfehlung: "Gute Priorisierung. Macht diese Zeiträume sichtbar (z. B. feste Termine), damit sie nicht wieder verschwinden." },
+            { label: "Teilweise", score: 1, empfehlung: "Es gibt Ansätze, aber unter Druck fällt Reflexion meist zuerst weg. Blockt feste, geschützte Zeiten – lose Absicht reicht nicht." },
+            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Effizienzfalle: kurzfristige Zielerreichung verdrängt jede Lern- und Reflexionszeit. Ohne Raum & Zeit dafür bleibt jede Absicht folgenlos." }
+          ]
+        },
+        {
+          frage: "Wissen Mitarbeitende konkret, was die Veränderung für ihre eigene tägliche Arbeit bedeutet?",
+          optionen: [
+            { label: "Ja", score: 2, empfehlung: "Die Übersetzung in den Alltag ist gelungen. Prüft das regelmäßig erneut, wenn sich die Intention weiterentwickelt." },
+            { label: "Nur die große Linie", score: 1, empfehlung: "Die große Linie ist klar, die konkrete Übersetzung auf einzelne Rollen fehlt noch. Übersetzt gemeinsam mit den Teams: Was heißt das für dich konkret?" },
+            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Übersetzungsfalle: die Intention bleibt auf strategischer Ebene stecken. Ohne diese Übersetzung wird die Veränderung nicht relevant." }
+          ]
+        }
+      ],
       wasZuTun: [
         "Führung in Führung gehen lassen – Gestaltungsverantwortung aller Rollen schärfen, die den Alltag prägen.",
         "Die Intention in den Alltag übersetzen: Was bedeutet sie für die tägliche Arbeit?",
@@ -186,6 +290,32 @@
       subtitle: "ermöglicht individuelle Aneignung",
       dimension: "wollen",
       intro: "Lernen entsteht nicht durch Wissensvermittlung, sondern wenn Menschen selbst aktiv werden, Fragen verfolgen und Erfahrungen machen. Lernen ist die Leistung der Lernenden.",
+      diagnose: [
+        {
+          frage: "Können Menschen im Rahmen der Initiative selbst ausprobieren, statt nur Inhalte zu konsumieren?",
+          optionen: [
+            { label: "Ja", score: 2, empfehlung: "Aktivität vor Konsum – genau richtig. Achtet darauf, genug Raum für eigene Fragen zu lassen, statt alles vorzugeben." },
+            { label: "Teilweise", score: 1, empfehlung: "Es gibt Inhalte, aber noch wenig eigenes Tun. Baut mindestens eine konkrete Praxisaufgabe oder ein Experiment mit echtem Alltagsbezug ein." },
+            { label: "Nein, nur Inhalte", score: 0, empfehlung: "Ihr seid in der Contentfalle: Wissen wird bereitgestellt, aber es fehlt die aktive Auseinandersetzung. Wissen allein verändert kein Handeln." }
+          ]
+        },
+        {
+          frage: "Gibt es echte Anlässe und Herausforderungen aus dem Alltag, an denen gelernt wird – oder ist das Lernangebot losgelöst vom Tagesgeschäft?",
+          optionen: [
+            { label: "Echte Anlässe", score: 2, empfehlung: "Lernen ist mit echter Arbeit verbunden – das erzeugt Relevanz. Sammelt diese Anlässe systematisch für weitere Formate." },
+            { label: "Teilweise", score: 1, empfehlung: "Einige Bezüge zum Alltag sind da, aber noch konstruiert. Fragt Teams direkt: Woran arbeitet ihr gerade, das hierzu passt?" },
+            { label: "Losgelöst", score: 0, empfehlung: "Ihr seid in der Steuerungsfalle: Lernen wird wie ein Projekt von oben geplant, losgelöst vom echten Alltag. Sucht euch reale Herausforderungen als Ausgangspunkt." }
+          ]
+        },
+        {
+          frage: "Dürfen unterschiedliche Menschen unterschiedliche Lernwege und -tempi haben, oder bekommen alle dasselbe Programm?",
+          optionen: [
+            { label: "Individuell", score: 2, empfehlung: "Individuelle Aneignung wird ernst genommen. Behaltet im Blick, dass trotzdem genug soziale Anschlussfähigkeit bleibt (siehe Peers & Resonanz)." },
+            { label: "Leicht differenziert", score: 1, empfehlung: "Es gibt leichte Differenzierung, aber im Kern ein Standardprogramm. Baut mindestens eine Wahlmöglichkeit oder ein individuelles Format ein." },
+            { label: "Alle dasselbe", score: 0, empfehlung: "Ihr seid in der One-Size-Fits-All-Falle: alle erhalten dieselben Inhalte, individuelle Fragen bleiben unberücksichtigt. Das verringert die Aneignung erheblich." }
+          ]
+        }
+      ],
       wasZuTun: [
         "Neugier aufgreifen und in Herausforderungen, Erfahrungen und Suchbewegungen übersetzen.",
         "Erfahrungen gestalten – Gelegenheiten zum Ausprobieren und Reflektieren schaffen.",
@@ -228,6 +358,32 @@
       subtitle: "verstärkt sozial",
       dimension: "duerfen",
       intro: "Menschen orientieren sich an Menschen. Erst wenn Erfahrungen geteilt und im sozialen Umfeld aufgegriffen werden, trägt Veränderung über Einzelne hinaus – sie wird zur gemeinsamen Normalität.",
+      diagnose: [
+        {
+          frage: "Tauschen sich Menschen über die Veränderung informell aus – auch ohne dass ihr das organisiert habt?",
+          optionen: [
+            { label: "Ja", score: 2, empfehlung: "Es entsteht organische Resonanz. Gebt diesen informellen Räumen bewusst noch mehr Sichtbarkeit." },
+            { label: "Vereinzelt", score: 1, empfehlung: "Es gibt vereinzelten Austausch, aber noch keine verlässlichen Räume dafür. Schafft ein festes, niedrigschwelliges Format, z. B. eine wiederkehrende Austauschrunde." },
+            { label: "Kaum", score: 0, empfehlung: "Ihr seid in der Isolationsfalle: Lernen bleibt individuell, es wird nichts sichtbar geteilt. Ohne sozialen Austausch trägt Veränderung nicht über Einzelne hinaus." }
+          ]
+        },
+        {
+          frage: "Gibt es glaubwürdige Vorbilder, die das neue Verhalten bereits sichtbar vorleben – nicht nur offiziell ernannte Botschafter:innen?",
+          optionen: [
+            { label: "Ja", score: 2, empfehlung: "Echte Vorbilder wirken stärker als jede Kampagne. Macht ihre Geschichten aktiv sichtbar." },
+            { label: "Ansatzweise", score: 1, empfehlung: "Es gibt Ansätze, aber noch zu wenig Sichtbarkeit. Fragt gezielt: Wer lebt das bereits – und wie können wir das teilen?" },
+            { label: "Nur ernannt", score: 0, empfehlung: "Ihr seid in der Multiplikatorenfalle: Botschafter:innen wurden ernannt, ohne dass echte Glaubwürdigkeit oder Beziehung entstanden ist. Sucht organisch entstandene Vorbilder, statt sie zu verordnen." }
+          ]
+        },
+        {
+          frage: "Passt euer Beteiligungsformat zur jeweiligen Zielgruppe – oder bekommt jede Gruppe dasselbe Format und dieselbe Intensität?",
+          optionen: [
+            { label: "Passt zur Zielgruppe", score: 2, empfehlung: "Ihr denkt in Zielgruppen und Lerntiefen – das erhöht die Wirkung deutlich." },
+            { label: "Teilweise", score: 1, empfehlung: "Es gibt leichte Unterschiede, aber im Kern ein Format für alle. Identifiziert zwei bis drei Zielgruppen mit unterschiedlichem Bedarf und passt die Formate gezielt an." },
+            { label: "Alle gleich", score: 0, empfehlung: "Ihr seid in der One-Size-Fits-All-Falle bei Peers & Resonanz: Alle Zielgruppen erhalten dieselben Angebote, unterschiedliche Rollen und Bedürfnisse bleiben unberücksichtigt." }
+          ]
+        }
+      ],
       wasZuTun: [
         "Die Kraft von Peers nutzen – Vorbilder, Communities und informelle Netzwerke einbinden.",
         "Soziale Anwendungsräume schaffen, die Lernen und Alltag verbinden.",
@@ -270,6 +426,32 @@
       subtitle: "unterstützt professionell",
       dimension: "koennen",
       intro: "Methoden und Formate machen Veränderung erlebbar – sie bewirken sie nicht. Gute Gestaltung beginnt nicht mit der Methode, sondern mit der Frage nach der beabsichtigten Wirkung.",
+      diagnose: [
+        {
+          frage: "Wurde die Methode bzw. das Format erst gewählt, nachdem klar war, welche Wirkung erzielt werden soll?",
+          optionen: [
+            { label: "Ja", score: 2, empfehlung: "Wirkung vor Methode – genau die richtige Reihenfolge. Überprüft das bei jeder neuen Maßnahme erneut." },
+            { label: "Teilweise", score: 1, empfehlung: "Teilweise stand die Methode schon fest, bevor die Wirkung klar war. Nehmt euch vor der nächsten Maßnahme kurz Zeit, die Wirkungsfrage zu klären." },
+            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Toolfalle: Die Suche nach der richtigen Methode hat die Klärung der eigentlichen Gestaltungsfrage ersetzt. Geht einen Schritt zurück und klärt zuerst die Wirkung." }
+          ]
+        },
+        {
+          frage: "Bilden eure Formate eine zusammenhängende Lernarchitektur – oder sind es einzelne, lose Maßnahmen?",
+          optionen: [
+            { label: "Zusammenhängend", score: 2, empfehlung: "Ihr denkt in Architektur statt Einzelmaßnahmen. Das ist der stärkste Hebel bei Methoden & Formate." },
+            { label: "Teilweise verbunden", score: 1, empfehlung: "Es gibt mehrere Formate, aber ihr Zusammenspiel ist noch nicht klar geplant. Zeichnet den Lernpfad einmal end-to-end auf und prüft die Übergänge." },
+            { label: "Lose Einzelmaßnahmen", score: 0, empfehlung: "Ihr seid in der One-Hit-Wonder-Falle: einzelne aufwändige Maßnahmen stehen isoliert ohne Einbettung. Das verpufft meist schnell wieder." }
+          ]
+        },
+        {
+          frage: "Nutzt ihr Methoden, weil sie zur Intention passen – oder eher, weil sie gerade im Trend sind?",
+          optionen: [
+            { label: "Passt zur Intention", score: 2, empfehlung: "Bewusste Methodenwahl – das trägt langfristig mehr als jeder Trend." },
+            { label: "Beides mischt sich", score: 1, empfehlung: "Es mischt sich beides. Prüft eure aktuelle Formatliste einmal explizit gegen die Intention." },
+            { label: "Eher Trend", score: 0, empfehlung: "Ihr seid in der Trendfalle: neue Formate, weil sie attraktiv wirken – nicht weil sie zur Wirkung beitragen. Bewährte, einfache Methoden wirken oft stärker." }
+          ]
+        }
+      ],
       wasZuTun: [
         "Wirkungsvoll gestalten: erst klären, welche Veränderung unterstützt werden soll, dann Methode wählen.",
         "Erfahrungen gestalten, die die gewünschte Zukunft erlebbar machen.",
@@ -311,6 +493,32 @@
       subtitle: "Dreh- und Angelpunkt",
       dimension: "zentrum",
       intro: "Ohne Raum und Zeit bleibt Veränderung Absicht. Raum und Zeit sind kein weiteres Element, sondern die gemeinsame Voraussetzung, damit alle anderen Elemente überhaupt wirksam werden können.",
+      diagnose: [
+        {
+          frage: "Ist für diese Initiative geschützte Zeit im Kalender/Alltag reserviert – nicht nur 'wenn Zeit übrig ist'?",
+          optionen: [
+            { label: "Ja, fest reserviert", score: 2, empfehlung: "Zeit ist da. Verteidigt sie aktiv gegen den Druck des Tagesgeschäfts – das wird die eigentliche Herausforderung bleiben." },
+            { label: "Vage Zusagen", score: 1, empfehlung: "Es gibt vage Zusagen, aber keine festen, geschützten Termine. Blockt konkrete, wiederkehrende Zeitfenster im Kalender." },
+            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Zusatzaufgabenfalle: Veränderung wird erwartet, ohne dass dafür Zeit vorgesehen ist. Ohne feste Zeit bleibt jede Absicht folgenlos." }
+          ]
+        },
+        {
+          frage: "Gibt es einen Ort oder Raum (physisch oder virtuell), an dem Ausprobieren und Reflexion risikofrei möglich ist?",
+          optionen: [
+            { label: "Ja", score: 2, empfehlung: "Ein geschützter Raum zum Ausprobieren ist ein starker Hebel. Macht ihn allen sichtbar zugänglich." },
+            { label: "Vereinzelt", score: 1, empfehlung: "Es gibt vereinzelte Gelegenheiten, aber keinen verlässlichen Ort dafür. Etabliert einen festen Rahmen, physisch oder virtuell." },
+            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Funktionalitätsfalle: Raum wird auf reine Infrastruktur reduziert. Ohne einen echten Möglichkeitsraum bleibt Ausprobieren die Ausnahme." }
+          ]
+        },
+        {
+          frage: "Wird die investierte Zeit an ihrer Wirkung gemessen – oder vor allem daran, wie viele Stunden 'ordentlich' dokumentiert wurden?",
+          optionen: [
+            { label: "An der Wirkung", score: 2, empfehlung: "Ihr bewertet Lern- und Veränderungszeit richtig – nach Wirkung, nicht nach Stundenzettel." },
+            { label: "Beides mischt sich", score: 1, empfehlung: "Beides mischt sich noch. Klärt im Team, welche Wirkung ihr eigentlich sehen wollt, und macht das zum Maßstab." },
+            { label: "Vor allem Dokumentation", score: 0, empfehlung: "Ihr seid in der Kontrollfalle: Lernzeiten werden so stark reglementiert oder dokumentiert, dass sie ihre Wirkung verlieren. Löst euch von reiner Zeiterfassung." }
+          ]
+        }
+      ],
       wasZuTun: [
         "Raum und Zeit bewusst schaffen – und gegen den Druck des Tagesgeschäfts verteidigen.",
         "Räume mehrdimensional denken: physisch, virtuell, sozial und als Handlungsspielraum.",
