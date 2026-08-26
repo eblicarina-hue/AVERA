@@ -46,7 +46,8 @@
       org: org || "",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      stations: stations
+      stations: stations,
+      planErledigt: {}
     };
   }
 
@@ -129,6 +130,14 @@
     });
   }
 
+  function togglePlanStep(id, stepKey, done) {
+    return update(id, function (init) {
+      if (!init.planErledigt) init.planErledigt = {};
+      if (done) init.planErledigt[stepKey] = true;
+      else delete init.planErledigt[stepKey];
+    });
+  }
+
   function setDiagnoseAnswer(id, stationKey, questionIndex, optionIndex) {
     return update(id, function (init) {
       var st = init.stations[stationKey] || (init.stations[stationKey] = emptyStationState());
@@ -195,6 +204,7 @@
     setStatus: setStatus,
     setDiagnoseAnswer: setDiagnoseAnswer,
     computeStatusFromDiagnose: computeStatusFromDiagnose,
+    togglePlanStep: togglePlanStep,
     toggleChecklist: toggleChecklist,
     setAnswer: setAnswer,
     setNotiz: setNotiz,

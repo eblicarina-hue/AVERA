@@ -9,12 +9,73 @@
     return (AVERA_DATA.STATUS[status] || AVERA_DATA.STATUS.offen).label;
   }
 
+  // Baut denselben priorisierten Schritt-für-Schritt-Plan wie die
+  // Aktionsplan-Ansicht: Reihenfolge = Drehrichtung des Rads, je Station
+  // zuerst dringende, dann zu beobachtende Empfehlungen, Raum & Zeit als
+  // Grundvoraussetzung am Ende.
+  function buildPlanLines(initiative) {
+    var lines = [];
+    var stepNo = 1;
+    var totalQuestions = 0;
+    var answeredQuestions = 0;
+
+    function collect(stationKey, isRaumzeit) {
+      var station = AVERA_DATA.getStation(stationKey);
+      var st = (initiative.stations && initiative.stations[stationKey]) || { diagnose: {} };
+      var diagnoseAnswers = st.diagnose || {};
+      totalQuestions += station.diagnose.length;
+
+      var results = station.diagnose
+        .map(function (frage, i) {
+          var oi = diagnoseAnswers[i];
+          if (oi === undefined || oi === null || !frage.optionen[oi]) return null;
+          answeredQuestions++;
+          return { frage: frage.frage, opt: frage.optionen[oi] };
+        })
+        .filter(function (r) { return r !== null; });
+
+      if (!results.length) {
+        lines.push((isRaumzeit ? "- " : stepNo++ + ". ") + "**" + station.title + "**: noch nicht diagnostiziert.");
+        return;
+      }
+
+      results
+        .filter(function (r) { return r.opt.score < 2; })
+        .sort(function (a, b) { return a.opt.score - b.opt.score; })
+        .forEach(function (r) {
+          var tag = r.opt.score === 0 ? "Dringend" : "Im Blick behalten";
+          lines.push((isRaumzeit ? "- " : stepNo++ + ". ") + "**" + station.title + "** (" + tag + "): " + r.opt.empfehlung);
+        });
+    }
+
+    AVERA_DATA.SEQUENCE.forEach(function (key) { collect(key, false); });
+    lines.push("");
+    lines.push("**Grundvoraussetzung Raum & Zeit:**");
+    collect("raumzeit", true);
+
+    return {
+      lines: lines,
+      totalQuestions: totalQuestions,
+      answeredQuestions: answeredQuestions
+    };
+  }
+
   function toMarkdown(initiative) {
     var lines = [];
     lines.push("# Gestaltungsarchitektur: " + initiative.name);
     if (initiative.org) lines.push("**Unternehmen/Team:** " + initiative.org);
     lines.push("");
     lines.push("_Erstellt mit der AVERA-Change-App – auf Basis des Admonter Veränderungsrads (AVERA)._");
+    lines.push("");
+
+    var plan = buildPlanLines(initiative);
+    lines.push("## Aktionsplan");
+    lines.push(
+      plan.answeredQuestions + " von " + plan.totalQuestions + " Diagnosefragen beantwortet. " +
+      (plan.answeredQuestions < plan.totalQuestions ? "Je vollständiger die Diagnose in der App, desto präziser dieser Plan." : "Diagnose vollständig.")
+    );
+    lines.push("");
+    lines = lines.concat(plan.lines);
     lines.push("");
     lines.push("---");
     lines.push("");

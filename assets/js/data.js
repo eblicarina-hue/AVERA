@@ -26,6 +26,7 @@
       subtitle: "Der Nullpunkt jeder Gestaltung",
       dimension: "ursprung",
       intro: "Jede Veränderung beginnt mit einer Intention – nicht mit einer Maßnahme. Sie beschreibt, was anders werden soll, warum das bedeutsam ist und welche Wirkung entstehen soll. Ohne tragfähige Intention wird schnell alles beliebig.",
+      ziel: "Ein Satz, den alle im Kernteam gleich sagen können – was sich ändern soll, warum es wichtig ist und wie die gewünschte Zukunft konkret aussieht. Ohne dieses gemeinsame Zielbild bleibt jede folgende Maßnahme beliebig.",
       diagnose: [
         {
           frage: "Können alle im Kernteam die Intention in einem Satz gleich wiedergeben?",
@@ -87,6 +88,7 @@
       subtitle: "schafft Bedeutung",
       dimension: "wollen",
       intro: "Menschen folgen selten Strategien – sie folgen Geschichten. Eine gemeinsame Geschichte macht verständlich, warum Veränderung notwendig ist, und lädt dazu ein, Teil davon zu werden.",
+      ziel: "Eine Geschichte der Veränderung, die Mitarbeitende in eigenen Worten weitererzählen – nicht nur eine Kommunikationskampagne, sondern eine Erzählung, die im Alltag lebt und Orientierung gibt.",
       diagnose: [
         {
           frage: "Gibt es eine erzählbare Geschichte der Veränderung (woher – warum – wohin), die Mitarbeitende in eigenen Worten weitererzählen können?",
@@ -155,6 +157,7 @@
       subtitle: "schafft Möglichkeiten",
       dimension: "duerfen",
       intro: "Verhalten entsteht selten allein aus Überzeugung. Es entsteht im Zusammenspiel organisationaler Bedingungen – Strukturen, Routinen, Regeln und kulturellen Mustern. Wer Verhalten verändern will, muss Organisation gestalten.",
+      ziel: "Strukturen, Prozesse und Routinen, die das gewünschte Verhalten tatsächlich ermöglichen – nicht nur Appelle, sondern veränderte Rahmenbedingungen, an denen sich neues Verhalten festmachen kann.",
       diagnose: [
         {
           frage: "Wurden Strukturen, Prozesse oder Zielsysteme bereits konkret verändert, um das neue Verhalten zu ermöglichen – oder wird vor allem appelliert?",
@@ -222,6 +225,7 @@
       subtitle: "schafft Relevanz – der Zündfunke",
       dimension: "koennen",
       intro: "Veränderung entsteht im Alltag – dort, wo Menschen entscheiden, zusammenarbeiten und Prioritäten setzen. Führung übersetzt die Intention in den Arbeitsalltag und beantwortet: Was bedeutet das für mich?",
+      ziel: "Führungskräfte, die die Veränderung im Alltag sichtbar vorleben, dafür geschützte Zeit schaffen und Mitarbeitenden konkret übersetzen, was sich für ihre tägliche Arbeit ändert.",
       diagnose: [
         {
           frage: "Sprechen Führungskräfte im Alltag – nicht nur in offiziellen Terminen – aktiv über die Veränderung?",
@@ -290,6 +294,7 @@
       subtitle: "ermöglicht individuelle Aneignung",
       dimension: "wollen",
       intro: "Lernen entsteht nicht durch Wissensvermittlung, sondern wenn Menschen selbst aktiv werden, Fragen verfolgen und Erfahrungen machen. Lernen ist die Leistung der Lernenden.",
+      ziel: "Echte Gelegenheiten zum Ausprobieren an realen Herausforderungen – Menschen eignen sich die Veränderung an, indem sie selbst handeln, nicht indem sie Inhalte konsumieren.",
       diagnose: [
         {
           frage: "Können Menschen im Rahmen der Initiative selbst ausprobieren, statt nur Inhalte zu konsumieren?",
@@ -358,6 +363,7 @@
       subtitle: "verstärkt sozial",
       dimension: "duerfen",
       intro: "Menschen orientieren sich an Menschen. Erst wenn Erfahrungen geteilt und im sozialen Umfeld aufgegriffen werden, trägt Veränderung über Einzelne hinaus – sie wird zur gemeinsamen Normalität.",
+      ziel: "Ein soziales Umfeld, in dem sich Menschen über die Veränderung austauschen, glaubwürdige Vorbilder sichtbar werden und neues Verhalten Schritt für Schritt zur gemeinsamen Normalität wird.",
       diagnose: [
         {
           frage: "Tauschen sich Menschen über die Veränderung informell aus – auch ohne dass ihr das organisiert habt?",
@@ -426,6 +432,7 @@
       subtitle: "unterstützt professionell",
       dimension: "koennen",
       intro: "Methoden und Formate machen Veränderung erlebbar – sie bewirken sie nicht. Gute Gestaltung beginnt nicht mit der Methode, sondern mit der Frage nach der beabsichtigten Wirkung.",
+      ziel: "Eine stimmige Lernarchitektur, deren Formate bewusst aus der gewünschten Wirkung abgeleitet sind – nicht Methoden um ihrer selbst willen, sondern gezielt gewählte Formate, die aufeinander aufbauen.",
       diagnose: [
         {
           frage: "Wurde die Methode bzw. das Format erst gewählt, nachdem klar war, welche Wirkung erzielt werden soll?",
@@ -493,6 +500,7 @@
       subtitle: "Dreh- und Angelpunkt",
       dimension: "zentrum",
       intro: "Ohne Raum und Zeit bleibt Veränderung Absicht. Raum und Zeit sind kein weiteres Element, sondern die gemeinsame Voraussetzung, damit alle anderen Elemente überhaupt wirksam werden können.",
+      ziel: "Geschützte, wiederkehrende Zeit und ein sicherer Raum, in dem Ausprobieren, Reflexion und Austausch tatsächlich stattfinden können – ohne dieses Fundament bleibt jedes andere Element folgenlos.",
       diagnose: [
         {
           frage: "Ist für diese Initiative geschützte Zeit im Kalender/Alltag reserviert – nicht nur 'wenn Zeit übrig ist'?",

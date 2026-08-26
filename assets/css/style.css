@@ -127,6 +127,38 @@ a { color: var(--accent); }
 .hero h1 { font-size: 2.3rem; }
 .hero p { color: var(--text-muted); max-width: 68ch; font-size: 1.02rem; }
 
+.how-it-works {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+}
+.how-step {
+  display: flex;
+  gap: 12px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+}
+.how-num {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border-radius: var(--radius-sm);
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.how-step strong { font-family: var(--font-display); font-size: 1rem; display: block; margin-bottom: 4px; }
+.how-step p { margin: 0; color: var(--text-muted); font-size: 0.86rem; }
+
 .inline-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .inline-form.small input { flex: 1; min-width: 180px; }
 .inline-form input[type="text"] {
@@ -315,6 +347,25 @@ a { color: var(--accent); }
 .station-subtitle { color: var(--text-muted); margin-top: -4px; font-family: var(--font-mono); font-size: 0.85rem; }
 .station-intro { font-size: 1.08rem; max-width: 72ch; }
 
+.ziel-box {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin: 16px 0 20px;
+  max-width: 72ch;
+}
+.ziel-tag {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.ziel-box p { margin: 0; font-size: 0.96rem; }
+
 .status-line { display: flex; align-items: center; gap: 10px; margin: 14px 0 4px; flex-wrap: wrap; }
 .status-badge {
   display: inline-block;
@@ -429,6 +480,76 @@ a { color: var(--accent); }
 .chip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
 
 .station-nav { display: flex; justify-content: space-between; margin-top: 24px; }
+
+/* Plan-Button-Hinweis in der Rad-Sidebar */
+.plan-progress-hint { text-align: center; font-family: var(--font-mono); font-size: 0.74rem; color: var(--text-muted); margin: 6px 0 14px; }
+
+/* Aktionsplan view */
+.plan-empty p, .plan-summary p { max-width: 68ch; }
+.plan-summary p { font-size: 1rem; }
+
+.plan-raumzeit { border-color: var(--accent); }
+
+.plan-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.plan-step:last-child { border-bottom: none; padding-bottom: 0; }
+.plan-step:first-child { padding-top: 0; }
+
+.plan-step-check { display: flex; align-items: center; cursor: pointer; }
+.plan-step-check input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.plan-step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  flex: none;
+}
+.plan-step-check input:focus-visible + .plan-step-number { outline: 2px solid var(--accent); outline-offset: 2px; }
+.plan-step-check input:checked + .plan-step-number { background: var(--status-etabliert); border-color: var(--status-etabliert); color: #fff; }
+
+.plan-step-body { flex: 1; }
+.plan-step-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 5px; flex-wrap: wrap; }
+.plan-step-station-tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+}
+.plan-step-severity {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+.plan-step-severity.severity-hoch { background: var(--dim-wollen); color: #fff; }
+.plan-step-severity.severity-mittel { background: var(--status-in-arbeit); color: #fff; }
+.plan-step-text { margin: 0; font-size: 0.95rem; }
+
+.plan-step.done .plan-step-text { color: var(--text-muted); text-decoration: line-through; }
+.plan-step.done .plan-step-station-tag,
+.plan-step.done .plan-step-severity { opacity: 0.6; }
+
+.plan-step-diagnose { flex-direction: column; align-items: flex-start; gap: 8px; }
+.plan-step-diagnose p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
 
 /* Export view */
 .export-actions { display: flex; gap: 10px; margin-bottom: 16px; }

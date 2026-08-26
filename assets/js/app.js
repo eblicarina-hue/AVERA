@@ -28,6 +28,7 @@
     var parts = hash.split("/");
     if (parts[0] === "rad" && parts[1]) return { view: "rad", id: parts[1] };
     if (parts[0] === "station" && parts[1] && parts[2]) return { view: "station", id: parts[1], key: parts[2] };
+    if (parts[0] === "plan" && parts[1]) return { view: "plan", id: parts[1] };
     if (parts[0] === "export" && parts[1]) return { view: "export", id: parts[1] };
     return { view: "start" };
   }
@@ -81,6 +82,67 @@
     return warnings;
   }
 
+  // Baut den zusammengeführten, priorisierten Aktionsplan über alle acht
+  // Elemente: Reihenfolge = Drehrichtung des Rads (Intention zuerst), pro
+  // Element zuerst die dringenden (Score 0), dann die zu beobachtenden
+  // (Score 1) Empfehlungen. Raum & Zeit steht als Grundvoraussetzung am
+  // Ende, weil es alle anderen Elemente erst wirksam werden lässt.
+  function buildActionPlan(initiative) {
+    var mainSteps = [];
+    var raumzeitSteps = [];
+    var totalQuestions = 0;
+    var answeredQuestions = 0;
+
+    function collect(stationKey, target) {
+      var station = AVERA_DATA.getStation(stationKey);
+      var stState = initiative.stations[stationKey] || { diagnose: {} };
+      var diagnoseAnswers = stState.diagnose || {};
+      totalQuestions += station.diagnose.length;
+
+      var results = station.diagnose
+        .map(function (frage, qi) {
+          var oi = diagnoseAnswers[qi];
+          if (oi === undefined || oi === null || !frage.optionen[oi]) return null;
+          answeredQuestions++;
+          return { qi: qi, frage: frage.frage, opt: frage.optionen[oi] };
+        })
+        .filter(function (r) { return r !== null; });
+
+      if (!results.length) {
+        target.push({
+          type: "diagnose",
+          stationKey: stationKey,
+          stationTitle: station.title
+        });
+        return;
+      }
+
+      results
+        .filter(function (r) { return r.opt.score < 2; })
+        .sort(function (a, b) { return a.opt.score - b.opt.score; })
+        .forEach(function (r) {
+          target.push({
+            type: "action",
+            stationKey: stationKey,
+            stationTitle: station.title,
+            stepKey: stationKey + ":" + r.qi,
+            text: r.opt.empfehlung,
+            severity: r.opt.score === 0 ? "hoch" : "mittel"
+          });
+        });
+    }
+
+    AVERA_DATA.SEQUENCE.forEach(function (key) { collect(key, mainSteps); });
+    collect("raumzeit", raumzeitSteps);
+
+    return {
+      mainSteps: mainSteps,
+      raumzeitSteps: raumzeitSteps,
+      totalQuestions: totalQuestions,
+      answeredQuestions: answeredQuestions
+    };
+  }
+
   // ---------- Views ----------
 
   function renderStart() {
@@ -108,7 +170,12 @@
       '<div class="view view-start">' +
       '<header class="hero">' +
       "<h1>AVERA – das Rad ins Rollen bringen</h1>" +
-      "<p>Diese App begleitet Unternehmen dabei, Veränderungsvorhaben so aufzusetzen, wie es das Admonter Veränderungsrad (AVERA) vorschlägt: nicht bei der sichtbarsten Maßnahme beginnen, sondern bei der Intention – und von dort Schritt für Schritt Bedeutung, Möglichkeiten, Relevanz, Lernen, soziale Verstärkung und passende Methoden gestalten.</p>" +
+      "<p>Diese App ist ein interaktiver Coach für euer Veränderungsvorhaben: Sie diagnostiziert gemeinsam mit euch, wie tragfähig jedes der sieben AVERA-Gestaltungselemente aktuell ist, und leitet daraus konkrete, priorisierte Handlungsempfehlungen ab. Das Ziel ist kein ausgefülltes Formular, sondern ein belastbarer, Schritt-für-Schritt-Aktionsplan, mit dem ihr eure Initiative auf den Boden bringt – in der Reihenfolge, die AVERA für wirksame Veränderung vorschlägt: nicht bei der sichtbarsten Maßnahme beginnen, sondern bei der Intention.</p>" +
+      '<div class="how-it-works">' +
+      '<div class="how-step"><span class="how-num">1</span><div><strong>Diagnostizieren</strong><p>Für jedes der acht Elemente beantwortet ihr drei kurze Fragen zum Ist-Zustand – ehrlich, nicht wunschgemäß.</p></div></div>' +
+      '<div class="how-step"><span class="how-num">2</span><div><strong>Empfehlungen erhalten</strong><p>Aus jeder Antwort entsteht sofort eine konkrete, auf euch zugeschnittene Handlungsempfehlung.</p></div></div>' +
+      '<div class="how-step"><span class="how-num">3</span><div><strong>Aktionsplan umsetzen</strong><p>Sobald genug diagnostiziert ist, bündelt die App alles zu einem priorisierten Schritt-für-Schritt-Plan für die ganze Initiative.</p></div></div>' +
+      "</div>" +
       "</header>" +
 
       '<section class="panel new-initiative">' +
@@ -194,6 +261,8 @@
         "</div>"
       : '<div class="ok-box">✓ Keine Geisterfahrt erkennbar – die Bearbeitung folgt bislang der Wirkungskette.</div>';
 
+    var plan = buildActionPlan(init);
+
     root.innerHTML =
       '<div class="view view-rad">' +
       '<a href="#/" class="back-link">← Alle Initiativen</a>' +
@@ -209,7 +278,9 @@
       '<div class="overall-progress"><strong>' + overall + "%</strong> des Rads lebt bereits im Alltag</div>" +
       '<div class="dim-bars">' + dimBars + "</div>" +
       warningsHtml +
-      '<button id="export-btn" class="btn btn-primary btn-block">Gestaltungsarchitektur exportieren</button>' +
+      '<button id="plan-btn" class="btn btn-primary btn-block">Aktionsplan ansehen</button>' +
+      '<p class="plan-progress-hint">' + plan.answeredQuestions + " / " + plan.totalQuestions + " Diagnosefragen beantwortet</p>" +
+      '<button id="export-btn" class="btn btn-secondary btn-block">Gestaltungsarchitektur exportieren</button>' +
       "</aside>" +
       "</div>" +
 
@@ -218,6 +289,10 @@
 
     AVERA_WHEEL.render(document.getElementById("wheel-container"), init, function (key) {
       navigate("#/station/" + init.id + "/" + key);
+    });
+
+    document.getElementById("plan-btn").addEventListener("click", function () {
+      navigate("#/plan/" + init.id);
     });
 
     document.getElementById("export-btn").addEventListener("click", function () {
@@ -388,6 +463,8 @@
 
       '<p class="station-intro">' + escapeHtml(station.intro) + "</p>" +
 
+      '<div class="ziel-box"><span class="ziel-tag">Ziel dieses Elements</span><p>' + escapeHtml(station.ziel) + "</p></div>" +
+
       '<section class="panel">' +
       "<h2>Standortbestimmung</h2>" +
       "<p class='hint-text'>Beantwortet die Fragen so, wie es aktuell tatsächlich ist – daraus berechnet sich der Status dieses Elements automatisch.</p>" +
@@ -506,6 +583,122 @@
     });
   }
 
+  function renderPlan(id) {
+    var init = AVERA_STORE.get(id);
+    if (!init) {
+      navigate("#/");
+      return;
+    }
+    var plan = buildActionPlan(init);
+    var erledigt = init.planErledigt || {};
+    var balance = computeBalance(init);
+
+    var dimEntries = Object.keys(AVERA_DATA.DIMENSIONS)
+      .map(function (k) { return { key: k, dim: AVERA_DATA.DIMENSIONS[k], value: balance[k] }; })
+      .sort(function (a, b) { return a.value - b.value; });
+    var weakest = dimEntries[0];
+
+    var allSteps = plan.mainSteps.concat(plan.raumzeitSteps);
+    var actionSteps = allSteps.filter(function (s) { return s.type === "action"; });
+    var openDiagnoseCount = allSteps.filter(function (s) { return s.type === "diagnose"; }).length;
+    var progressPct = plan.totalQuestions ? Math.round((plan.answeredQuestions / plan.totalQuestions) * 100) : 0;
+
+    var summaryHtml;
+    if (plan.answeredQuestions === 0) {
+      summaryHtml =
+        '<section class="panel plan-empty">' +
+        "<h2>Noch keine Diagnose</h2>" +
+        "<p>Beantwortet zuerst die Standortbestimmung in den einzelnen Elementen – beginnt am besten bei der Intention, dem Nullpunkt des Rads. Erst daraus kann die App einen belastbaren, maßgeschneiderten Plan ableiten.</p>" +
+        '<a class="btn btn-primary" href="#/station/' + id + '/intention">Jetzt mit Intention starten</a>' +
+        "</section>";
+    } else {
+      var summaryLines = [
+        plan.answeredQuestions + " von " + plan.totalQuestions + " Fragen beantwortet (" + progressPct + " %)."
+      ];
+      if (weakest) {
+        summaryLines.push(
+          'Euer größter Hebel liegt aktuell in der Dimension „' + weakest.dim.label + '“ (' + weakest.dim.subtitle + "), im Schnitt bei " + Math.round(weakest.value * 100) + " %."
+        );
+      }
+      if (openDiagnoseCount > 0) {
+        summaryLines.push(openDiagnoseCount + " von 8 Element" + (openDiagnoseCount === 1 ? "" : "en") + " sind noch gar nicht diagnostiziert.");
+      }
+      if (actionSteps.length === 0 && plan.answeredQuestions === plan.totalQuestions) {
+        summaryLines.push("Kein akuter Handlungsbedarf – alle diagnostizierten Elemente stehen stabil.");
+      }
+      summaryHtml =
+        '<section class="panel plan-summary">' +
+        "<h2>Zusammenfassung</h2>" +
+        "<p>" + summaryLines.map(escapeHtml).join(" ") + "</p>" +
+        (plan.answeredQuestions < plan.totalQuestions
+          ? '<p class="hint-text">Je vollständiger die Diagnose, desto präziser der Plan – ergänzt die fehlenden Elemente, sobald ihr könnt.</p>'
+          : "") +
+        "</section>";
+    }
+
+    var stepCounter = 1;
+
+    function renderStepList(steps) {
+      return steps
+        .map(function (step) {
+          if (step.type === "diagnose") {
+            return (
+              '<div class="plan-step plan-step-diagnose">' +
+              '<span class="plan-step-station-tag">' + escapeHtml(step.stationTitle) + "</span>" +
+              "<p>Noch nicht diagnostiziert – ohne Antworten lässt sich hier kein konkreter Schritt ableiten.</p>" +
+              '<a class="btn btn-secondary btn-small" href="#/station/' + id + "/" + step.stationKey + '">Jetzt diagnostizieren →</a>' +
+              "</div>"
+            );
+          }
+          var n = stepCounter++;
+          var done = !!erledigt[step.stepKey];
+          return (
+            '<div class="plan-step' + (done ? " done" : "") + '">' +
+            '<label class="plan-step-check">' +
+            '<input type="checkbox" data-plan-step="' + escapeHtml(step.stepKey) + '" ' + (done ? "checked" : "") + " />" +
+            '<span class="plan-step-number">' + n + "</span>" +
+            "</label>" +
+            '<div class="plan-step-body">' +
+            '<div class="plan-step-meta">' +
+            '<span class="plan-step-station-tag">' + escapeHtml(step.stationTitle) + "</span>" +
+            '<span class="plan-step-severity severity-' + step.severity + '">' + (step.severity === "hoch" ? "Dringend" : "Wichtig") + "</span>" +
+            "</div>" +
+            '<p class="plan-step-text">' + escapeHtml(step.text) + "</p>" +
+            "</div></div>"
+          );
+        })
+        .join("");
+    }
+
+    var mainStepsHtml = plan.mainSteps.length
+      ? '<section class="panel"><h2>Schritt für Schritt</h2>' + renderStepList(plan.mainSteps) + "</section>"
+      : "";
+
+    var raumzeitHtml = plan.raumzeitSteps.length
+      ? '<section class="panel plan-raumzeit"><h2>Grundvoraussetzung prüfen: Raum &amp; Zeit</h2>' +
+        "<p class='hint-text'>Raum &amp; Zeit ist der Dreh- und Angelpunkt des Rads – ohne diese Voraussetzung verpuffen alle Schritte oben.</p>" +
+        renderStepList(plan.raumzeitSteps) +
+        "</section>"
+      : "";
+
+    root.innerHTML =
+      '<div class="view view-plan">' +
+      '<a href="#/rad/' + id + '" class="back-link">← Zurück zum Rad</a>' +
+      "<h1>Aktionsplan: " + escapeHtml(init.name) + "</h1>" +
+      "<p class='station-intro'>Maßgeschneiderte, priorisierte Handlungsempfehlungen für die gesamte Initiative – abgeleitet aus eurer Standortbestimmung, in der Reihenfolge der AVERA-Wirkungskette.</p>" +
+      summaryHtml +
+      mainStepsHtml +
+      raumzeitHtml +
+      "</div>";
+
+    root.querySelectorAll("[data-plan-step]").forEach(function (box) {
+      box.addEventListener("change", function () {
+        AVERA_STORE.togglePlanStep(id, box.getAttribute("data-plan-step"), box.checked);
+        renderPlan(id);
+      });
+    });
+  }
+
   function renderExport(id) {
     var init = AVERA_STORE.get(id);
     if (!init) {
@@ -539,6 +732,7 @@
     if (r.view === "start") renderStart();
     else if (r.view === "rad") renderRad(r.id);
     else if (r.view === "station") renderStation(r.id, r.key);
+    else if (r.view === "plan") renderPlan(r.id);
     else if (r.view === "export") renderExport(r.id);
     else renderStart();
   }
