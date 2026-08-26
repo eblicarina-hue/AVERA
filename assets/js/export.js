@@ -73,7 +73,7 @@
     return lines.join("\n");
   }
 
-  function download(filename, text) {
+  function downloadViaBlob(filename, text) {
     var blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
@@ -87,9 +87,28 @@
     }, 1000);
   }
 
-  function downloadMarkdown(initiative) {
+  // Läuft die App eingebettet im Artifact-Viewer, gibt es kein direktes
+  // Dateisystem – dort läuft der Download über die "downloads"-Capability.
+  // Außerhalb eines Viewers (lokale Nutzung, eigenes Hosting) existiert
+  // window.claude gar nicht, dann greift sofort der Blob-Download.
+  async function downloadMarkdown(initiative) {
     var safeName = (initiative.name || "avera-initiative").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-    download("gestaltungsarchitektur-" + (safeName || "initiative") + ".md", toMarkdown(initiative));
+    var filename = "gestaltungsarchitektur-" + (safeName || "initiative") + ".md";
+    var text = toMarkdown(initiative);
+
+    if (global.claude && typeof global.claude.use === "function") {
+      try {
+        var downloads = await global.claude.use("downloads");
+        if (downloads) {
+          await downloads.save({ filename: filename, data: text });
+          return;
+        }
+      } catch (err) {
+        if (err && err.code === "declined") return;
+        console.warn("AVERA export: downloads-Capability nicht verfügbar, nutze Browser-Download.", err);
+      }
+    }
+    downloadViaBlob(filename, text);
   }
 
   global.AVERA_EXPORT = { toMarkdown: toMarkdown, downloadMarkdown: downloadMarkdown };
