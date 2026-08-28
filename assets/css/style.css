@@ -509,6 +509,15 @@ a { color: var(--accent); }
 .objekt-card.active { background: var(--accent); border-color: var(--accent); }
 .objekt-card.active .objekt-card-name, .objekt-card.active .objekt-card-desc { color: var(--accent-contrast); }
 .station-zitat { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); font-family: var(--font-display); font-style: italic; color: var(--text-muted); font-size: 0.92rem; }
+.station-zitat-top {
+  margin: 4px 0 20px;
+  padding: 0 0 0 16px;
+  border-top: none;
+  border-left: 3px solid var(--accent);
+  font-size: 1.15rem;
+  color: var(--text);
+  max-width: 68ch;
+}
 .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
   border: 1px solid var(--border-strong);

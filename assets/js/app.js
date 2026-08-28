@@ -493,29 +493,14 @@
       '<span class="diagnose-progress">' + answeredCount + " / " + totalCount + " Fragen beantwortet</span></div>" +
       "</header>" +
 
+      '<p class="station-zitat station-zitat-top">„' + escapeHtml(station.zitat.text) + '“ — ' + escapeHtml(station.zitat.autor) + "</p>" +
+
       '<p class="station-intro">' + escapeHtml(station.intro) + "</p>" +
 
       '<div class="ziel-box"><span class="ziel-tag">Ziel dieses Elements</span><p>' + escapeHtml(station.ziel) + "</p></div>" +
 
-      '<section class="panel">' +
-      "<h2>Standortbestimmung → Empfehlung</h2>" +
-      "<p class='hint-text'>Beantwortet jede Frage so, wie es aktuell tatsächlich ist – die passende Empfehlung erscheint sofort darunter, und daraus berechnet sich der Status dieses Elements.</p>" +
-      diagnoseHtml(station, stState) +
-      "</section>" +
-
-      '<section class="panel">' +
-      "<h2>Konkrete Maßnahmen wählen</h2>" +
-      "<p class='hint-text'>Wirksame Gestaltung kombiniert alle drei Ebenen: etwas Sichtbares (Artefakt), etwas Praktiziertes (Soziofakt) und eine geteilte Überzeugung (Mentefakt). Wählt aus oder ergänzt eigene.</p>" +
-      objekteHtml +
-      (customChipsHtml ? '<div class="objekt-group"><div class="objekt-aspekt">Eigene</div><div class="chip-row">' + customChipsHtml + "</div></div>" : "") +
-      '<form id="custom-objekt-form" class="inline-form small">' +
-      '<input type="text" id="custom-objekt-input" placeholder="Eigene Maßnahme hinzufügen…" />' +
-      '<button type="submit" class="btn btn-secondary">Hinzufügen</button>' +
-      "</form>" +
-      "</section>" +
-
       "<details class='reference-details'>" +
-      "<summary>Mehr zu diesem Element</summary>" +
+      "<summary>Grundsätzliches &amp; Theorie zu diesem Element</summary>" +
       "<div class='details-body'>" +
 
       "<div class='subsection'>" +
@@ -548,10 +533,25 @@
       '<textarea id="station-notiz" rows="3" placeholder="Freie Notizen zu diesem Element…">' + escapeHtml(stState.notiz || "") + "</textarea>" +
       "</div>" +
 
-      '<p class="station-zitat">„' + escapeHtml(station.zitat.text) + '“ — ' + escapeHtml(station.zitat.autor) + "</p>" +
-
       "</div>" +
       "</details>" +
+
+      '<section class="panel">' +
+      "<h2>Standortbestimmung → Empfehlung</h2>" +
+      "<p class='hint-text'>Beantwortet jede Frage so, wie es aktuell tatsächlich ist – die passende Empfehlung erscheint sofort darunter, und daraus berechnet sich der Status dieses Elements.</p>" +
+      diagnoseHtml(station, stState) +
+      "</section>" +
+
+      '<section class="panel">' +
+      "<h2>Konkrete Maßnahmen wählen</h2>" +
+      "<p class='hint-text'>Wirksame Gestaltung kombiniert alle drei Ebenen: etwas Sichtbares (Artefakt), etwas Praktiziertes (Soziofakt) und eine geteilte Überzeugung (Mentefakt). Wählt aus, was helfen könnte, oder ergänzt eigene.</p>" +
+      objekteHtml +
+      (customChipsHtml ? '<div class="objekt-group"><div class="objekt-aspekt">Eigene</div><div class="chip-row">' + customChipsHtml + "</div></div>" : "") +
+      '<form id="custom-objekt-form" class="inline-form small">' +
+      '<input type="text" id="custom-objekt-input" placeholder="Eigene Maßnahme hinzufügen…" />' +
+      '<button type="submit" class="btn btn-secondary">Hinzufügen</button>' +
+      "</form>" +
+      "</section>" +
 
       '<div class="station-nav">' +
       (prevKey ? '<a class="btn btn-ghost" href="#/station/' + id + "/" + prevKey + '">← ' + escapeHtml(AVERA_DATA.getStation(prevKey).title) + "</a>" : "<span></span>") +
@@ -559,7 +559,7 @@
         ? '<a class="btn btn-primary btn-next" href="#/station/' + id + "/" + nextKey + '">' +
           (allAnswered ? "Weiter zu " + escapeHtml(AVERA_DATA.getStation(nextKey).title) : escapeHtml(AVERA_DATA.getStation(nextKey).title)) +
           " →</a>"
-        : '<a class="btn btn-primary btn-next" href="#/plan/' + id + '">Zum Aktionsplan →</a>') +
+        : '<a class="btn btn-primary btn-next" href="#/rad/' + id + '">Zum Gesamtüberblick →</a>') +
       "</div>" +
       "</div>";
 
