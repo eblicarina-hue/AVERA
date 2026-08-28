@@ -283,6 +283,9 @@ a { color: var(--accent); }
 .dim-duerfen { background: var(--dim-duerfen); }
 .dim-koennen { background: var(--dim-koennen); }
 .dim-bar-pct { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); text-align: right; font-variant-numeric: tabular-nums; }
+.pathology-note { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border); font-size: 0.82rem; color: var(--dim-wollen); }
+
+.sphere-legend { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin: -8px 0 14px; }
 
 .warning-box {
   background: var(--accent-soft);
@@ -344,7 +347,23 @@ a { color: var(--accent); }
   margin-bottom: 10px;
 }
 .station-header h1 { font-size: 2rem; }
-.station-subtitle { color: var(--text-muted); margin-top: -4px; font-family: var(--font-mono); font-size: 0.85rem; }
+.station-tags { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.station-tags .station-num { margin-bottom: 0; }
+.sphere-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+}
+.sphere-tag.sphere-business { border-color: var(--dim-koennen); color: var(--dim-koennen); }
+.sphere-tag.sphere-corporate_learning { border-color: var(--dim-wollen); color: var(--dim-wollen); }
+.sphere-tag.sphere-cross_spheric { border-color: var(--dim-duerfen); color: var(--dim-duerfen); }
+.station-teaser { color: var(--text-muted); margin-top: -4px; font-family: var(--font-display); font-style: italic; font-size: 1rem; }
 .station-intro { font-size: 1.08rem; max-width: 72ch; }
 
 .ziel-box {
@@ -396,6 +415,11 @@ a { color: var(--accent); }
   background: var(--bg);
 }
 .empfehlung-card:last-child { margin-bottom: 0; }
+.empfehlung-card.inline { margin: 10px 0 0; animation: reveal 0.18s ease; }
+@keyframes reveal { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .empfehlung-card.inline { animation: none; }
+}
 .empfehlung-card.severity-hoch { border-left-color: var(--dim-wollen); }
 .empfehlung-card.severity-mittel { border-left-color: var(--status-in-arbeit); }
 .empfehlung-card.severity-gut { border-left-color: var(--status-etabliert); background: var(--panel-bg); }
@@ -464,8 +488,27 @@ a { color: var(--accent); }
 .reflexion-item textarea:focus, #station-notiz:focus { border-color: var(--accent); }
 
 .hint-text { color: var(--text-muted); font-size: 0.85rem; margin-top: -4px; }
-.objekt-group { margin-bottom: 12px; }
-.objekt-aspekt { font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px; }
+.objekt-group { margin-bottom: 18px; }
+.objekt-group:last-child { margin-bottom: 0; }
+.objekt-aspekt { font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 8px; }
+.objekt-card-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.objekt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  border: 1px solid var(--border-strong);
+  background: var(--panel-bg);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+.objekt-card-name { font-weight: 600; font-size: 0.88rem; }
+.objekt-card-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; }
+.objekt-card.active { background: var(--accent); border-color: var(--accent); }
+.objekt-card.active .objekt-card-name, .objekt-card.active .objekt-card-desc { color: var(--accent-contrast); }
+.station-zitat { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); font-family: var(--font-display); font-style: italic; color: var(--text-muted); font-size: 0.92rem; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
   border: 1px solid var(--border-strong);
@@ -479,7 +522,8 @@ a { color: var(--accent); }
 }
 .chip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
 
-.station-nav { display: flex; justify-content: space-between; margin-top: 24px; }
+.station-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+.btn-next { padding: 13px 22px; font-size: 0.85rem; }
 
 /* Plan-Button-Hinweis in der Rad-Sidebar */
 .plan-progress-hint { text-align: center; font-family: var(--font-mono); font-size: 0.74rem; color: var(--text-muted); margin: 6px 0 14px; }

@@ -64,6 +64,31 @@
     return keys.length ? sum / keys.length : 0;
   }
 
+  // Erkennt ein Ungleichgewicht der drei Dimensionen als benanntes
+  // Fehlmuster (statt nur "schwächste Dimension"), analog zur AVERA-Regel:
+  // die schwächste Dimension setzt die Grenze der Wirksamkeit.
+  function detectPathology(balance) {
+    var w = balance.wollen, d = balance.duerfen, k = balance.koennen;
+    var entries = [
+      { key: "wollen", value: w },
+      { key: "duerfen", value: d },
+      { key: "koennen", value: k }
+    ].sort(function (a, b) { return a.value - b.value; });
+    var weakest = entries[0];
+    var othersAvg = (entries[1].value + entries[2].value) / 2;
+    var gap = othersAvg - weakest.value;
+
+    if (gap < 0.3 || othersAvg < 0.4) return null;
+
+    if (weakest.key === "duerfen") {
+      return { weak: "Dürfen", label: "Frustration & Widerstand", text: "Können und Wollen sind da, aber es fehlt der Spielraum, danach zu handeln (Dürfen) – ein klassischer Nährboden für Frustration und Widerstand." };
+    }
+    if (weakest.key === "koennen") {
+      return { weak: "Können", label: "Leichtsinn & Überforderung", text: "Dürfen und Wollen sind da, aber es fehlt die Befähigung (Können) – das erzeugt Leichtsinn und Überforderung statt souveränes Handeln." };
+    }
+    return { weak: "Wollen", label: "Dienst nach Vorschrift", text: "Können und Dürfen sind da, aber es fehlt die innere Bereitschaft (Wollen) – das führt zu Dienst nach Vorschrift statt echtem Engagement." };
+  }
+
   function computeGeisterfahrtWarnings(initiative) {
     var seq = AVERA_DATA.SEQUENCE;
     var warnings = [];
@@ -195,8 +220,9 @@
       '<section class="panel about-panel">' +
       "<h2>Worauf AVERA hinweist</h2>" +
       '<p><strong>Die Geisterfahrt:</strong> Viele Change-Vorhaben scheitern, weil dort gestaltet wird, wo Veränderung sichtbar wird (Training, Kommunikation, Tools) – nicht dort, wo sie entsteht. Diese App macht sichtbar, wenn eine sichtbare Maßnahme vorausläuft, während ihre Grundlage im Rad noch offen ist.</p>' +
+      '<p><strong>Veränderung oder Lernangebot? Beides – kein Entweder-Oder:</strong> AVERA behandelt Change und Lernen als gemeinsame Gestaltungsaufgabe. Intention, Story, Organisation und Führung (Elemente 00–03) treibt meist das Business, Entdecken, Peers und Methoden (04–06) meist Corporate Learning/HR – Raum &amp; Zeit (07) verbindet beide. Jedes Element im Rad zeigt seine Sphäre, damit klar bleibt, wer gerade am Zug ist.</p>' +
       '<p><strong>Kein lineares Projekt, sondern ein Rad:</strong> Alle sieben Gestaltungselemente wirken gleichzeitig. Kein Element muss perfekt sein – bleibt eines aber dauerhaft unterentwickelt, verliert das ganze System an Wirkung.</p>' +
-      '<p class="source-note">Grundlage: AVERA White Paper 2.0, Corporate Learning Community Österreich (#CLCA), CC BY-SA 4.0.</p>' +
+      '<p class="source-note">Grundlage: AVERA White Paper 2.0/3.1, Corporate Learning Community Österreich (#CLCA), CC BY-SA 4.0.</p>' +
       "</section>" +
       "</div>";
 
@@ -232,6 +258,7 @@
     var balance = computeBalance(init);
     var overall = Math.round(computeOverallProgress(init) * 100);
     var warnings = computeGeisterfahrtWarnings(init);
+    var pathology = detectPathology(balance);
 
     var dimBars = Object.keys(AVERA_DATA.DIMENSIONS)
       .map(function (dimKey) {
@@ -276,7 +303,10 @@
       '<div id="wheel-container" class="wheel-container"></div>' +
       '<aside class="rad-sidebar">' +
       '<div class="overall-progress"><strong>' + overall + "%</strong> des Rads lebt bereits im Alltag</div>" +
-      '<div class="dim-bars">' + dimBars + "</div>" +
+      '<div class="dim-bars">' + dimBars +
+      (pathology ? '<p class="pathology-note">⚠ ' + escapeHtml(pathology.text) + "</p>" : "") +
+      "</div>" +
+      "<p class='sphere-legend'>Intention–Führung: Business · Entdecken–Methoden: Corporate Learning · Raum &amp; Zeit: beide gemeinsam</p>" +
       warningsHtml +
       '<button id="plan-btn" class="btn btn-primary btn-block">Aktionsplan ansehen</button>' +
       '<p class="plan-progress-hint">' + plan.answeredQuestions + " / " + plan.totalQuestions + " Diagnosefragen beantwortet</p>" +
@@ -314,6 +344,9 @@
     return '<span class="status-badge status-' + status + '">' + s.label + "</span>";
   }
 
+  // Frage, Antwort-Chips und die daraus folgende Empfehlung erscheinen als
+  // ein zusammenhängender Block direkt untereinander (statt in getrennten
+  // Panels), damit Diagnose und Empfehlung ohne Bruch ineinander übergehen.
   function diagnoseHtml(station, stState) {
     var answers = stState.diagnose || {};
     return station.diagnose
@@ -329,46 +362,36 @@
             );
           })
           .join("");
-        return '<div class="diagnose-item"><p class="diagnose-frage">' + escapeHtml(frage.frage) + '</p><div class="chip-row">' + optsHtml + "</div></div>";
+
+        var empfehlungHtml = "";
+        if (chosen !== undefined && chosen !== null && frage.optionen[chosen]) {
+          var opt = frage.optionen[chosen];
+          var sevCls = opt.score === 0 ? "severity-hoch" : opt.score === 1 ? "severity-mittel" : "severity-gut";
+          var tag = opt.score === 0 ? "Dringend" : opt.score === 1 ? "Im Blick behalten" : "Läuft bereits gut";
+          empfehlungHtml =
+            '<div class="empfehlung-card inline ' + sevCls + '">' +
+            '<span class="empfehlung-tag">' + tag + "</span>" +
+            '<p class="empfehlung-text">' + escapeHtml(opt.empfehlung) + "</p>" +
+            "</div>";
+        }
+
+        return (
+          '<div class="diagnose-item">' +
+          '<p class="diagnose-frage">' + escapeHtml(frage.frage) + "</p>" +
+          '<div class="chip-row">' + optsHtml + "</div>" +
+          empfehlungHtml +
+          "</div>"
+        );
       })
       .join("");
   }
 
-  function diagnoseResults(station, stState) {
+  function diagnoseAnsweredCount(station, stState) {
     var answers = stState.diagnose || {};
-    return station.diagnose
-      .map(function (frage, qi) {
-        var oi = answers[qi];
-        if (oi === undefined || oi === null || !frage.optionen[oi]) return null;
-        return { frage: frage.frage, opt: frage.optionen[oi] };
-      })
-      .filter(function (r) { return r !== null; });
-  }
-
-  function empfehlungenHtml(results) {
-    if (!results.length) {
-      return '<p class="hint-text">Beantwortet oben die Fragen zur Standortbestimmung – daraus leitet die App konkrete Handlungsempfehlungen für dieses Element ab.</p>';
-    }
-    var groups = [
-      { list: results.filter(function (r) { return r.opt.score === 0; }), cls: "severity-hoch", tag: "Dringend" },
-      { list: results.filter(function (r) { return r.opt.score === 1; }), cls: "severity-mittel", tag: "Im Blick behalten" },
-      { list: results.filter(function (r) { return r.opt.score === 2; }), cls: "severity-gut", tag: "Läuft bereits gut" }
-    ];
-    return groups
-      .map(function (g) {
-        return g.list
-          .map(function (r) {
-            return (
-              '<div class="empfehlung-card ' + g.cls + '">' +
-              '<span class="empfehlung-tag">' + g.tag + "</span>" +
-              '<p class="empfehlung-frage">' + escapeHtml(r.frage) + "</p>" +
-              '<p class="empfehlung-text">' + escapeHtml(r.opt.empfehlung) + "</p>" +
-              "</div>"
-            );
-          })
-          .join("");
-      })
-      .join("");
+    return station.diagnose.filter(function (frage, qi) {
+      var oi = answers[qi];
+      return oi !== undefined && oi !== null && !!frage.optionen[oi];
+    }).length;
   }
 
   function renderStation(id, key) {
@@ -379,9 +402,9 @@
       return;
     }
     var stState = init.stations[key] || { status: "offen", diagnose: {}, checked: [], answers: {}, objekte: [], notiz: "" };
-    var results = diagnoseResults(station, stState);
-    var answeredCount = results.length;
+    var answeredCount = diagnoseAnsweredCount(station, stState);
     var totalCount = station.diagnose.length;
+    var sphere = AVERA_DATA.SPHERES[station.sphere];
 
     var checklistHtml = station.wasZuTun
       .map(function (item, i) {
@@ -421,22 +444,28 @@
       .join("");
 
     var selectedObjekte = stState.objekte || [];
-    var objekteHtml = station.objekte
-      .map(function (grp) {
-        var chips = grp.beispiele
-          .map(function (beispiel) {
-            var active = selectedObjekte.indexOf(beispiel) !== -1 ? " active" : "";
-            return '<button type="button" class="chip' + active + '" data-objekt="' + escapeHtml(beispiel) + '">' + escapeHtml(beispiel) + "</button>";
+    var OBJEKT_TYP_LABEL = { artefakt: "Artefakte — das Sichtbare", soziofakt: "Soziofakte — das Praktizierte", mentefakt: "Mentefakte — das Geglaubte" };
+    var objekteHtml = ["artefakt", "soziofakt", "mentefakt"]
+      .map(function (typ) {
+        var items = station.objekte.filter(function (o) { return o.typ === typ; });
+        if (!items.length) return "";
+        var cards = items
+          .map(function (o) {
+            var active = selectedObjekte.indexOf(o.name) !== -1 ? " active" : "";
+            return (
+              '<button type="button" class="objekt-card' + active + '" data-objekt="' + escapeHtml(o.name) + '">' +
+              '<span class="objekt-card-name">' + escapeHtml(o.name) + "</span>" +
+              '<span class="objekt-card-desc">' + escapeHtml(o.beschreibung) + "</span>" +
+              "</button>"
+            );
           })
           .join("");
-        return '<div class="objekt-group"><div class="objekt-aspekt">' + escapeHtml(grp.aspekt) + "</div><div class='chip-row'>" + chips + "</div></div>";
+        return '<div class="objekt-group"><div class="objekt-aspekt">' + OBJEKT_TYP_LABEL[typ] + '</div><div class="objekt-card-row">' + cards + "</div></div>";
       })
       .join("");
 
     var customObjekte = selectedObjekte.filter(function (o) {
-      return !station.objekte.some(function (grp) {
-        return grp.beispiele.indexOf(o) !== -1;
-      });
+      return !station.objekte.some(function (item) { return item.name === o; });
     });
     var customChipsHtml = customObjekte
       .map(function (o) {
@@ -447,16 +476,19 @@
     var seqIndex = AVERA_DATA.SEQUENCE.indexOf(key);
     var prevKey = seqIndex > 0 ? AVERA_DATA.SEQUENCE[seqIndex - 1] : null;
     var nextKey = seqIndex >= 0 && seqIndex < AVERA_DATA.SEQUENCE.length - 1 ? AVERA_DATA.SEQUENCE[seqIndex + 1] : null;
-    if (key === "intention") nextKey = "story";
     if (key === "methoden") nextKey = "raumzeit";
+    if (key === "raumzeit") prevKey = "methoden";
+
+    var allAnswered = answeredCount === totalCount;
 
     root.innerHTML =
       '<div class="view view-station">' +
       '<a href="#/rad/' + id + '" class="back-link">← Zurück zum Rad</a>' +
       '<header class="station-header">' +
-      '<span class="station-num">' + escapeHtml(station.num) + "</span>" +
+      '<div class="station-tags"><span class="station-num">' + escapeHtml(station.num) + "</span>" +
+      '<span class="sphere-tag sphere-' + station.sphere + '">' + escapeHtml(sphere.label) + "</span></div>" +
       "<h1>" + escapeHtml(station.title) + "</h1>" +
-      '<p class="station-subtitle">' + escapeHtml(station.subtitle) + "</p>" +
+      '<p class="station-teaser">' + escapeHtml(station.teaser) + "</p>" +
       '<div class="status-line">' + statusBadgeHtml(stState.status) +
       '<span class="diagnose-progress">' + answeredCount + " / " + totalCount + " Fragen beantwortet</span></div>" +
       "</header>" +
@@ -466,19 +498,14 @@
       '<div class="ziel-box"><span class="ziel-tag">Ziel dieses Elements</span><p>' + escapeHtml(station.ziel) + "</p></div>" +
 
       '<section class="panel">' +
-      "<h2>Standortbestimmung</h2>" +
-      "<p class='hint-text'>Beantwortet die Fragen so, wie es aktuell tatsächlich ist – daraus berechnet sich der Status dieses Elements automatisch.</p>" +
+      "<h2>Standortbestimmung → Empfehlung</h2>" +
+      "<p class='hint-text'>Beantwortet jede Frage so, wie es aktuell tatsächlich ist – die passende Empfehlung erscheint sofort darunter, und daraus berechnet sich der Status dieses Elements.</p>" +
       diagnoseHtml(station, stState) +
       "</section>" +
 
       '<section class="panel">' +
-      "<h2>Handlungsempfehlungen</h2>" +
-      empfehlungenHtml(results) +
-      "</section>" +
-
-      '<section class="panel">' +
-      "<h2>Gestaltungsobjekte / konkrete Maßnahmen</h2>" +
-      "<p class='hint-text'>Wählt aus, was ihr konkret umsetzen wollt, oder ergänzt eigene Maßnahmen.</p>" +
+      "<h2>Konkrete Maßnahmen wählen</h2>" +
+      "<p class='hint-text'>Wirksame Gestaltung kombiniert alle drei Ebenen: etwas Sichtbares (Artefakt), etwas Praktiziertes (Soziofakt) und eine geteilte Überzeugung (Mentefakt). Wählt aus oder ergänzt eigene.</p>" +
       objekteHtml +
       (customChipsHtml ? '<div class="objekt-group"><div class="objekt-aspekt">Eigene</div><div class="chip-row">' + customChipsHtml + "</div></div>" : "") +
       '<form id="custom-objekt-form" class="inline-form small">' +
@@ -488,7 +515,7 @@
       "</section>" +
 
       "<details class='reference-details'>" +
-      "<summary>Hintergrund aus dem AVERA-Framework</summary>" +
+      "<summary>Mehr zu diesem Element</summary>" +
       "<div class='details-body'>" +
 
       "<div class='subsection'>" +
@@ -521,12 +548,18 @@
       '<textarea id="station-notiz" rows="3" placeholder="Freie Notizen zu diesem Element…">' + escapeHtml(stState.notiz || "") + "</textarea>" +
       "</div>" +
 
+      '<p class="station-zitat">„' + escapeHtml(station.zitat.text) + '“ — ' + escapeHtml(station.zitat.autor) + "</p>" +
+
       "</div>" +
       "</details>" +
 
       '<div class="station-nav">' +
       (prevKey ? '<a class="btn btn-ghost" href="#/station/' + id + "/" + prevKey + '">← ' + escapeHtml(AVERA_DATA.getStation(prevKey).title) + "</a>" : "<span></span>") +
-      (nextKey ? '<a class="btn btn-ghost" href="#/station/' + id + "/" + nextKey + '">' + escapeHtml(AVERA_DATA.getStation(nextKey).title) + " →</a>" : "<span></span>") +
+      (nextKey
+        ? '<a class="btn btn-primary btn-next" href="#/station/' + id + "/" + nextKey + '">' +
+          (allAnswered ? "Weiter zu " + escapeHtml(AVERA_DATA.getStation(nextKey).title) : escapeHtml(AVERA_DATA.getStation(nextKey).title)) +
+          " →</a>"
+        : '<a class="btn btn-primary btn-next" href="#/plan/' + id + '">Zum Aktionsplan →</a>') +
       "</div>" +
       "</div>";
 
@@ -597,6 +630,7 @@
       .map(function (k) { return { key: k, dim: AVERA_DATA.DIMENSIONS[k], value: balance[k] }; })
       .sort(function (a, b) { return a.value - b.value; });
     var weakest = dimEntries[0];
+    var pathology = detectPathology(balance);
 
     var allSteps = plan.mainSteps.concat(plan.raumzeitSteps);
     var actionSteps = allSteps.filter(function (s) { return s.type === "action"; });
@@ -615,7 +649,11 @@
       var summaryLines = [
         plan.answeredQuestions + " von " + plan.totalQuestions + " Fragen beantwortet (" + progressPct + " %)."
       ];
-      if (weakest) {
+      if (pathology) {
+        summaryLines.push(
+          "Muster erkannt: " + pathology.text
+        );
+      } else if (weakest) {
         summaryLines.push(
           'Euer größter Hebel liegt aktuell in der Dimension „' + weakest.dim.label + '“ (' + weakest.dim.subtitle + "), im Schnitt bei " + Math.round(weakest.value * 100) + " %."
         );

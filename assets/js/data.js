@@ -1,12 +1,21 @@
 /*
  * AVERA-Inhalte (Admonter Veränderungsrad).
- * Grundlage: "AVERA White Paper 2.0 – Ein Gestaltungsframework für Lernen und
+ * Grundlage: "AVERA White Paper 2.0/3.1 – Ein Gestaltungsframework für Lernen und
  * Veränderung in Organisationen", Corporate Learning Community Österreich (#CLCA).
  * Lizenz der inhaltlichen Grundlage: CC BY-SA 4.0.
  * Texte hier sind für die App-Nutzung redaktionell verdichtet.
  */
 (function (global) {
   "use strict";
+
+  // AVERA versteht Veränderung und Lernen nicht als Entweder-Oder, sondern als
+  // Joint Venture: Business (00–03) setzt Richtung und Rahmen, Corporate
+  // Learning (04–06) gestaltet die Aneignung, Raum & Zeit (07) verbindet beide.
+  var SPHERES = {
+    business: { label: "Business", note: "wird meist vom Business getrieben" },
+    corporate_learning: { label: "Corporate Learning", note: "wird meist von Corporate Learning / HR getrieben" },
+    cross_spheric: { label: "Cross-Spheric", note: "verbindet Business und Corporate Learning" }
+  };
 
   // Reihenfolge = "Drehrichtung" des Rads. raumzeit steht im Zentrum und
   // ist kein Schritt in der Kette, sondern permanente Voraussetzung.
@@ -24,7 +33,10 @@
       num: "Start",
       title: "Intention",
       subtitle: "Der Nullpunkt jeder Gestaltung",
+      teaser: "Jede Veränderung beginnt mit einem Wunsch, dass etwas anders sein soll.",
       dimension: "ursprung",
+      sphere: "business",
+      zitat: { text: "Intention ist alles. Alles andere ist Verpackung.", autor: "Ali Mahlodji" },
       intro: "Jede Veränderung beginnt mit einer Intention – nicht mit einer Maßnahme. Sie beschreibt, was anders werden soll, warum das bedeutsam ist und welche Wirkung entstehen soll. Ohne tragfähige Intention wird schnell alles beliebig.",
       ziel: "Ein Satz, den alle im Kernteam gleich sagen können – was sich ändern soll, warum es wichtig ist und wie die gewünschte Zukunft konkret aussieht. Ohne dieses gemeinsame Zielbild bleibt jede folgende Maßnahme beliebig.",
       diagnose: [
@@ -78,7 +90,11 @@
         "Welche Entscheidungen würden wir anders treffen, wenn wir unsere Intention konsequent zum Maßstab machen?"
       ],
       objekte: [
-        { aspekt: "Zielbild", beispiele: ["Zukunftsbild", "Leitfrage", "Auftragsklärung"] }
+        { typ: "artefakt", name: "Intentions-Statement", beschreibung: "Schriftlich fixierter Ein-Satz-Auftrag: was sich ändern soll und wozu." },
+        { typ: "artefakt", name: "Zukunftsbild", beschreibung: "Konkrete, nachvollziehbare Beschreibung des erreichten Zustands." },
+        { typ: "soziofakt", name: "Auftragsklärungs-Workshop", beschreibung: "Termin, an dem die relevanten Perspektiven die Intention gemeinsam schärfen." },
+        { typ: "soziofakt", name: "Regelmäßige Intentions-Prüfung", beschreibung: "Wiederkehrender Termin, an dem die Intention gegen neue Erkenntnisse geprüft wird." },
+        { typ: "mentefakt", name: "Geteiltes Verständnis des Wozu", beschreibung: "Überzeugung im Kernteam, dass alle dasselbe Ziel meinen, wenn sie über die Veränderung sprechen." }
       ]
     },
     {
@@ -86,7 +102,10 @@
       num: "01",
       title: "Story & Narrativ",
       subtitle: "schafft Bedeutung",
+      teaser: "Jede Veränderung hat und ist Geschichte.",
       dimension: "wollen",
+      sphere: "business",
+      zitat: { text: "Geschichten sind die Form, in der wir Menschen Veränderung denken.", autor: "Tobias Grewe" },
       intro: "Menschen folgen selten Strategien – sie folgen Geschichten. Eine gemeinsame Geschichte macht verständlich, warum Veränderung notwendig ist, und lädt dazu ein, Teil davon zu werden.",
       ziel: "Eine Geschichte der Veränderung, die Mitarbeitende in eigenen Worten weitererzählen – nicht nur eine Kommunikationskampagne, sondern eine Erzählung, die im Alltag lebt und Orientierung gibt.",
       diagnose: [
@@ -145,9 +164,11 @@
         "Woran erkennen wir, dass unsere Geschichte im Alltag weiterlebt?"
       ],
       objekte: [
-        { aspekt: "Geschichte", beispiele: ["Leitnarrativ", "Zukunftsbild", "Veränderungsgeschichte"] },
-        { aspekt: "Kommunikation", beispiele: ["Kommunikationskampagne", "Townhall", "Newsletter", "Video"] },
-        { aspekt: "Orientierung", beispiele: ["Leitbegriffe", "Metaphern", "Glossar"] }
+        { typ: "artefakt", name: "Leitnarrativ / Change-Story", beschreibung: "Schriftlich festgehaltene Erzählung: woher, warum, wohin." },
+        { typ: "artefakt", name: "Leitbegriffe & Glossar", beschreibung: "Verbindliche Sprache und Metaphern für die Veränderung." },
+        { typ: "soziofakt", name: "Townhall / Storytelling-Session", beschreibung: "Format, in dem die Geschichte lebendig erzählt und diskutiert wird." },
+        { typ: "soziofakt", name: "Kommunikationskampagne", beschreibung: "Wiederkehrende Kommunikationsanlässe, die die Geschichte weitertragen." },
+        { typ: "mentefakt", name: "Überzeugung, Teil der Geschichte zu sein", beschreibung: "Gefühl der Beteiligten, die Erzählung mitzuschreiben statt nur zu empfangen." }
       ]
     },
     {
@@ -155,7 +176,10 @@
       num: "02",
       title: "Organisation & Kultur",
       subtitle: "schafft Möglichkeiten",
+      teaser: "Der limitierende Kontext. Wer Veränderung will, darf nicht nur bei den Menschen ansetzen.",
       dimension: "duerfen",
+      sphere: "business",
+      zitat: { text: "A bad system will beat a good person every time.", autor: "W. Edwards Deming" },
       intro: "Verhalten entsteht selten allein aus Überzeugung. Es entsteht im Zusammenspiel organisationaler Bedingungen – Strukturen, Routinen, Regeln und kulturellen Mustern. Wer Verhalten verändern will, muss Organisation gestalten.",
       ziel: "Strukturen, Prozesse und Routinen, die das gewünschte Verhalten tatsächlich ermöglichen – nicht nur Appelle, sondern veränderte Rahmenbedingungen, an denen sich neues Verhalten festmachen kann.",
       diagnose: [
@@ -213,9 +237,11 @@
         "Woran erkennen wir, dass die Organisation die Entwicklung tatsächlich unterstützt?"
       ],
       objekte: [
-        { aspekt: "Strukturen", beispiele: ["Rollen", "Prozesse", "Verantwortlichkeiten", "Governance"] },
-        { aspekt: "Zusammenarbeit", beispiele: ["Meetingformate", "Entscheidungsprozesse", "Schnittstellen"] },
-        { aspekt: "Kultur", beispiele: ["Wertebilder", "Rituale", "Symbole"] }
+        { typ: "artefakt", name: "Governance-Dokument & Kompetenzmatrix", beschreibung: "Verbindliche Festlegung erweiterter Entscheidungsrechte für Teams ohne Eskalationspflicht." },
+        { typ: "artefakt", name: "Revidiertes Kennzahlen-Dashboard", beschreibung: "Steuerungsübersicht, die Fortschritt im Sinne des Zukunftsbildes statt alter Silo-KPIs abbildet." },
+        { typ: "soziofakt", name: "Streichungs- & Deregulierungs-Routine", beschreibung: "Regelmäßiges Prüfen und Entsorgen veralteter Berichts- und Freigabeschleifen." },
+        { typ: "soziofakt", name: "Gelebte Entscheidungsautonomie", beschreibung: "Praxis, in der dezentrale Beschlüsse offen getragen und nicht hinterfragt werden." },
+        { typ: "mentefakt", name: "Glaube an systemische Fehlertoleranz", beschreibung: "Geteiltes Vertrauen, dass das Nutzen eigener Handlungsspielräume gewollt und geschützt ist." }
       ]
     },
     {
@@ -223,7 +249,10 @@
       num: "03",
       title: "Führung & Alltag",
       subtitle: "schafft Relevanz – der Zündfunke",
+      teaser: "Der Alltag bremst. Führung ist Anstifterin und Ermöglicherin.",
       dimension: "koennen",
+      sphere: "business",
+      zitat: { text: "Führung ist zugleich der Schlüssel und der Verschluss für nahezu alle Prozesse in Organisationen.", autor: "Rüdiger Hossiep" },
       intro: "Veränderung entsteht im Alltag – dort, wo Menschen entscheiden, zusammenarbeiten und Prioritäten setzen. Führung übersetzt die Intention in den Arbeitsalltag und beantwortet: Was bedeutet das für mich?",
       ziel: "Führungskräfte, die die Veränderung im Alltag sichtbar vorleben, dafür geschützte Zeit schaffen und Mitarbeitenden konkret übersetzen, was sich für ihre tägliche Arbeit ändert.",
       diagnose: [
@@ -282,9 +311,11 @@
         "Woran erkennen wir, dass Lernen im Alltag tatsächlich stattfindet?"
       ],
       objekte: [
-        { aspekt: "Führungsarbeit", beispiele: ["Führungsdialoge", "Feedback", "Zielvereinbarungen"] },
-        { aspekt: "Alltag", beispiele: ["Routinen", "Check-ins", "Teammeetings"] },
-        { aspekt: "Unterstützung", beispiele: ["Coaching", "Reflexionsgespräche", "Priorisierung"] }
+        { typ: "artefakt", name: "Rollen- & Funktionsbeschreibung Führung", beschreibung: "Dokumentierte Erwartungen an Führungshandeln als Entwicklungsbegleiter und Vorbild." },
+        { typ: "artefakt", name: "Priorisierungsboard & Stop-Doing-Liste", beschreibung: "Sichtbares Board zur Kennzeichnung gestrichener Aufgaben." },
+        { typ: "soziofakt", name: "Jour-Fixe-Reflexionsimpuls", beschreibung: "10-Minuten-Routine in Teambesprechungen zum Besprechen von Erstversuchen." },
+        { typ: "soziofakt", name: "Kollegiales Führungs-Sparring", beschreibung: "Wechselseitige Hospitation von Führungskräften zur Rückmeldung über eigene Führungssignale." },
+        { typ: "mentefakt", name: "Führung als Ermöglichung", beschreibung: "Verankertes Selbstverständnis, dass Führung primär Raumschutz und Entwicklungshilfe bedeutet." }
       ]
     },
     {
@@ -292,7 +323,10 @@
       num: "04",
       title: "Entdecken & Aneignen",
       subtitle: "ermöglicht individuelle Aneignung",
+      teaser: "Jedes Lernen beginnt mit einer Frage. Entdecken ist die natürliche Antwort darauf.",
       dimension: "wollen",
+      sphere: "corporate_learning",
+      zitat: { text: "Man kann einen Menschen nichts lehren, man kann ihm nur helfen, es in sich selbst zu entdecken.", autor: "Galileo Galilei" },
       intro: "Lernen entsteht nicht durch Wissensvermittlung, sondern wenn Menschen selbst aktiv werden, Fragen verfolgen und Erfahrungen machen. Lernen ist die Leistung der Lernenden.",
       ziel: "Echte Gelegenheiten zum Ausprobieren an realen Herausforderungen – Menschen eignen sich die Veränderung an, indem sie selbst handeln, nicht indem sie Inhalte konsumieren.",
       diagnose: [
@@ -351,9 +385,11 @@
         "Woran erkennen wir, dass Menschen ihre Praxis tatsächlich weiterentwickeln?"
       ],
       objekte: [
-        { aspekt: "Entdecken", beispiele: ["Praxisaufgaben", "Experimente", "Challenges"] },
-        { aspekt: "Reflexion", beispiele: ["Lernjournale", "Retrospektiven", "Reflexionsfragen"] },
-        { aspekt: "Teilen", beispiele: ["Lerngruppen", "Erfahrungsberichte", "Brown-Bag-Sessions"] }
+        { typ: "artefakt", name: "Challenge-Card & Praxis-Sprint-Leitfaden", beschreibung: "Arbeitsblatt für wöchentliche Mikroschritte im realen Arbeitskontext." },
+        { typ: "artefakt", name: "Persönliches Lernjournal", beschreibung: "Dokumentiertes Notizbuch zur Auswertung eigener Erstversuche." },
+        { typ: "soziofakt", name: "Praxis-Tandems", beschreibung: "Zwei Kolleg:innen erproben gemeinsam eine neue Vorgehensweise." },
+        { typ: "soziofakt", name: "Retrospektiven & Brown-Bag-Sessions", beschreibung: "Regelmäßige kurze Formate zum gemeinsamen Auswerten von Lernerfahrungen." },
+        { typ: "mentefakt", name: "Vertrauen in die eigene Selbstwirksamkeit", beschreibung: "Subjektives Vertrauen, neue Herausforderungen durch eigenes Erkunden meistern zu können." }
       ]
     },
     {
@@ -361,7 +397,10 @@
       num: "05",
       title: "Peers & Resonanz",
       subtitle: "verstärkt sozial",
+      teaser: "Soziales Lernen ist eine geteilte Erfahrung. Was eine Gruppe verstärkt, wird wahrscheinlicher.",
       dimension: "duerfen",
+      sphere: "corporate_learning",
+      zitat: { text: "Wenn es ein Dorf braucht, um ein Kind aufzuziehen, dann braucht es einen Circle, um einen voll entwickelten Erwachsenen zu formen.", autor: "Joe Lightfoot" },
       intro: "Menschen orientieren sich an Menschen. Erst wenn Erfahrungen geteilt und im sozialen Umfeld aufgegriffen werden, trägt Veränderung über Einzelne hinaus – sie wird zur gemeinsamen Normalität.",
       ziel: "Ein soziales Umfeld, in dem sich Menschen über die Veränderung austauschen, glaubwürdige Vorbilder sichtbar werden und neues Verhalten Schritt für Schritt zur gemeinsamen Normalität wird.",
       diagnose: [
@@ -420,9 +459,11 @@
         "Woran erkennen wir, dass sich die Veränderung zunehmend selbst verstärkt?"
       ],
       objekte: [
-        { aspekt: "Gemeinschaft", beispiele: ["Communities of Practice", "Peer Groups", "Lernpartnerschaften"] },
-        { aspekt: "Austausch", beispiele: ["Peer-Feedback", "Hospitationen", "Kollegiale Beratung"] },
-        { aspekt: "Sichtbarkeit", beispiele: ["Erfolgsgeschichten", "Best Practices", "Anerkennungsformate"] }
+        { typ: "artefakt", name: "Community-Charter & Peer-Learning-Leitfaden", beschreibung: "Schriftliche Orientierung für den Selbstorganisationsrahmen von Peer-Gruppen." },
+        { typ: "artefakt", name: "Board für 'Biete/Suche Praxis-Erfahrung'", beschreibung: "Unkomplizierte Plattform zum Finden von Sparringspartnern." },
+        { typ: "soziofakt", name: "Kollegiale Fallberatung", beschreibung: "Feste Formate im Peer-Kreis zur Bearbeitung individueller Praxisfälle." },
+        { typ: "soziofakt", name: "Walk-and-Talks & Cross-Team-Hospitationen", beschreibung: "Unbürokratische gegenseitige Besuche in Nachbarbereichen." },
+        { typ: "mentefakt", name: "Gefühl sozialer Aufgehobenheit", beschreibung: "Gewissheit, mit den Herausforderungen der Veränderung nicht allein zu sein." }
       ]
     },
     {
@@ -430,7 +471,10 @@
       num: "06",
       title: "Methoden & Formate",
       subtitle: "unterstützt professionell",
+      teaser: "Methoden und Formate erleichtern Veränderung. Sie erzeugen sie nicht.",
       dimension: "koennen",
+      sphere: "corporate_learning",
+      zitat: { text: "Lernen ist Erfahrung. Alles andere ist nur Information.", autor: "Albert Einstein" },
       intro: "Methoden und Formate machen Veränderung erlebbar – sie bewirken sie nicht. Gute Gestaltung beginnt nicht mit der Methode, sondern mit der Frage nach der beabsichtigten Wirkung.",
       ziel: "Eine stimmige Lernarchitektur, deren Formate bewusst aus der gewünschten Wirkung abgeleitet sind – nicht Methoden um ihrer selbst willen, sondern gezielt gewählte Formate, die aufeinander aufbauen.",
       diagnose: [
@@ -488,9 +532,11 @@
         "Welche Methoden nutzen wir aus Gewohnheit – welche bewusst?"
       ],
       objekte: [
-        { aspekt: "Lernformate", beispiele: ["Workshops", "Trainings", "Learning Journeys", "Microlearning"] },
-        { aspekt: "Methoden", beispiele: ["Fallarbeit", "Simulationen", "Design Thinking"] },
-        { aspekt: "Unterstützung", beispiele: ["Lernplattformen", "Toolkits", "Leitfäden"] }
+        { typ: "artefakt", name: "Performance-Support-Toolkit", beschreibung: "Kompakte Orientierungshilfen direkt am digitalen Arbeitsplatz." },
+        { typ: "artefakt", name: "Transfer-Canvas & Experimentier-Leitfaden", beschreibung: "Unterlage zur Fixierung persönlicher Anwendungsschritte." },
+        { typ: "soziofakt", name: "Praxiswerkstatt & Learning Sprint", beschreibung: "Arbeitsintegriertes Format zur gemeinsamen Bearbeitung echter Praxisfälle." },
+        { typ: "soziofakt", name: "Strukturierte Team-Retrospektive", beschreibung: "Moderationsdramaturgie zur Auswertung von Zusammenarbeit und Lernfeldern." },
+        { typ: "mentefakt", name: "Haltung der kontinuierlichen Reflexion", beschreibung: "Verankertes Selbstverständnis, dass Innehalten und Auswerten fester Teil professioneller Arbeit ist." }
       ]
     },
     {
@@ -498,7 +544,10 @@
       num: "Zentrum",
       title: "Raum & Zeit",
       subtitle: "Dreh- und Angelpunkt",
+      teaser: "Veränderung braucht Raum. Entwicklung braucht Zeit.",
       dimension: "zentrum",
+      sphere: "cross_spheric",
+      zitat: { text: "Wenn Du keine Zeit hast besser zu werden, dann hast du eben keine Zeit, besser zu werden.", autor: "Markus Ebner" },
       intro: "Ohne Raum und Zeit bleibt Veränderung Absicht. Raum und Zeit sind kein weiteres Element, sondern die gemeinsame Voraussetzung, damit alle anderen Elemente überhaupt wirksam werden können.",
       ziel: "Geschützte, wiederkehrende Zeit und ein sicherer Raum, in dem Ausprobieren, Reflexion und Austausch tatsächlich stattfinden können – ohne dieses Fundament bleibt jedes andere Element folgenlos.",
       diagnose: [
@@ -557,9 +606,11 @@
         "Woran erkennen wir, dass Raum und Zeit Entwicklung wirklich ermöglichen?"
       ],
       objekte: [
-        { aspekt: "Räume", beispiele: ["Lernräume", "Projekträume", "digitale Plattformen"] },
-        { aspekt: "Zeit", beispiele: ["Lernzeiten", "Experimentierzeiten", "Reflexionszeiten"] },
-        { aspekt: "Rhythmen", beispiele: ["Sprintzyklen", "Reviewformate", "Retrospektiven"] }
+        { typ: "artefakt", name: "Nutzungsvereinbarung & Kalender-Schutz-Regel", beschreibung: "Verbindliche Regel zum Schutz geblockter Fokus- und Entwicklungszeiten." },
+        { typ: "artefakt", name: "Digitaler/Physischer Maker-Space", beschreibung: "Speziell ausgestatteter Raum für kreatives Arbeiten und ungestörten Austausch." },
+        { typ: "soziofakt", name: "Geschützter Fokus-Block", beschreibung: "Wiederkehrendes Zeitfenster im Team, frei von operativen Meetings." },
+        { typ: "soziofakt", name: "Lern- & Debriefing-Rituale", beschreibung: "Fest verankerte kurze Reflexionsrunden am Ende von Projektphasen." },
+        { typ: "mentefakt", name: "Entwicklung ist Wertschöpfung", beschreibung: "Gemeinsam getragene Überzeugung, dass Zeit für Lernen Notwendigkeit statt Luxus ist." }
       ]
     }
   ];
@@ -580,6 +631,7 @@
   global.AVERA_DATA = {
     SEQUENCE: SEQUENCE,
     DIMENSIONS: DIMENSIONS,
+    SPHERES: SPHERES,
     STATIONS: STATIONS,
     STATUS: STATUS,
     getStation: getStation
