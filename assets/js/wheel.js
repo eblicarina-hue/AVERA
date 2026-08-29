@@ -15,11 +15,35 @@
   var INTENTION_R = 40;
   var INTENTION_CY = 60;
 
-  var STATUS_COLOR = {
-    offen: "var(--status-offen)",
-    in_arbeit: "var(--status-in-arbeit)",
-    etabliert: "var(--status-etabliert)"
+  // Farbfamilien je Sphäre (Business/Corporate Learning/Cross-Spheric) aus dem
+  // AVERA White Paper, moduliert nach Standortbestimmung (offen/in Arbeit/etabliert).
+  var SPHERE_SHADES = {
+    business: {
+      offen: "var(--sphere-business-soft)",
+      in_arbeit: "color-mix(in srgb, var(--sphere-business) 55%, var(--sphere-business-soft))",
+      etabliert: "var(--sphere-business)"
+    },
+    corporate_learning: {
+      offen: "var(--sphere-cl-soft)",
+      in_arbeit: "color-mix(in srgb, var(--sphere-cl) 55%, var(--sphere-cl-soft))",
+      etabliert: "var(--sphere-cl)"
+    },
+    cross_spheric: {
+      offen: "var(--sphere-cross-soft)",
+      in_arbeit: "color-mix(in srgb, var(--sphere-cross) 55%, var(--sphere-cross-soft))",
+      etabliert: "var(--sphere-cross)"
+    },
+    intention: {
+      offen: "var(--avera-red-soft)",
+      in_arbeit: "color-mix(in srgb, var(--avera-red) 55%, var(--avera-red-soft))",
+      etabliert: "var(--avera-red)"
+    }
   };
+
+  function sphereFill(sphereKey, status) {
+    var shades = SPHERE_SHADES[sphereKey] || SPHERE_SHADES.business;
+    return shades[status] || shades.offen;
+  }
 
   function polar(cx, cy, r, angleDeg) {
     var a = ((angleDeg - 90) * Math.PI) / 180;
@@ -77,6 +101,11 @@
 
     var segAngle = 360 / RING_KEYS.length;
 
+    // Grauer Backdrop-Halo hinter dem Ring (dezente Tiefe)
+    svg.appendChild(
+      svgEl("circle", { cx: CX, cy: CY, r: OUTER_R + 10, class: "wheel-backdrop" })
+    );
+
     // Verbindungsspeichen (dezent)
     RING_KEYS.forEach(function (key, i) {
       var startAngle = i * segAngle;
@@ -97,8 +126,8 @@
       var g = svgEl("g", { class: "wheel-segment", "data-key": key, tabindex: "0", role: "button" });
       var path = svgEl("path", {
         d: d,
-        class: "wheel-segment-path status-" + stState.status,
-        fill: STATUS_COLOR[stState.status] || STATUS_COLOR.offen
+        class: "wheel-segment-path status-" + stState.status + " sphere-" + station.sphere,
+        fill: sphereFill(station.sphere, stState.status)
       });
       g.appendChild(path);
 
@@ -140,6 +169,9 @@
       svg.appendChild(g);
     });
 
+    // Roter Rahmen um den gesamten Ring (Signaturelement aus dem White Paper)
+    svg.appendChild(svgEl("circle", { cx: CX, cy: CY, r: OUTER_R + 4, class: "wheel-frame" }));
+
     // Zentrum: Raum & Zeit
     var hubState = (initiative.stations && initiative.stations.raumzeit) || { status: "offen" };
     var hubG = svgEl("g", { class: "wheel-hub", "data-key": "raumzeit", tabindex: "0", role: "button" });
@@ -148,8 +180,8 @@
         cx: CX,
         cy: CY,
         r: HUB_R,
-        class: "wheel-hub-circle status-" + hubState.status,
-        fill: STATUS_COLOR[hubState.status] || STATUS_COLOR.offen
+        class: "wheel-hub-circle status-" + hubState.status + " sphere-cross_spheric",
+        fill: sphereFill("cross_spheric", hubState.status)
       })
     );
     var hubText1 = svgEl("text", { x: CX, y: CY - 6, class: "wheel-hub-label", "text-anchor": "middle" });
@@ -206,8 +238,8 @@
         cx: iPos.x,
         cy: iPos.y,
         r: INTENTION_R,
-        class: "wheel-intention-circle status-" + intentionState.status,
-        fill: STATUS_COLOR[intentionState.status] || STATUS_COLOR.offen
+        class: "wheel-intention-circle status-" + intentionState.status + " sphere-intention",
+        fill: sphereFill("intention", intentionState.status)
       })
     );
     var intentText = svgEl("text", { x: iPos.x, y: iPos.y + 4, class: "wheel-intention-label", "text-anchor": "middle" });
