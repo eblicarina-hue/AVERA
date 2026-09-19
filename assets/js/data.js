@@ -1,639 +1,1275 @@
 /*
- * AVERA-Inhalte (Admonter Veränderungsrad).
- * Grundlage: "AVERA White Paper 2.0/3.1 – Ein Gestaltungsframework für Lernen und
- * Veränderung in Organisationen", Corporate Learning Community Österreich (#CLCA).
- * Lizenz der inhaltlichen Grundlage: CC BY-SA 4.0.
- * Texte hier sind für die App-Nutzung redaktionell verdichtet.
+ * AVERA-Inhalte (Admonter Veränderungsrad) – episodischer Workflow.
+ * Grundlage: AVERA White Paper 2.0, Workflow-Beschreibung "Episode & Schleife"
+ * und die Fragen-/4Fakte-Matrix der Corporate Learning Community Österreich (#CLCA).
+ * Fragen- und 4Fakte-Texte sind wörtlich aus der Quelle übernommen.
  */
 (function (global) {
   "use strict";
 
-  // AVERA versteht Veränderung und Lernen nicht als Entweder-Oder, sondern als
-  // Joint Venture: Business (00–03) setzt Richtung und Rahmen, Corporate
-  // Learning (04–06) gestaltet die Aneignung, Raum & Zeit (07) verbindet beide.
   var SPHERES = {
-    business: { label: "Business", note: "wird meist vom Business getrieben" },
-    corporate_learning: { label: "Corporate Learning", note: "wird meist von Corporate Learning / HR getrieben" },
-    cross_spheric: { label: "Cross-Spheric", note: "verbindet Business und Corporate Learning" }
-  };
+  "business": {
+    "label": "Business",
+    "note": "wird meist vom Business getrieben"
+  },
+  "corporate_learning": {
+    "label": "Corporate Learning",
+    "note": "wird meist von Corporate Learning / HR getrieben"
+  },
+  "cross_spheric": {
+    "label": "Cross-Spheric",
+    "note": "verbindet Business und Corporate Learning"
+  }
+};
 
-  // Reihenfolge = "Drehrichtung" des Rads. raumzeit steht im Zentrum und
-  // ist kein Schritt in der Kette, sondern permanente Voraussetzung.
-  var SEQUENCE = ["intention", "story", "orgkultur", "fuehrung", "entdecken", "peers", "methoden"];
+  // Reihenfolge = Drehrichtung des Rads. Raum & Zeit steht im Zentrum.
+  var SEQUENCE = [
+  "story",
+  "orgkultur",
+  "fuehrung",
+  "entdecken",
+  "peers",
+  "methoden"
+];
 
-  var DIMENSIONS = {
-    wollen: { label: "Wollen", subtitle: "emotional begeistern", stations: ["story", "entdecken"] },
-    duerfen: { label: "Dürfen", subtitle: "sozial ermächtigen", stations: ["orgkultur", "peers"] },
-    koennen: { label: "Können", subtitle: "zur Handlung befähigen", stations: ["fuehrung", "methoden"] }
-  };
+  // Die vier Schleifen einer Episode (vgl. AVERA-Workflow: 'Observe -> Understand -> Design -> Architect').
+  var LOOPS = [
+  {
+    "key": "observe",
+    "label": "Beobachten",
+    "funktion": "Status quo erfassen und differenzieren",
+    "ergebnis": "relevante Befunde"
+  },
+  {
+    "key": "understand",
+    "label": "Verstehen",
+    "funktion": "Wirkgefüge erkennen und modellieren",
+    "ergebnis": "Wirkmodell, Hebel und Gestaltungshypothesen"
+  },
+  {
+    "key": "design",
+    "label": "Entwerfen",
+    "funktion": "Gestaltungsmöglichkeiten finden",
+    "ergebnis": "mögliche Gestaltungsimpulse"
+  },
+  {
+    "key": "architect",
+    "label": "Komponieren",
+    "funktion": "Möglichkeiten reduzieren und komponieren",
+    "ergebnis": "minimal hinreichende Gestaltungsarchitektur"
+  }
+];
 
-  var STATIONS = [
-    {
-      key: "intention",
-      num: "Start",
-      title: "Intention",
-      subtitle: "Der Nullpunkt jeder Gestaltung",
-      teaser: "Jede Veränderung beginnt mit einem Wunsch, dass etwas anders sein soll.",
-      dimension: "ursprung",
-      sphere: "business",
-      zitat: { text: "Intention ist alles. Alles andere ist Verpackung.", autor: "Ali Mahlodji" },
-      intro: "Jede Veränderung beginnt mit einer Intention – nicht mit einer Maßnahme. Sie beschreibt, was anders werden soll, warum das bedeutsam ist und welche Wirkung entstehen soll. Ohne tragfähige Intention wird schnell alles beliebig.",
-      ziel: "Ein Satz, den alle im Kernteam gleich sagen können – was sich ändern soll, warum es wichtig ist und wie die gewünschte Zukunft konkret aussieht. Ohne dieses gemeinsame Zielbild bleibt jede folgende Maßnahme beliebig.",
-      diagnose: [
-        {
-          frage: "Können alle im Kernteam die Intention in einem Satz gleich wiedergeben?",
-          optionen: [
-            { label: "Ja", score: 2, empfehlung: "Sehr gut – eine geteilte, prägnante Intention ist die seltenste und wichtigste Grundlage. Haltet sie sichtbar (z. B. als Leitsatz in jedem Kickoff) und prüft sie bei jeder größeren Entscheidung erneut." },
-            { label: "Teilweise", score: 1, empfehlung: "Es gibt eine Richtung, aber noch keine gemeinsame Sprache dafür. Setzt einen Termin an, an dem ihr die Intention gemeinsam in einem Satz formuliert – nicht top-down verordnet, sondern mit den relevanten Perspektiven geschärft." },
-            { label: "Nein", score: 0, empfehlung: "Ihr steckt in der Beliebigkeitsfalle: Ohne gemeinsames Verständnis interpretiert jede:r die Veränderung anders, und einzelne Maßnahmen verlieren ihre Kraft. Bevor irgendetwas anderes geplant wird: Intention klären und schriftlich fixieren." }
-          ]
-        },
-        {
-          frage: "Wisst ihr, welches Problem oder welche Chance den Ausschlag für dieses Vorhaben gegeben hat – über die reine Kennzahl hinaus?",
-          optionen: [
-            { label: "Ja", score: 2, empfehlung: "Ihr kennt das Wozu hinter dem Was. Nutzt dieses Motiv aktiv in der Kommunikation – es trägt weiter als jede Zahl." },
-            { label: "Teilweise", score: 1, empfehlung: "Es gibt eine Kennzahl oder einen Auftrag, aber das dahinterliegende Motiv ist noch nicht klar benannt. Fragt: Was passiert, wenn wir nichts tun? Das schärft das eigentliche Motiv." },
-            { label: "Nein", score: 0, empfehlung: "Ihr steckt in der Kennzahlenfalle: Eine Kennzahl ersetzt keine gemeinsame Vorstellung davon, was sich wirklich verändern soll. Klärt zuerst das Motiv, bevor Maßnahmen geplant werden." }
-          ]
-        },
-        {
-          frage: "Verfolgt ihr aktuell genau eine klar priorisierte Intention – nicht mehrere parallel?",
-          optionen: [
-            { label: "Ja", score: 2, empfehlung: "Fokus ist da. Achtet darauf, neue Themen nicht einfach zusätzlich draufzupacken, sondern bewusst gegen die Intention zu prüfen." },
-            { label: "Teilweise", score: 1, empfehlung: "Es gibt mehrere Stoßrichtungen, die noch nicht klar zueinander in Beziehung stehen. Ordnet sie: Was ist die eine übergeordnete Intention, welche anderen sind Unterpunkte oder sollten verschoben werden?" },
-            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Aktivitätsfalle: mehrere parallele Vorhaben ohne gemeinsamen Nenner schwächen sich gegenseitig. Bringt die Verantwortlichen zusammen und einigt euch auf eine führende Intention." }
-          ]
-        }
-      ],
-      wasZuTun: [
-        "Intention klären und so abgrenzen, dass sie konkret und bearbeitbar bleibt.",
-        "Das Wozu offenlegen – das Motiv ist der Kern der Veränderung.",
-        "Ein konkretes Zukunftsbild zeichnen: Wie ist es, wenn erreicht ist, was erreichbar ist?",
-        "Die Wirkung beschreiben, nicht die Aktivität."
-      ],
-      hinweise: [
-        "Gemeinsam entwickeln statt verordnen – unterschiedliche Perspektiven schärfen die Intention.",
-        "Auf eine Intention fokussieren, nicht mehrere parallel verfolgen.",
-        "Regelmäßig überprüfen und evolutionär anpassen."
-      ],
-      fallen: [
-        { name: "Aktivitätsfalle", text: "Es wird mit Workshops, Trainings oder Kampagnen gestartet, bevor klar ist, welches Problem gelöst werden soll." },
-        { name: "Kennzahlenfalle", text: "Kennzahlen ersetzen keine gemeinsame Vorstellung davon, was sich wirklich verändern soll." },
-        { name: "Beliebigkeitsfalle", text: "Die Intention bleibt so generisch, dass sich jede:r ihr eigenes Verständnis herausfiltert." }
-      ],
-      beobachtung: [],
-      kernfrage: "Worum geht es uns wirklich – und warum ist das wichtig?",
-      reflexionsfragen: [
-        "Welches Problem möchten wir wirklich lösen? Welche Chance nutzen – und wofür eigentlich?",
-        "Warum ist diese Veränderung wichtig oder nötig? Was passiert, wenn nichts passiert?",
-        "Wie sieht die gewünschte Zukunft konkret aus? Woran erkennen wir, dass wir sie erreicht haben?",
-        "Welche Entscheidungen würden wir anders treffen, wenn wir unsere Intention konsequent zum Maßstab machen?"
-      ],
-      objekte: [
-        { typ: "artefakt", name: "Intentions-Statement", beschreibung: "Schriftlich fixierter Ein-Satz-Auftrag: was sich ändern soll und wozu." },
-        { typ: "artefakt", name: "Zukunftsbild", beschreibung: "Konkrete, nachvollziehbare Beschreibung des erreichten Zustands." },
-        { typ: "soziofakt", name: "Auftragsklärungs-Workshop", beschreibung: "Termin, an dem die relevanten Perspektiven die Intention gemeinsam schärfen." },
-        { typ: "soziofakt", name: "Regelmäßige Intentions-Prüfung", beschreibung: "Wiederkehrender Termin, an dem die Intention gegen neue Erkenntnisse geprüft wird." },
-        { typ: "mentefakt", name: "Geteiltes Verständnis des Wozu", beschreibung: "Überzeugung im Kernteam, dass alle dasselbe Ziel meinen, wenn sie über die Veränderung sprechen." }
-      ]
+  // Elementunabhängige Leitfragen je Schleife (gelten für die ganze Episode, nicht pro Element).
+  var LOOP_GENERAL_FRAGEN = {
+  "observe": {
+    "fokus": "Was beobachten wir mit Blick auf unsere Intention aktuell?",
+    "wirkgefuege": "Was davon unterstützt, erschwert oder widerspricht unserer Intention?",
+    "potenziale": "Welche vorhandenen Ressourcen, funktionierenden Praktiken oder positiven Abweichungen sehen wir?",
+    "pruefung": "Haben wir aus ausreichend unterschiedlichen Perspektiven beobachtet – und was wissen wir noch nicht?",
+    "gate": "Haben wir genug unterschiedliche, konkrete Beobachtungen, um über Zusammenhänge nachdenken zu können?"
+  },
+  "understand": {
+    "fokus": "Was könnte erklären, warum sich das beobachtete Verhalten heute so zeigt?",
+    "wirkgefuege": "Was verstärkt oder schwächt sich gegenseitig? Welche Spannungen oder Rückkopplungen könnten relevant sein?",
+    "potenziale": "Welche vorhandenen Ressourcen könnten Bewegung im Sinne unserer Intention unterstützen?",
+    "pruefung": "Welche andere oder gar widersprechende Interpretation wäre ebenfalls plausibel?",
+    "gate": "Haben wir plausible Erklärungen dafür, was Verhalten heute hervorbringt oder stabilisiert – und können wir begründen, wo Gestaltung ansetzen könnte?"
+  },
+  "design": {
+    "fokus": "Welche unterschiedlichen Gestaltungsoptionen könnten die Intention unterstützen?",
+    "wirkgefuege": "Welche vorhandenen Ressourcen und funktionierenden Praktiken könnten wir nutzen oder verstärken, statt Neues hinzuzufügen?",
+    "potenziale": "Welche 4Fakte könnten wir nutzen oder gestalten, um das intendierte Verhalten wahrscheinlicher zu machen?",
+    "pruefung": "Wie könnte man es noch anlegen? Haben wir echte Alternativen entwickelt – oder folgen wir nur unserer ersten Lösungsidee?",
+    "gate": "Haben wir den Gestaltungsraum hinreichend geöffnet, um aus echten Alternativen eine kohärente Architektur komponieren zu können?"
+  },
+  "architect": {
+    "fokus": "Welche der Gestaltungsoptionen verstärken sich gegenseitig – und welche widersprechen sich?",
+    "wirkgefuege": "Was funktioniert plausibel nur im Zusammenspiel mit etwas anderem? Was können wir weglassen, ohne die erwartete Gesamtwirkung wesentlich zu schwächen?",
+    "potenziale": "Wie schaffen wir möglichst hohe Anschlussfähigkeit an das Bestehende? Welche vorhandenen Ressourcen und funktionierenden Praktiken können wir nutzen?",
+    "pruefung": "Ermöglicht unsere Architektur Menschen, das intendierte Verhalten tatsächlich auszuprobieren – auch wenn dabei Unsicherheit, Nicht-Wissen, Fehler oder Widerspruch sichtbar werden?",
+    "gate": "Können wir begründen, warum genau diese wenigen, aufeinander abgestimmten Impulse jetzt hinreichend sein könnten, um unsere Intention wahrscheinlicher zu machen?"
+  }
+};
+
+  var FAKTE_TYPEN = [
+  {
+    "key": "artefakt",
+    "label": "Artefakte",
+    "subtitle": "das Sichtbare"
+  },
+  {
+    "key": "soziofakt",
+    "label": "Soziofakte",
+    "subtitle": "das Praktizierte"
+  },
+  {
+    "key": "mentefakt",
+    "label": "Mentefakte",
+    "subtitle": "das Geglaubte"
+  },
+  {
+    "key": "ethofakt",
+    "label": "Ethofakte",
+    "subtitle": "das Verinnerlichte"
+  }
+];
+
+  var WIRKSTUFEN = [
+  {
+    "key": "beruehren",
+    "label": "Berühren & Orientieren",
+    "subtitle": "Emotion, Erwartung & Fokus"
+  },
+  {
+    "key": "begreifen",
+    "label": "Begreifen & Einordnen",
+    "subtitle": "Erkennen, Wissen & Verständnis"
+  },
+  {
+    "key": "erproben",
+    "label": "Erproben & Handeln",
+    "subtitle": "Praxis & Lösung"
+  },
+  {
+    "key": "reflektieren",
+    "label": "Reflektieren & Verankern",
+    "subtitle": "Erfahrung, Stabilisieren & Teilen"
+  }
+];
+
+  // 4Fakte-Katalog: je Fakt-Typ x Wirkstufe eine Liste von Unterkategorien mit Beispielen.
+  var FAKTE = {
+  "artefakt": {
+    "beruehren": [
+      {
+        "kategorie": "Informations- & Symbolobjekte",
+        "beispiele": [
+          "Plakat",
+          "Teaser",
+          "Kampagnenkarte",
+          "Flyer",
+          "Sticker",
+          "Give-away",
+          "Start-Symbol",
+          "Kurzvideo"
+        ]
+      },
+      {
+        "kategorie": "Arbeits- & Handlungshilfen",
+        "beispiele": [
+          "Quick Guide",
+          "Orientierungskarte",
+          "Spickzettel",
+          "Impulskarten"
+        ]
+      },
+      {
+        "kategorie": "Dokumentations- & Kollaborationsflächen",
+        "beispiele": [
+          "Statusanzeige",
+          "Fortschrittsboard",
+          "Countdown-Screen",
+          "Prozesswand"
+        ]
+      },
+      {
+        "kategorie": "Ordnungs-, Steuerungs- & Raumstrukturen",
+        "beispiele": [
+          "Verantwortungslandkarte",
+          "Prinzipienübersicht",
+          "Beschilderung",
+          "Visuelle Raummarker"
+        ]
+      }
+    ],
+    "begreifen": [
+      {
+        "kategorie": "Informations- & Symbolobjekte",
+        "beispiele": [
+          "Infografik",
+          "Erklärvideo",
+          "FAQ",
+          "Broschüre",
+          "Prozess-Roadmap",
+          "Anschauungsobjekt"
+        ]
+      },
+      {
+        "kategorie": "Arbeits- & Handlungshilfen",
+        "beispiele": [
+          "Glossar",
+          "Entscheidungshilfe",
+          "Referenzkarte"
+        ]
+      },
+      {
+        "kategorie": "Dokumentations- & Kollaborationsflächen",
+        "beispiele": [
+          "Dashboard",
+          "Prozess-Monitor",
+          "Soll-Ist-Visualisierung",
+          "Infowand"
+        ]
+      },
+      {
+        "kategorie": "Ordnungs-, Steuerungs- & Raumstrukturen",
+        "beispiele": [
+          "Rollen- & Schnittstellenmatrix",
+          "Governance-Modell",
+          "Eskalationsmatrix",
+          "Orientierungszone"
+        ]
+      }
+    ],
+    "erproben": [
+      {
+        "kategorie": "Informations- & Symbolobjekte",
+        "beispiele": [
+          "How-to-Video",
+          "Anleitung",
+          "Tutorial",
+          "Lernkarte",
+          "Prompt Card",
+          "Reminder-Objekt",
+          "Challenge-Token"
+        ]
+      },
+      {
+        "kategorie": "Arbeits- & Handlungshilfen",
+        "beispiele": [
+          "Checkliste",
+          "Job Aid",
+          "Template",
+          "Gesprächsleitfaden",
+          "Problemlösungs-Canvas",
+          "Kreativkarten"
+        ]
+      },
+      {
+        "kategorie": "Dokumentations- & Kollaborationsflächen",
+        "beispiele": [
+          "Kanban-Board",
+          "Experiment-Tracker",
+          "Problemboard",
+          "Ideenwand",
+          "Prototyping-Fläche"
+        ]
+      },
+      {
+        "kategorie": "Ordnungs-, Steuerungs- & Raumstrukturen",
+        "beispiele": [
+          "Arbeitsstandards",
+          "Freigaberegeln",
+          "Working Agreements",
+          "Arbeitsplatz-Setup",
+          "(digitale) Defaults"
+        ]
+      }
+    ],
+    "reflektieren": [
+      {
+        "kategorie": "Informations- & Symbolobjekte",
+        "beispiele": [
+          "Erfahrungsbericht",
+          "Case Study",
+          "Video-Testimonial",
+          "Badge",
+          "Award",
+          "Zertifikat",
+          "Commitment-Token"
+        ]
+      },
+      {
+        "kategorie": "Arbeits- & Handlungshilfen",
+        "beispiele": [
+          "Selbstcheck",
+          "Reflexionsbogen",
+          "Feedback-Guide",
+          "Lessons-Learned-Vorlage",
+          "Übergabe-Template"
+        ]
+      },
+      {
+        "kategorie": "Dokumentations- & Kollaborationsflächen",
+        "beispiele": [
+          "Feedback-Dashboard",
+          "Verhaltens-Tracker",
+          "Review-Board",
+          "Lessons-Learned-Board",
+          "Knowledge Wall"
+        ]
+      },
+      {
+        "kategorie": "Ordnungs-, Steuerungs- & Raumstrukturen",
+        "beispiele": [
+          "Standard-/SOP-Bibliothek",
+          "Pattern Library",
+          "Audit-Bogen",
+          "Community-Fläche",
+          "Retrospektiven-Setup"
+        ]
+      }
+    ]
+  },
+  "soziofakt": {
+    "beruehren": [
+      {
+        "kategorie": "Geführte Impulse & Instruktion",
+        "beispiele": [
+          "(Impuls-)Vortrag",
+          "Keynote",
+          "Webinar",
+          "Lernimpuls (Microlearning)",
+          "Brown Bag",
+          "Lunch & Learn"
+        ]
+      },
+      {
+        "kategorie": "Individuelle Praxis & Begleitung",
+        "beispiele": [
+          "Intranet-Information",
+          "Selbstcheck",
+          "Selbsteinschätzung",
+          "Standortbestimmung",
+          "Hospitation"
+        ]
+      },
+      {
+        "kategorie": "Kollaboratives Arbeiten & Lernen",
+        "beispiele": [
+          "Kick-off",
+          "Dialogrunde",
+          "Q&A",
+          "Townhall",
+          "gemeinsame Exploration",
+          "Ask-me-anything-Session",
+          "Fireside Chat",
+          "Huddle",
+          "Check-in"
+        ]
+      },
+      {
+        "kategorie": "Ordnung, Steuerung & Vereinbarungen",
+        "beispiele": [
+          "Rollen-/Erwartungsklärung",
+          "Commitment-Auftakt"
+        ]
+      }
+    ],
+    "begreifen": [
+      {
+        "kategorie": "Geführte Impulse & Instruktion",
+        "beispiele": [
+          "Fachvortrag",
+          "Expert Talk",
+          "Erklärsession",
+          "Schulung",
+          "Seminar",
+          "Best-Practice-Input",
+          "Expert:innenforum",
+          "Fachkonferenz"
+        ]
+      },
+      {
+        "kategorie": "Individuelle Praxis & Begleitung",
+        "beispiele": [
+          "(Medien-)Selbststudium",
+          "eLearning",
+          "Online-Kurs",
+          "MOOC",
+          "Rechercheauftrag",
+          "Debriefing",
+          "Review"
+        ]
+      },
+      {
+        "kategorie": "Kollaboratives Arbeiten & Lernen",
+        "beispiele": [
+          "Workshop",
+          "Diskussion",
+          "Fach-/Klärungsdialog",
+          "Sensemaking-Workshop",
+          "Appreciative Inquiry",
+          "Sprechstunden",
+          "Lernkonferenz",
+          "Barcamp",
+          "Study Visit",
+          "Show & Tell",
+          "Regelkommunikation (zB Meetings)",
+          "Tutoring"
+        ]
+      },
+      {
+        "kategorie": "Ordnung, Steuerung & Vereinbarungen",
+        "beispiele": [
+          "Mandats-/Ziel-/ Schnittstellen-/Regelklärung"
+        ]
+      }
+    ],
+    "erproben": [
+      {
+        "kategorie": "Geführte Impulse & Instruktion",
+        "beispiele": [
+          "(Live-)Demonstration",
+          "Training",
+          "Training-on-the-Job",
+          "Übung",
+          "Simulation",
+          "Rollenspiel",
+          "Bootcamp",
+          "Skills Lab",
+          "Planspiel"
+        ]
+      },
+      {
+        "kategorie": "Individuelle Praxis & Begleitung",
+        "beispiele": [
+          "Selbstlernübung",
+          "Praxis-/Gestaltungs-/Projektauftrag",
+          "Fall-/Problembearbeitung",
+          "Lern-Challenge",
+          "Job Shadowing",
+          "Schulterblick",
+          "Floorwalking",
+          "Coaching",
+          "Mentoring",
+          "Sparring",
+          "Entwicklungsdialog",
+          "Transferaufgabe"
+        ]
+      },
+      {
+        "kategorie": "Kollaboratives Arbeiten & Lernen",
+        "beispiele": [
+          "Peer Learning",
+          "Lerntandem",
+          "/-zirkel/-reisen",
+          "Troubleshooting-Session",
+          "Case Clinic",
+          "Lernwerkstatt",
+          "Zukunftslabor",
+          "Co-Creation",
+          "Innovation Lab",
+          "Taskforce",
+          "Experiment",
+          "Gesundheits-/Qualitätszirkel",
+          "Action Learning"
+        ]
+      },
+      {
+        "kategorie": "Ordnung, Steuerung & Vereinbarungen",
+        "beispiele": [
+          "SOPs",
+          "Handlungsvereinbarungen",
+          "Teamkontrakt",
+          "Steuerkreis",
+          "Entscheidungsinstanz"
+        ]
+      }
+    ],
+    "reflektieren": [
+      {
+        "kategorie": "Geführte Impulse & Instruktion",
+        "beispiele": [
+          "Geleitete Reflexion",
+          "Supervision",
+          "Feedback-Session",
+          "Development Center",
+          "Erfahrungsbericht"
+        ]
+      },
+      {
+        "kategorie": "Individuelle Praxis & Begleitung",
+        "beispiele": [
+          "Lern- bzw Transferjournal",
+          "Praxistagebuch",
+          "Transfer-Challenge",
+          "Praxisreflexion",
+          "Transfercoaching"
+        ]
+      },
+      {
+        "kategorie": "Kollaboratives Arbeiten & Lernen",
+        "beispiele": [
+          "Retro/Feedback/Reflexionsdialog (Daily/Weekly)",
+          "Team-Workshop",
+          "Intervision",
+          "Peer Coaching",
+          "Fuck-up Night",
+          "Kollegiale Fallberatung",
+          "After Action Review",
+          "Check-out",
+          "Erfahrungsaustausch",
+          "Open Space",
+          "World Café",
+          "Support-/Lern-Community"
+        ]
+      },
+      {
+        "kategorie": "Ordnung, Steuerung & Vereinbarungen",
+        "beispiele": [
+          "Praxis- bzw Umsetzungs-Review",
+          "Anerkennungs-/Lessons-Learned-Runde"
+        ]
+      }
+    ]
+  },
+  "mentefakt": {
+    "beruehren": [
+      {
+        "kategorie": "Verdichtungen",
+        "beispiele": [
+          "Provokanter Claim",
+          "mobilisierendes Motto",
+          "Appell",
+          "Weckruf",
+          "Mutmacher"
+        ]
+      },
+      {
+        "kategorie": "Narrative & Deutungen",
+        "beispiele": [
+          "Change Story",
+          "Krisen-/Aufbruchsgeschichte",
+          "Dringlichkeitsdeutung",
+          "Chancen-/Bedrohungsframing"
+        ]
+      },
+      {
+        "kategorie": "Metaphern & Vorstellungen/Zielbilder",
+        "beispiele": [
+          "Zukunftsmetapher (Expedition",
+          "Reise)",
+          "attraktives Zukunftsbild",
+          "Gefährdungs- oder Gegenbild"
+        ]
+      },
+      {
+        "kategorie": "Modelle & Konzepte",
+        "beispiele": [
+          "Energiebilanz",
+          "Change Readiness Modell"
+        ]
+      }
+    ],
+    "begreifen": [
+      {
+        "kategorie": "Verdichtungen",
+        "beispiele": [
+          "Definition",
+          "Merksatz",
+          "Kernbotschaft",
+          "Erklärungssatz"
+        ]
+      },
+      {
+        "kategorie": "Narrative & Deutungen",
+        "beispiele": [
+          "Fallgeschichte",
+          "Beispielgeschichte",
+          "Erklärgeschichte",
+          "Ursache-Wirkungs-Deutung"
+        ]
+      },
+      {
+        "kategorie": "Metaphern & Vorstellungen/Zielbilder",
+        "beispiele": [
+          "Analogie",
+          "Eselsbrücke",
+          "Erklärmetapher",
+          "Sprachbild"
+        ]
+      },
+      {
+        "kategorie": "Modelle & Konzepte",
+        "beispiele": [
+          "Begriffskonzept",
+          "Taxonomie",
+          "Referenzmodell",
+          "Denkmodell"
+        ]
+      }
+    ],
+    "erproben": [
+      {
+        "kategorie": "Verdichtungen",
+        "beispiele": [
+          "Handlungsmaxime",
+          "Faustregel",
+          "aktivierender Leitsatz",
+          "Zielaussage"
+        ]
+      },
+      {
+        "kategorie": "Narrative & Deutungen",
+        "beispiele": [
+          "Evidenz- oder Erfolgsgeschichte",
+          "Handlungsbegründung",
+          "Reframing im Tun"
+        ]
+      },
+      {
+        "kategorie": "Metaphern & Vorstellungen/Zielbilder",
+        "beispiele": [
+          "Aktivitätsbild",
+          "Handlungsanalogie",
+          "Vorstellungen über Handlungswirkungen"
+        ]
+      },
+      {
+        "kategorie": "Modelle & Konzepte",
+        "beispiele": [
+          "Wirkmodell",
+          "Prozessmodell",
+          "Framework",
+          "Handlungskonzept"
+        ]
+      }
+    ],
+    "reflektieren": [
+      {
+        "kategorie": "Verdichtungen",
+        "beispiele": [
+          "Credo",
+          "Wertstatement",
+          "Maxime",
+          "Purpose-Statement",
+          "Identitätssatz"
+        ]
+      },
+      {
+        "kategorie": "Narrative & Deutungen",
+        "beispiele": [
+          "Vorbildgeschichte",
+          "Dilemma-Geschichte",
+          "Wertegeschichte",
+          "Identitätsstory",
+          "geteiltes Leitnarrativ"
+        ]
+      },
+      {
+        "kategorie": "Metaphern & Vorstellungen/Zielbilder",
+        "beispiele": [
+          "Sinnbild",
+          "Wertmetapher",
+          "Rollen-/Identitätsmetapher",
+          "Organisationsbild",
+          "geteiltes Idealbild"
+        ]
+      },
+      {
+        "kategorie": "Modelle & Konzepte",
+        "beispiele": [
+          "Prinzipienmodell",
+          "Wertekonzept",
+          "Rollen- & Führungskonzept",
+          "Zusammenarbeitskonzept"
+        ]
+      }
+    ]
+  },
+  "ethofakt": {
+    "beruehren": [
+      {
+        "kategorie": "Impulse & persönliche Leitlinien",
+        "beispiele": [
+          "Aktivierender Vorsatz",
+          "persönlicher Handlungsimpuls",
+          "Mottoziel"
+        ]
+      },
+      {
+        "kategorie": "Handlungsskripte & Sequenzen",
+        "beispiele": [
+          "Einstiegsskript",
+          "triggergebundene Startsequenz"
+        ]
+      },
+      {
+        "kategorie": "Mikro- & Arbeitsroutinen",
+        "beispiele": [
+          "Startroutine",
+          "triggergebundene Aktivierungsroutine"
+        ]
+      },
+      {
+        "kategorie": "Grenzziehung & Unterlassen",
+        "beispiele": [
+          "Stopp-Impuls",
+          "Achtsamkeits-Trigger für alte Muster"
+        ]
+      }
+    ],
+    "begreifen": [
+      {
+        "kategorie": "Impulse & persönliche Leitlinien",
+        "beispiele": [
+          "Entwicklungsmaxime",
+          "Verhaltensabsicht",
+          "Haltungsvorsatz"
+        ]
+      },
+      {
+        "kategorie": "Handlungsskripte & Sequenzen",
+        "beispiele": [
+          "Lernskript (Shu / exakte Vorlage)",
+          "Orientierungsskript"
+        ]
+      },
+      {
+        "kategorie": "Mikro- & Arbeitsroutinen",
+        "beispiele": [
+          "Lern- & Beobachtungsroutine",
+          "Vorbereitungsroutine"
+        ]
+      },
+      {
+        "kategorie": "Grenzziehung & Unterlassen",
+        "beispiele": [
+          "Stopp-Prinzip",
+          "bewusst gemachte persönliche Grenze"
+        ]
+      }
+    ],
+    "erproben": [
+      {
+        "kategorie": "Impulse & persönliche Leitlinien",
+        "beispiele": [
+          "Situative Handlungsmaxime",
+          "Wenn-Dann-Impuls",
+          "neues Leitmotiv"
+        ]
+      },
+      {
+        "kategorie": "Handlungsskripte & Sequenzen",
+        "beispiele": [
+          "Alternatives Handlungsskript",
+          "Reaktionsskript",
+          "Coping-Skript im Problemfall"
+        ]
+      },
+      {
+        "kategorie": "Mikro- & Arbeitsroutinen",
+        "beispiele": [
+          "Übungsroutine",
+          "neue Arbeitsroutine",
+          "veränderte Nachbereitungsroutine"
+        ]
+      },
+      {
+        "kategorie": "Grenzziehung & Unterlassen",
+        "beispiele": [
+          "Ersatzroutine (altes Verhalten aktiv ersetzen)",
+          "Unterbrechungsroutine"
+        ]
+      }
+    ],
+    "reflektieren": [
+      {
+        "kategorie": "Impulse & persönliche Leitlinien",
+        "beispiele": [
+          "Persönliche Maxime",
+          "Gefestigtes Leitmotiv",
+          "internalisierter Wertevorsatz"
+        ]
+      },
+      {
+        "kategorie": "Handlungsskripte & Sequenzen",
+        "beispiele": [
+          "Eingeübtes Standardskript",
+          "automatisierte Verhaltenssequenz",
+          "Meisterschaft (Ha/Ri)"
+        ]
+      },
+      {
+        "kategorie": "Mikro- & Arbeitsroutinen",
+        "beispiele": [
+          "Tages-/Wochenroutine",
+          "Reflexionsroutine",
+          "verankerte Team-/Arbeitsgewohnheit Soziale Selbstverpflichtung"
+        ]
+      },
+      {
+        "kategorie": "Grenzziehung & Unterlassen",
+        "beispiele": [
+          "Stopp-Skript",
+          "Ausstiegsroutine",
+          "fest verankerte No-Go-Grenze",
+          "De-Routinisierung"
+        ]
+      }
+    ]
+  }
+};
+
+  // Intention: drei Phasen, die über alle Episoden hinweg gelten (nicht pro Episode neu).
+  var INTENTION_PHASEN = {
+  "erarbeiten": {
+    "leitfrage": "Was wollen wir warum erreichen?",
+    "fragen": [
+      {
+        "kategorie": "Anlasse",
+        "frage": "Welches reale Problem oder welche Chance macht Veränderung notwendig – und warum gerade jetzt?"
+      },
+      {
+        "kategorie": "Verhalten",
+        "frage": "Welches Verhalten soll für wen in welchen konkreten Situationen künftig wahrscheinlicher werden?"
+      },
+      {
+        "kategorie": "Zweck",
+        "frage": "Welchen relevanten Beitrag soll dieses Verhalten für Organisation, Wertschöpfung oder Zusammenarbeit leisten?"
+      },
+      {
+        "kategorie": "Status Quo",
+        "frage": "Welches Verhalten zeigt sich heute stattdessen – und was haben bisherige Veränderungsversuche bewirkt?"
+      }
+    ]
+  },
+  "schaerfen": {
+    "leitfrage": "Ist unsere Intention präzise und offen genug, um damit arbeiten zu können?",
+    "fragen": [
+      {
+        "kategorie": "Beobachtbarkeit",
+        "frage": "Könnten wir das intendierte Verhalten im Alltag beobachten oder filmen – und ist klar, wer es in welchen Situationen zeigen soll?"
+      },
+      {
+        "kategorie": "Gestaltungsoffenheit",
+        "frage": "Beschreiben wir tatsächlich gewünschtes Verhalten – oder verstecken sich darin noch Haltungen, Kennzahlen, Lösungen, Methoden oder Maßnahmen?"
+      },
+      {
+        "kategorie": "Relevanz",
+        "frage": "Ist das Wozu nachvollziehbar und relevant genug, um zu verstehen, warum diese Veränderung einen Unterschied macht?"
+      },
+      {
+        "kategorie": "Eindeutigkeit",
+        "frage": "Ist ausreichend klar, was mit der Intention gemeint ist – und was ausdrücklich nicht?"
+      }
+    ]
+  },
+  "reflektieren": {
+    "leitfrage": "Was haben wir gelernt – und was bedeutet das für unsere Intention?",
+    "fragen": [
+      {
+        "kategorie": "Reflexionsfragen",
+        "frage": "Was haben wir seit der letzten Formulierung der Intention über die Wirklichkeit gelernt, das wir damals noch nicht wussten?"
+      },
+      {
+        "kategorie": "Reflexionsfragen",
+        "frage": "Ist das intendierte Verhalten angesichts dieser Erkenntnisse weiterhin das richtige – oder müssen wir es präzisieren, eingrenzen oder verändern?"
+      },
+      {
+        "kategorie": "Reflexionsfragen",
+        "frage": "Ist die Intention weiterhin verständlich und hilfreich genug, um Entscheidungen und Gestaltungsimpulse daran auszurichten?"
+      },
+      {
+        "kategorie": "Reflexionsfragen",
+        "frage": "Welche Beobachtungen sprechen für unsere bisherige Intention – und welche stellen sie infrage?"
+      }
+    ]
+  }
+};
+
+  // Die 7 Gestaltungselemente inkl. ihrer Fragen je Schleife.
+  var ELEMENTS = [
+  {
+    "key": "story",
+    "num": "01",
+    "title": "Story & Narrativ",
+    "subtitle": "schafft Bedeutung",
+    "teaser": "Jede Veränderung hat und ist Geschichte.",
+    "sphere": "business",
+    "zitat": {
+      "text": "Geschichten sind die Form, in der wir Menschen Veränderung denken.",
+      "autor": "Tobias Grewe"
     },
-    {
-      key: "story",
-      num: "01",
-      title: "Story & Narrativ",
-      subtitle: "schafft Bedeutung",
-      teaser: "Jede Veränderung hat und ist Geschichte.",
-      dimension: "wollen",
-      sphere: "business",
-      zitat: { text: "Geschichten sind die Form, in der wir Menschen Veränderung denken.", autor: "Tobias Grewe" },
-      intro: "Menschen folgen selten Strategien – sie folgen Geschichten. Eine gemeinsame Geschichte macht verständlich, warum Veränderung notwendig ist, und lädt dazu ein, Teil davon zu werden.",
-      ziel: "Eine Geschichte der Veränderung, die Mitarbeitende in eigenen Worten weitererzählen – nicht nur eine Kommunikationskampagne, sondern eine Erzählung, die im Alltag lebt und Orientierung gibt.",
-      diagnose: [
-        {
-          frage: "Gibt es eine erzählbare Geschichte der Veränderung (woher – warum – wohin), die Mitarbeitende in eigenen Worten weitererzählen können?",
-          optionen: [
-            { label: "Ja", score: 2, empfehlung: "Die Geschichte lebt. Beobachtet weiter, wie sie sich im Alltag verändert, und schreibt bewusst mit." },
-            { label: "Teilweise", score: 1, empfehlung: "Es gibt Kommunikation, aber noch keine Geschichte, die hängen bleibt. Sammelt konkrete Szenen und Beispiele aus dem Alltag statt abstrakter Botschaften – daraus entsteht die Erzählung." },
-            { label: "Nein", score: 0, empfehlung: "Ihr steckt in der Kommunikationsfalle: Informationen wurden verteilt, aber es gibt keine Geschichte, die Bedeutung erzeugt. Startet mit einer einfachen Frage im Team: Wie würden wir das einem Kollegen in der Kaffeeküche erklären?" }
-          ]
-        },
-        {
-          frage: "Ist eure interne Sprache zur Veränderung konsistent – oder kursieren widersprüchliche Begriffe und Buzzwords?",
-          optionen: [
-            { label: "Konsistent", score: 2, empfehlung: "Gute Basis. Ein kleines Glossar der Leitbegriffe hilft, das auch bei neuen Mitarbeitenden konsistent zu halten." },
-            { label: "Teilweise", score: 1, empfehlung: "Es gibt erste gemeinsame Begriffe, aber noch Verwirrung. Einigt euch auf drei bis fünf Leitbegriffe und nutzt sie konsequent in jeder Kommunikation." },
-            { label: "Widersprüchlich", score: 0, empfehlung: "Ihr seid in der Framingfalle: Unklare oder widersprüchliche Begriffe erzeugen Unsicherheit statt Orientierung. Klärt zuerst intern eine gemeinsame Sprache, bevor mehr kommuniziert wird." }
-          ]
-        },
-        {
-          frage: "Erleben Mitarbeitende die Geschichte auch im Alltag – oder bleibt sie auf Hochglanz-Kommunikation (Townhall, Newsletter) beschränkt?",
-          optionen: [
-            { label: "Auch im Alltag", score: 2, empfehlung: "Erzählung und Erfahrung passen zusammen – das schafft Glaubwürdigkeit. Sammelt weiter Alltagsbeispiele, die die Geschichte bestätigen." },
-            { label: "Teilweise", score: 1, empfehlung: "Die große Erzählung existiert, aber der Alltag hinkt hinterher. Prüft im Element Führung & Alltag, wo genau die Lücke entsteht." },
-            { label: "Nur Hochglanz", score: 0, empfehlung: "Ihr seid in der Hochglanzfalle: eine perfekt erzählte Geschichte, die im Alltag nicht einlösbar ist, untergräbt Vertrauen. Reduziert die Kommunikation, bis Führung & Alltag nachgezogen haben." }
-          ]
-        }
-      ],
-      wasZuTun: [
-        "Die Geschichte der Veränderung schreiben: Woher kommen wir, warum verändern wir uns, wohin wollen wir?",
-        "Ein tragfähiges Narrativ entwickeln, das Vergangenheit, Gegenwart und Zukunft verbindet.",
-        "Eine Dramaturgie gestalten – Veränderung als gemeinsames Lernabenteuer, nicht als Projektplan.",
-        "Eine gemeinsame Sprache finden: Begriffe, Bilder, Metaphern bewusst wählen."
-      ],
-      hinweise: [
-        "Geschichten statt Foliensätze.",
-        "Einfach erzählen, einfach erleben – leicht weitererzählbar.",
-        "Konsistent bleiben und gemeinsam weiterschreiben."
-      ],
-      fallen: [
-        { name: "Ignoranzfalle", text: "Jede Organisation erzählt bereits Geschichten. Wer sie ignoriert, arbeitet gegen die kulturelle Wirklichkeit." },
-        { name: "Kommunikationsfalle", text: "Informationen ersetzen keine Geschichte." },
-        { name: "Framingfalle", text: "Unklare Begriffe oder widersprüchliche Botschaften erzeugen Unsicherheit statt Orientierung." },
-        { name: "Hochglanzfalle", text: "Eine perfekt erzählte Geschichte überzeugt nicht, wenn sie im Alltag nicht erlebbar ist." }
-      ],
-      beobachtung: [
-        "Welche Geschichten erzählen sich Menschen? Welche Begriffe fallen immer wieder?",
-        "Was gilt als Erfolg – worüber wird gelacht oder geklagt?",
-        "Welche Widersprüche zwischen offizieller Kommunikation und Alltag sind sichtbar?"
-      ],
-      kernfrage: "Schreibe Geschichte. Nimm die gewünschte Zukunft bereits vorweg.",
-      reflexionsfragen: [
-        "Welche Begriffe, Bilder oder Metaphern prägen unser Verständnis der Veränderung?",
-        "Welche Geschichten erzählen Menschen heute schon – und welche wollen wir künftig gemeinsam weitererzählen?",
-        "Warum sollten Menschen Teil dieser Geschichte werden wollen?",
-        "Woran erkennen wir, dass unsere Geschichte im Alltag weiterlebt?"
-      ],
-      objekte: [
-        { typ: "artefakt", name: "Leitnarrativ / Change-Story", beschreibung: "Schriftlich festgehaltene Erzählung: woher, warum, wohin." },
-        { typ: "artefakt", name: "Leitbegriffe & Glossar", beschreibung: "Verbindliche Sprache und Metaphern für die Veränderung." },
-        { typ: "soziofakt", name: "Townhall / Storytelling-Session", beschreibung: "Format, in dem die Geschichte lebendig erzählt und diskutiert wird." },
-        { typ: "soziofakt", name: "Kommunikationskampagne", beschreibung: "Wiederkehrende Kommunikationsanlässe, die die Geschichte weitertragen." },
-        { typ: "mentefakt", name: "Überzeugung, Teil der Geschichte zu sein", beschreibung: "Gefühl der Beteiligten, die Erzählung mitzuschreiben statt nur zu empfangen." }
-      ]
-    },
-    {
-      key: "orgkultur",
-      num: "02",
-      title: "Organisation & Kultur",
-      subtitle: "schafft Möglichkeiten",
-      teaser: "Der limitierende Kontext. Wer Veränderung will, darf nicht nur bei den Menschen ansetzen.",
-      dimension: "duerfen",
-      sphere: "business",
-      zitat: { text: "A bad system will beat a good person every time.", autor: "W. Edwards Deming" },
-      intro: "Verhalten entsteht selten allein aus Überzeugung. Es entsteht im Zusammenspiel organisationaler Bedingungen – Strukturen, Routinen, Regeln und kulturellen Mustern. Wer Verhalten verändern will, muss Organisation gestalten.",
-      ziel: "Strukturen, Prozesse und Routinen, die das gewünschte Verhalten tatsächlich ermöglichen – nicht nur Appelle, sondern veränderte Rahmenbedingungen, an denen sich neues Verhalten festmachen kann.",
-      diagnose: [
-        {
-          frage: "Wurden Strukturen, Prozesse oder Zielsysteme bereits konkret verändert, um das neue Verhalten zu ermöglichen – oder wird vor allem appelliert?",
-          optionen: [
-            { label: "Konkret verändert", score: 2, empfehlung: "Die Bedingungen ziehen mit. Prüft regelmäßig, ob neue Routinen tatsächlich stabil werden." },
-            { label: "Teilweise", score: 1, empfehlung: "Erste Anpassungen laufen, aber die zentralen Strukturen (Ziele, Prozesse, Entscheidungswege) sind noch unverändert. Identifiziert die ein bis zwei wichtigsten Strukturhebel und plant deren Anpassung konkret." },
-            { label: "Nur Appell", score: 0, empfehlung: "Ihr seid in der Schönwetterfalle: Verhalten soll sich ändern, ohne dass sich die organisationalen Bedingungen ändern. Das trägt nicht. Benennt konkret, welche Struktur oder welcher Prozess dem gewünschten Verhalten aktuell widerspricht." }
-          ]
-        },
-        {
-          frage: "Werden Widersprüche zwischen offizieller Botschaft und gelebter Praxis offen angesprochen?",
-          optionen: [
-            { label: "Ja", score: 2, empfehlung: "Ihr nutzt Widersprüche als Gestaltungshinweis – genau richtig. Macht das sichtbar (z. B. in Retros), damit es Routine wird." },
-            { label: "Teilweise", score: 1, empfehlung: "Widersprüche werden bemerkt, aber selten offen besprochen. Schafft ein festes Format (z. B. eine Retro), in dem das explizit Thema ist." },
-            { label: "Nein", score: 0, empfehlung: "Widersprüche zwischen Organisation und Intention bleiben unausgesprochen – das untergräbt Glaubwürdigkeit. Fragt aktiv nach: Wo passt unser Alltag nicht zur Story?" }
-          ]
-        },
-        {
-          frage: "Wird das gewünschte Verhalten eher trainiert (den Menschen beigebracht) oder werden die organisationalen Rahmenbedingungen dafür verändert?",
-          optionen: [
-            { label: "Rahmenbedingungen", score: 2, empfehlung: "Ihr setzt an der richtigen Stelle an. Kombiniert das weiterhin mit gezielten Lerngelegenheiten (Entdecken & Aneignen), aber die Struktur bleibt die Basis." },
-            { label: "Beides, unkoordiniert", score: 1, empfehlung: "Beides passiert parallel, aber unkoordiniert. Klärt: Welches Problem ist strukturell, welches ist wirklich ein Lernthema?" },
-            { label: "Vor allem Training", score: 0, empfehlung: "Ihr seid in der Trainingsfalle: ein organisationales Problem wird zum Lernproblem erklärt. Kein Training kompensiert dauerhaft fehlende strukturelle Voraussetzungen." }
-          ]
-        }
-      ],
-      wasZuTun: [
-        "Die Eigenlogik der Organisation erkennen: formelle und informelle Regeln, Routinen, Überzeugungen.",
-        "Beim Business ansetzen – dort, wo Wertschöpfung stattfindet.",
-        "Strukturen, Prozesse, Zielsysteme und Zusammenarbeit so gestalten, dass sie die Intention unterstützen.",
-        "Neue Erfahrungen der Zusammenarbeit ermöglichen, bis sie selbstverständlich werden."
-      ],
-      hinweise: [
-        "Formelles und Informelles zusammendenken – Routinen prägen oft stärker als Vorschriften.",
-        "Artefakte, Symbole und Sprache bewusst gestalten.",
-        "Widersprüche ernst nehmen – sie zeigen, wo Organisation und Intention noch nicht zusammenpassen."
-      ],
-      fallen: [
-        { name: "Schönwetterfalle", text: "Verhalten soll sich ändern, ohne die organisationalen Bedingungen zu verändern." },
-        { name: "Trainingsfalle", text: "Organisationale Probleme werden zu Lernproblemen erklärt." },
-        { name: "Organigrammfalle", text: "Organisation wird auf Strukturen reduziert – informelle Netzwerke und Kultur bleiben unbeachtet." }
-      ],
-      beobachtung: [
-        "Welche Regeln, Routinen oder Strukturen prägen das heutige Verhalten?",
-        "Welche impliziten Regeln verhindern die gewünschte Veränderung?",
-        "Wo entstehen Wartezeiten oder Reibungen?"
-      ],
-      kernfrage: "Welche organisationalen Bedingungen machen die gewünschte Zukunft wahrscheinlich – welche bremsen sie heute?",
-      reflexionsfragen: [
-        "Welche Regeln, Routinen oder Strukturen erleichtern das gewünschte Verhalten bereits? Welche fehlen noch?",
-        "Welche Artefakte, Soziofakte und Mentefakte wollen wir bewusst gestalten?",
-        "Welche Widersprüche zeigen, dass Organisation und Intention noch nicht zusammenpassen?",
-        "Woran erkennen wir, dass die Organisation die Entwicklung tatsächlich unterstützt?"
-      ],
-      objekte: [
-        { typ: "artefakt", name: "Governance-Dokument & Kompetenzmatrix", beschreibung: "Verbindliche Festlegung erweiterter Entscheidungsrechte für Teams ohne Eskalationspflicht." },
-        { typ: "artefakt", name: "Revidiertes Kennzahlen-Dashboard", beschreibung: "Steuerungsübersicht, die Fortschritt im Sinne des Zukunftsbildes statt alter Silo-KPIs abbildet." },
-        { typ: "soziofakt", name: "Streichungs- & Deregulierungs-Routine", beschreibung: "Regelmäßiges Prüfen und Entsorgen veralteter Berichts- und Freigabeschleifen." },
-        { typ: "soziofakt", name: "Gelebte Entscheidungsautonomie", beschreibung: "Praxis, in der dezentrale Beschlüsse offen getragen und nicht hinterfragt werden." },
-        { typ: "mentefakt", name: "Glaube an systemische Fehlertoleranz", beschreibung: "Geteiltes Vertrauen, dass das Nutzen eigener Handlungsspielräume gewollt und geschützt ist." }
-      ]
-    },
-    {
-      key: "fuehrung",
-      num: "03",
-      title: "Führung & Alltag",
-      subtitle: "schafft Relevanz – der Zündfunke",
-      teaser: "Der Alltag bremst. Führung ist Anstifterin und Ermöglicherin.",
-      dimension: "koennen",
-      sphere: "business",
-      zitat: { text: "Führung ist zugleich der Schlüssel und der Verschluss für nahezu alle Prozesse in Organisationen.", autor: "Rüdiger Hossiep" },
-      intro: "Veränderung entsteht im Alltag – dort, wo Menschen entscheiden, zusammenarbeiten und Prioritäten setzen. Führung übersetzt die Intention in den Arbeitsalltag und beantwortet: Was bedeutet das für mich?",
-      ziel: "Führungskräfte, die die Veränderung im Alltag sichtbar vorleben, dafür geschützte Zeit schaffen und Mitarbeitenden konkret übersetzen, was sich für ihre tägliche Arbeit ändert.",
-      diagnose: [
-        {
-          frage: "Sprechen Führungskräfte im Alltag – nicht nur in offiziellen Terminen – aktiv über die Veränderung?",
-          optionen: [
-            { label: "Ja", score: 2, empfehlung: "Der Zündfunke ist da. Achtet darauf, dass das über alle Führungsebenen hinweg konsistent bleibt." },
-            { label: "Teilweise", score: 1, empfehlung: "Einzelne Führungskräfte tun das, andere nicht. Macht es konkret erwartbar: Was genau sollen Führungskräfte im Alltag ansprechen?" },
-            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Delegationsfalle: Veränderung wird an HR oder Corporate Learning abgegeben, Führung hält sich raus. Ohne Führung im Alltag bleibt die Intention ein strategisches Versprechen." }
-          ]
-        },
-        {
-          frage: "Haben Führungskräfte im Tagesgeschäft tatsächlich Zeit und Priorität für Reflexion und Ausprobieren eingeräumt – oder frisst das Tagesgeschäft alles auf?",
-          optionen: [
-            { label: "Ja, geschützt", score: 2, empfehlung: "Gute Priorisierung. Macht diese Zeiträume sichtbar (z. B. feste Termine), damit sie nicht wieder verschwinden." },
-            { label: "Teilweise", score: 1, empfehlung: "Es gibt Ansätze, aber unter Druck fällt Reflexion meist zuerst weg. Blockt feste, geschützte Zeiten – lose Absicht reicht nicht." },
-            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Effizienzfalle: kurzfristige Zielerreichung verdrängt jede Lern- und Reflexionszeit. Ohne Raum & Zeit dafür bleibt jede Absicht folgenlos." }
-          ]
-        },
-        {
-          frage: "Wissen Mitarbeitende konkret, was die Veränderung für ihre eigene tägliche Arbeit bedeutet?",
-          optionen: [
-            { label: "Ja", score: 2, empfehlung: "Die Übersetzung in den Alltag ist gelungen. Prüft das regelmäßig erneut, wenn sich die Intention weiterentwickelt." },
-            { label: "Nur die große Linie", score: 1, empfehlung: "Die große Linie ist klar, die konkrete Übersetzung auf einzelne Rollen fehlt noch. Übersetzt gemeinsam mit den Teams: Was heißt das für dich konkret?" },
-            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Übersetzungsfalle: die Intention bleibt auf strategischer Ebene stecken. Ohne diese Übersetzung wird die Veränderung nicht relevant." }
-          ]
-        }
-      ],
-      wasZuTun: [
-        "Führung in Führung gehen lassen – Gestaltungsverantwortung aller Rollen schärfen, die den Alltag prägen.",
-        "Die Intention in den Alltag übersetzen: Was bedeutet sie für die tägliche Arbeit?",
-        "Begleiten statt delegieren – Veränderung bleibt Führungsaufgabe.",
-        "Gelegenheiten zum Ausprobieren, Reflektieren und Weiterentwickeln priorisieren."
-      ],
-      hinweise: [
-        "Anlass statt Anweisung.",
-        "Vertrauen und Verantwortung verbinden.",
-        "Anerkennung verstärkt Entwicklung – Fortschritte sichtbar machen und würdigen."
-      ],
-      fallen: [
-        { name: "Delegationsfalle", text: "Lernen und Veränderung werden an HR oder externe Partner abgegeben." },
-        { name: "Effizienzfalle", text: "Kurzfristige Zielerreichung verdrängt Lernen und Reflexion aus dem Alltag." },
-        { name: "Drillfalle", text: "Veränderung wird eingefordert und kontrolliert statt ermöglicht." },
-        { name: "Übersetzungsfalle", text: "Die Intention bleibt auf strategischer Ebene – niemand versteht, was sie für die eigene Arbeit bedeutet." }
-      ],
-      beobachtung: [
-        "Worüber sprechen Führungskräfte im Alltag tatsächlich?",
-        "Welches Verhalten wird gelobt, welches toleriert?",
-        "Welche Prioritäten werden sichtbar gesetzt?"
-      ],
-      kernfrage: "Welche Funken müssen wir zünden, damit die Intention im Alltag bedeutsam wird?",
-      reflexionsfragen: [
-        "Was bedeutet die Veränderung konkret für den Arbeitsalltag? Woran würde man sie erkennen?",
-        "Wer übernimmt die Verantwortung, die Intention im Alltag lebendig zu machen?",
-        "Wo entstehen Gelegenheiten, Neues auszuprobieren, zu reflektieren und gemeinsam zu lernen?",
-        "Woran erkennen wir, dass Lernen im Alltag tatsächlich stattfindet?"
-      ],
-      objekte: [
-        { typ: "artefakt", name: "Rollen- & Funktionsbeschreibung Führung", beschreibung: "Dokumentierte Erwartungen an Führungshandeln als Entwicklungsbegleiter und Vorbild." },
-        { typ: "artefakt", name: "Priorisierungsboard & Stop-Doing-Liste", beschreibung: "Sichtbares Board zur Kennzeichnung gestrichener Aufgaben." },
-        { typ: "soziofakt", name: "Jour-Fixe-Reflexionsimpuls", beschreibung: "10-Minuten-Routine in Teambesprechungen zum Besprechen von Erstversuchen." },
-        { typ: "soziofakt", name: "Kollegiales Führungs-Sparring", beschreibung: "Wechselseitige Hospitation von Führungskräften zur Rückmeldung über eigene Führungssignale." },
-        { typ: "mentefakt", name: "Führung als Ermöglichung", beschreibung: "Verankertes Selbstverständnis, dass Führung primär Raumschutz und Entwicklungshilfe bedeutet." }
-      ]
-    },
-    {
-      key: "entdecken",
-      num: "04",
-      title: "Entdecken & Aneignen",
-      subtitle: "ermöglicht individuelle Aneignung",
-      teaser: "Jedes Lernen beginnt mit einer Frage. Entdecken ist die natürliche Antwort darauf.",
-      dimension: "wollen",
-      sphere: "corporate_learning",
-      zitat: { text: "Man kann einen Menschen nichts lehren, man kann ihm nur helfen, es in sich selbst zu entdecken.", autor: "Galileo Galilei" },
-      intro: "Lernen entsteht nicht durch Wissensvermittlung, sondern wenn Menschen selbst aktiv werden, Fragen verfolgen und Erfahrungen machen. Lernen ist die Leistung der Lernenden.",
-      ziel: "Echte Gelegenheiten zum Ausprobieren an realen Herausforderungen – Menschen eignen sich die Veränderung an, indem sie selbst handeln, nicht indem sie Inhalte konsumieren.",
-      diagnose: [
-        {
-          frage: "Können Menschen im Rahmen der Initiative selbst ausprobieren, statt nur Inhalte zu konsumieren?",
-          optionen: [
-            { label: "Ja", score: 2, empfehlung: "Aktivität vor Konsum – genau richtig. Achtet darauf, genug Raum für eigene Fragen zu lassen, statt alles vorzugeben." },
-            { label: "Teilweise", score: 1, empfehlung: "Es gibt Inhalte, aber noch wenig eigenes Tun. Baut mindestens eine konkrete Praxisaufgabe oder ein Experiment mit echtem Alltagsbezug ein." },
-            { label: "Nein, nur Inhalte", score: 0, empfehlung: "Ihr seid in der Contentfalle: Wissen wird bereitgestellt, aber es fehlt die aktive Auseinandersetzung. Wissen allein verändert kein Handeln." }
-          ]
-        },
-        {
-          frage: "Gibt es echte Anlässe und Herausforderungen aus dem Alltag, an denen gelernt wird – oder ist das Lernangebot losgelöst vom Tagesgeschäft?",
-          optionen: [
-            { label: "Echte Anlässe", score: 2, empfehlung: "Lernen ist mit echter Arbeit verbunden – das erzeugt Relevanz. Sammelt diese Anlässe systematisch für weitere Formate." },
-            { label: "Teilweise", score: 1, empfehlung: "Einige Bezüge zum Alltag sind da, aber noch konstruiert. Fragt Teams direkt: Woran arbeitet ihr gerade, das hierzu passt?" },
-            { label: "Losgelöst", score: 0, empfehlung: "Ihr seid in der Steuerungsfalle: Lernen wird wie ein Projekt von oben geplant, losgelöst vom echten Alltag. Sucht euch reale Herausforderungen als Ausgangspunkt." }
-          ]
-        },
-        {
-          frage: "Dürfen unterschiedliche Menschen unterschiedliche Lernwege und -tempi haben, oder bekommen alle dasselbe Programm?",
-          optionen: [
-            { label: "Individuell", score: 2, empfehlung: "Individuelle Aneignung wird ernst genommen. Behaltet im Blick, dass trotzdem genug soziale Anschlussfähigkeit bleibt (siehe Peers & Resonanz)." },
-            { label: "Leicht differenziert", score: 1, empfehlung: "Es gibt leichte Differenzierung, aber im Kern ein Standardprogramm. Baut mindestens eine Wahlmöglichkeit oder ein individuelles Format ein." },
-            { label: "Alle dasselbe", score: 0, empfehlung: "Ihr seid in der One-Size-Fits-All-Falle: alle erhalten dieselben Inhalte, individuelle Fragen bleiben unberücksichtigt. Das verringert die Aneignung erheblich." }
-          ]
-        }
-      ],
-      wasZuTun: [
-        "Neugier aufgreifen und in Herausforderungen, Erfahrungen und Suchbewegungen übersetzen.",
-        "Erfahrungen gestalten – Gelegenheiten zum Ausprobieren und Reflektieren schaffen.",
-        "Experience before Content: erst die Erfahrung, aus der Lernbedarf entsteht.",
-        "Lernen mit realen Herausforderungen der Arbeit verbinden."
-      ],
-      hinweise: [
-        "Aktivität vor Konsum.",
-        "Offenheit zulassen – nicht jeder Lernweg lässt sich vorab festlegen.",
-        "Soziales Lernen ermöglichen: Erfahrungen teilen und gemeinsam weiterentwickeln."
-      ],
-      fallen: [
-        { name: "Contentfalle", text: "Lernen wird mit dem Bereitstellen von Inhalten verwechselt." },
-        { name: "Treatmentfalle", text: "Inhalte werden verordnet und konsumiert statt aktiv angeeignet." },
-        { name: "Steuerungsfalle", text: "Lernen wird wie ein Projekt geplant, obwohl es sich nur begrenzt steuern lässt." },
-        { name: "One-Size-Fits-All-Falle", text: "Alle erhalten dieselben Inhalte – individuelle Fragen bleiben unberücksichtigt." }
-      ],
-      beobachtung: [
-        "Wo experimentieren Menschen bereits? Wo ist Nicht-Wissen akzeptiert?",
-        "Welche Fragen werden gestellt?",
-        "Wo helfen sich Kolleg:innen gegenseitig?"
-      ],
-      kernfrage: "Schaffe Herausforderungen. Wer selbst entdeckt, macht Veränderung zur eigenen Sache.",
-      reflexionsfragen: [
-        "Welche Herausforderungen regen Menschen an, nach neuen Lösungen zu suchen?",
-        "Welche Erfahrungen sollen Menschen machen, damit sich ihr Handeln verändert?",
-        "Welche Unterstützung ist wirklich nötig – wo würden wir den Lernprozess unnötig vorwegnehmen?",
-        "Woran erkennen wir, dass Menschen ihre Praxis tatsächlich weiterentwickeln?"
-      ],
-      objekte: [
-        { typ: "artefakt", name: "Challenge-Card & Praxis-Sprint-Leitfaden", beschreibung: "Arbeitsblatt für wöchentliche Mikroschritte im realen Arbeitskontext." },
-        { typ: "artefakt", name: "Persönliches Lernjournal", beschreibung: "Dokumentiertes Notizbuch zur Auswertung eigener Erstversuche." },
-        { typ: "soziofakt", name: "Praxis-Tandems", beschreibung: "Zwei Kolleg:innen erproben gemeinsam eine neue Vorgehensweise." },
-        { typ: "soziofakt", name: "Retrospektiven & Brown-Bag-Sessions", beschreibung: "Regelmäßige kurze Formate zum gemeinsamen Auswerten von Lernerfahrungen." },
-        { typ: "mentefakt", name: "Vertrauen in die eigene Selbstwirksamkeit", beschreibung: "Subjektives Vertrauen, neue Herausforderungen durch eigenes Erkunden meistern zu können." }
-      ]
-    },
-    {
-      key: "peers",
-      num: "05",
-      title: "Peers & Resonanz",
-      subtitle: "verstärkt sozial",
-      teaser: "Soziales Lernen ist eine geteilte Erfahrung. Was eine Gruppe verstärkt, wird wahrscheinlicher.",
-      dimension: "duerfen",
-      sphere: "corporate_learning",
-      zitat: { text: "Wenn es ein Dorf braucht, um ein Kind aufzuziehen, dann braucht es einen Circle, um einen voll entwickelten Erwachsenen zu formen.", autor: "Joe Lightfoot" },
-      intro: "Menschen orientieren sich an Menschen. Erst wenn Erfahrungen geteilt und im sozialen Umfeld aufgegriffen werden, trägt Veränderung über Einzelne hinaus – sie wird zur gemeinsamen Normalität.",
-      ziel: "Ein soziales Umfeld, in dem sich Menschen über die Veränderung austauschen, glaubwürdige Vorbilder sichtbar werden und neues Verhalten Schritt für Schritt zur gemeinsamen Normalität wird.",
-      diagnose: [
-        {
-          frage: "Tauschen sich Menschen über die Veränderung informell aus – auch ohne dass ihr das organisiert habt?",
-          optionen: [
-            { label: "Ja", score: 2, empfehlung: "Es entsteht organische Resonanz. Gebt diesen informellen Räumen bewusst noch mehr Sichtbarkeit." },
-            { label: "Vereinzelt", score: 1, empfehlung: "Es gibt vereinzelten Austausch, aber noch keine verlässlichen Räume dafür. Schafft ein festes, niedrigschwelliges Format, z. B. eine wiederkehrende Austauschrunde." },
-            { label: "Kaum", score: 0, empfehlung: "Ihr seid in der Isolationsfalle: Lernen bleibt individuell, es wird nichts sichtbar geteilt. Ohne sozialen Austausch trägt Veränderung nicht über Einzelne hinaus." }
-          ]
-        },
-        {
-          frage: "Gibt es glaubwürdige Vorbilder, die das neue Verhalten bereits sichtbar vorleben – nicht nur offiziell ernannte Botschafter:innen?",
-          optionen: [
-            { label: "Ja", score: 2, empfehlung: "Echte Vorbilder wirken stärker als jede Kampagne. Macht ihre Geschichten aktiv sichtbar." },
-            { label: "Ansatzweise", score: 1, empfehlung: "Es gibt Ansätze, aber noch zu wenig Sichtbarkeit. Fragt gezielt: Wer lebt das bereits – und wie können wir das teilen?" },
-            { label: "Nur ernannt", score: 0, empfehlung: "Ihr seid in der Multiplikatorenfalle: Botschafter:innen wurden ernannt, ohne dass echte Glaubwürdigkeit oder Beziehung entstanden ist. Sucht organisch entstandene Vorbilder, statt sie zu verordnen." }
-          ]
-        },
-        {
-          frage: "Passt euer Beteiligungsformat zur jeweiligen Zielgruppe – oder bekommt jede Gruppe dasselbe Format und dieselbe Intensität?",
-          optionen: [
-            { label: "Passt zur Zielgruppe", score: 2, empfehlung: "Ihr denkt in Zielgruppen und Lerntiefen – das erhöht die Wirkung deutlich." },
-            { label: "Teilweise", score: 1, empfehlung: "Es gibt leichte Unterschiede, aber im Kern ein Format für alle. Identifiziert zwei bis drei Zielgruppen mit unterschiedlichem Bedarf und passt die Formate gezielt an." },
-            { label: "Alle gleich", score: 0, empfehlung: "Ihr seid in der One-Size-Fits-All-Falle bei Peers & Resonanz: Alle Zielgruppen erhalten dieselben Angebote, unterschiedliche Rollen und Bedürfnisse bleiben unberücksichtigt." }
-          ]
-        }
-      ],
-      wasZuTun: [
-        "Die Kraft von Peers nutzen – Vorbilder, Communities und informelle Netzwerke einbinden.",
-        "Soziale Anwendungsräume schaffen, die Lernen und Alltag verbinden.",
-        "Veränderung sichtbar machen – gute Erfahrungen weitererzählbar machen.",
-        "Beteiligung passend zu Rolle, Verantwortung und Lerntiefe gestalten."
-      ],
-      hinweise: [
-        "Gemeinsam vor Einzelkampf.",
-        "In Zielgruppen und Lerntiefen denken.",
-        "Resonanz vor Reichweite – entscheidend sind Gespräche, nicht Teilnehmerzahlen."
-      ],
-      fallen: [
-        { name: "One-Size-Fits-All-Falle", text: "Alle Zielgruppen erhalten dieselben Angebote." },
-        { name: "Broadcast-Falle", text: "Informationen werden verteilt, ohne soziale Resonanz zu erzeugen." },
-        { name: "Multiplikatorenfalle", text: "Botschafter:innen werden ernannt, ohne dass echte Glaubwürdigkeit entsteht." },
-        { name: "Isolationsfalle", text: "Lernen bleibt individuell und wird nicht sichtbar geteilt." }
-      ],
-      beobachtung: [
-        "Welche Rolle spielt Lernen im Alltag – ist es sozial anerkannt?",
-        "Wer prägt die Meinung im Team?",
-        "Welche Verhaltensweisen werden sozial belohnt?"
-      ],
-      kernfrage: "Woran würden Menschen erkennen, dass die gewünschte Veränderung bei uns zur Normalität geworden ist?",
-      reflexionsfragen: [
-        "Welche Gruppen und Netzwerke prägen Einstellungen und Verhalten besonders stark?",
-        "Wo entstehen Gelegenheiten, die gewünschte Zukunft gemeinsam zu erleben?",
-        "Welche Zielgruppen brauchen welche Form der Beteiligung?",
-        "Woran erkennen wir, dass sich die Veränderung zunehmend selbst verstärkt?"
-      ],
-      objekte: [
-        { typ: "artefakt", name: "Community-Charter & Peer-Learning-Leitfaden", beschreibung: "Schriftliche Orientierung für den Selbstorganisationsrahmen von Peer-Gruppen." },
-        { typ: "artefakt", name: "Board für 'Biete/Suche Praxis-Erfahrung'", beschreibung: "Unkomplizierte Plattform zum Finden von Sparringspartnern." },
-        { typ: "soziofakt", name: "Kollegiale Fallberatung", beschreibung: "Feste Formate im Peer-Kreis zur Bearbeitung individueller Praxisfälle." },
-        { typ: "soziofakt", name: "Walk-and-Talks & Cross-Team-Hospitationen", beschreibung: "Unbürokratische gegenseitige Besuche in Nachbarbereichen." },
-        { typ: "mentefakt", name: "Gefühl sozialer Aufgehobenheit", beschreibung: "Gewissheit, mit den Herausforderungen der Veränderung nicht allein zu sein." }
-      ]
-    },
-    {
-      key: "methoden",
-      num: "06",
-      title: "Methoden & Formate",
-      subtitle: "unterstützt professionell",
-      teaser: "Methoden und Formate erleichtern Veränderung. Sie erzeugen sie nicht.",
-      dimension: "koennen",
-      sphere: "corporate_learning",
-      zitat: { text: "Lernen ist Erfahrung. Alles andere ist nur Information.", autor: "Albert Einstein" },
-      intro: "Methoden und Formate machen Veränderung erlebbar – sie bewirken sie nicht. Gute Gestaltung beginnt nicht mit der Methode, sondern mit der Frage nach der beabsichtigten Wirkung.",
-      ziel: "Eine stimmige Lernarchitektur, deren Formate bewusst aus der gewünschten Wirkung abgeleitet sind – nicht Methoden um ihrer selbst willen, sondern gezielt gewählte Formate, die aufeinander aufbauen.",
-      diagnose: [
-        {
-          frage: "Wurde die Methode bzw. das Format erst gewählt, nachdem klar war, welche Wirkung erzielt werden soll?",
-          optionen: [
-            { label: "Ja", score: 2, empfehlung: "Wirkung vor Methode – genau die richtige Reihenfolge. Überprüft das bei jeder neuen Maßnahme erneut." },
-            { label: "Teilweise", score: 1, empfehlung: "Teilweise stand die Methode schon fest, bevor die Wirkung klar war. Nehmt euch vor der nächsten Maßnahme kurz Zeit, die Wirkungsfrage zu klären." },
-            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Toolfalle: Die Suche nach der richtigen Methode hat die Klärung der eigentlichen Gestaltungsfrage ersetzt. Geht einen Schritt zurück und klärt zuerst die Wirkung." }
-          ]
-        },
-        {
-          frage: "Bilden eure Formate eine zusammenhängende Lernarchitektur – oder sind es einzelne, lose Maßnahmen?",
-          optionen: [
-            { label: "Zusammenhängend", score: 2, empfehlung: "Ihr denkt in Architektur statt Einzelmaßnahmen. Das ist der stärkste Hebel bei Methoden & Formate." },
-            { label: "Teilweise verbunden", score: 1, empfehlung: "Es gibt mehrere Formate, aber ihr Zusammenspiel ist noch nicht klar geplant. Zeichnet den Lernpfad einmal end-to-end auf und prüft die Übergänge." },
-            { label: "Lose Einzelmaßnahmen", score: 0, empfehlung: "Ihr seid in der One-Hit-Wonder-Falle: einzelne aufwändige Maßnahmen stehen isoliert ohne Einbettung. Das verpufft meist schnell wieder." }
-          ]
-        },
-        {
-          frage: "Nutzt ihr Methoden, weil sie zur Intention passen – oder eher, weil sie gerade im Trend sind?",
-          optionen: [
-            { label: "Passt zur Intention", score: 2, empfehlung: "Bewusste Methodenwahl – das trägt langfristig mehr als jeder Trend." },
-            { label: "Beides mischt sich", score: 1, empfehlung: "Es mischt sich beides. Prüft eure aktuelle Formatliste einmal explizit gegen die Intention." },
-            { label: "Eher Trend", score: 0, empfehlung: "Ihr seid in der Trendfalle: neue Formate, weil sie attraktiv wirken – nicht weil sie zur Wirkung beitragen. Bewährte, einfache Methoden wirken oft stärker." }
-          ]
-        }
-      ],
-      wasZuTun: [
-        "Wirkungsvoll gestalten: erst klären, welche Veränderung unterstützt werden soll, dann Methode wählen.",
-        "Erfahrungen gestalten, die die gewünschte Zukunft erlebbar machen.",
-        "Eine stimmige Lernarchitektur bauen statt Einzelmaßnahmen aneinanderzureihen.",
-        "Vielfalt nutzen: analog/digital, individuell/sozial, formell/informell kombinieren."
-      ],
-      hinweise: [
-        "Experience vor Content.",
-        "Architektur statt Einzelmaßnahmen.",
-        "Einfach vor spektakulär – bewährte Methoden wirken oft stärker als Trends."
-      ],
-      fallen: [
-        { name: "Toolfalle", text: "Die Suche nach der richtigen Methode ersetzt die Klärung der Gestaltungsfrage." },
-        { name: "Trendfalle", text: "Neue Formate werden eingesetzt, weil sie attraktiv wirken – nicht weil sie zur Wirkung beitragen." },
-        { name: "One-Hit-Wonder-Falle", text: "Einzelne Maßnahmen bleiben isoliert, ohne Einbettung in eine Lernarchitektur." }
-      ],
-      beobachtung: [
-        "Welche Formate sind etabliert und werden tatsächlich genutzt?",
-        "Welche Methoden erzeugen echte interne Gespräche?",
-        "Welche Lernangebote verschwinden schnell wieder?"
-      ],
-      kernfrage: "Welche Gestaltung braucht unsere Intention – und welche Methoden unterstützen sie am besten?",
-      reflexionsfragen: [
-        "Welche Erfahrungen sollen Menschen in den gewählten Formaten machen?",
-        "Welche Methoden leisten den größten Beitrag zur Intention?",
-        "Wie greifen unsere Formate zu einer stimmigen Lernarchitektur ineinander?",
-        "Welche Methoden nutzen wir aus Gewohnheit – welche bewusst?"
-      ],
-      objekte: [
-        { typ: "artefakt", name: "Performance-Support-Toolkit", beschreibung: "Kompakte Orientierungshilfen direkt am digitalen Arbeitsplatz." },
-        { typ: "artefakt", name: "Transfer-Canvas & Experimentier-Leitfaden", beschreibung: "Unterlage zur Fixierung persönlicher Anwendungsschritte." },
-        { typ: "soziofakt", name: "Praxiswerkstatt & Learning Sprint", beschreibung: "Arbeitsintegriertes Format zur gemeinsamen Bearbeitung echter Praxisfälle." },
-        { typ: "soziofakt", name: "Strukturierte Team-Retrospektive", beschreibung: "Moderationsdramaturgie zur Auswertung von Zusammenarbeit und Lernfeldern." },
-        { typ: "mentefakt", name: "Haltung der kontinuierlichen Reflexion", beschreibung: "Verankertes Selbstverständnis, dass Innehalten und Auswerten fester Teil professioneller Arbeit ist." }
-      ]
-    },
-    {
-      key: "raumzeit",
-      num: "Zentrum",
-      title: "Raum & Zeit",
-      subtitle: "Dreh- und Angelpunkt",
-      teaser: "Veränderung braucht Raum. Entwicklung braucht Zeit.",
-      dimension: "zentrum",
-      sphere: "cross_spheric",
-      zitat: { text: "Wenn Du keine Zeit hast besser zu werden, dann hast du eben keine Zeit, besser zu werden.", autor: "Markus Ebner" },
-      intro: "Ohne Raum und Zeit bleibt Veränderung Absicht. Raum und Zeit sind kein weiteres Element, sondern die gemeinsame Voraussetzung, damit alle anderen Elemente überhaupt wirksam werden können.",
-      ziel: "Geschützte, wiederkehrende Zeit und ein sicherer Raum, in dem Ausprobieren, Reflexion und Austausch tatsächlich stattfinden können – ohne dieses Fundament bleibt jedes andere Element folgenlos.",
-      diagnose: [
-        {
-          frage: "Ist für diese Initiative geschützte Zeit im Kalender/Alltag reserviert – nicht nur 'wenn Zeit übrig ist'?",
-          optionen: [
-            { label: "Ja, fest reserviert", score: 2, empfehlung: "Zeit ist da. Verteidigt sie aktiv gegen den Druck des Tagesgeschäfts – das wird die eigentliche Herausforderung bleiben." },
-            { label: "Vage Zusagen", score: 1, empfehlung: "Es gibt vage Zusagen, aber keine festen, geschützten Termine. Blockt konkrete, wiederkehrende Zeitfenster im Kalender." },
-            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Zusatzaufgabenfalle: Veränderung wird erwartet, ohne dass dafür Zeit vorgesehen ist. Ohne feste Zeit bleibt jede Absicht folgenlos." }
-          ]
-        },
-        {
-          frage: "Gibt es einen Ort oder Raum (physisch oder virtuell), an dem Ausprobieren und Reflexion risikofrei möglich ist?",
-          optionen: [
-            { label: "Ja", score: 2, empfehlung: "Ein geschützter Raum zum Ausprobieren ist ein starker Hebel. Macht ihn allen sichtbar zugänglich." },
-            { label: "Vereinzelt", score: 1, empfehlung: "Es gibt vereinzelte Gelegenheiten, aber keinen verlässlichen Ort dafür. Etabliert einen festen Rahmen, physisch oder virtuell." },
-            { label: "Nein", score: 0, empfehlung: "Ihr seid in der Funktionalitätsfalle: Raum wird auf reine Infrastruktur reduziert. Ohne einen echten Möglichkeitsraum bleibt Ausprobieren die Ausnahme." }
-          ]
-        },
-        {
-          frage: "Wird die investierte Zeit an ihrer Wirkung gemessen – oder vor allem daran, wie viele Stunden 'ordentlich' dokumentiert wurden?",
-          optionen: [
-            { label: "An der Wirkung", score: 2, empfehlung: "Ihr bewertet Lern- und Veränderungszeit richtig – nach Wirkung, nicht nach Stundenzettel." },
-            { label: "Beides mischt sich", score: 1, empfehlung: "Beides mischt sich noch. Klärt im Team, welche Wirkung ihr eigentlich sehen wollt, und macht das zum Maßstab." },
-            { label: "Vor allem Dokumentation", score: 0, empfehlung: "Ihr seid in der Kontrollfalle: Lernzeiten werden so stark reglementiert oder dokumentiert, dass sie ihre Wirkung verlieren. Löst euch von reiner Zeiterfassung." }
-          ]
-        }
-      ],
-      wasZuTun: [
-        "Raum und Zeit bewusst schaffen – und gegen den Druck des Tagesgeschäfts verteidigen.",
-        "Räume mehrdimensional denken: physisch, virtuell, sozial und als Handlungsspielraum.",
-        "Entwicklung als festen Bestandteil erfolgreicher Arbeit planen, nicht als Restgröße.",
-        "Rhythmen etablieren, die Lernen und Reflexion regelmäßig ermöglichen."
-      ],
-      hinweise: [
-        "Lernen braucht Platz zum risikofreien Ausprobieren.",
-        "Arbeitszeit ist Lernzeit – und umgekehrt.",
-        "Entwicklung braucht Spielräume zum Erproben und Anpassen."
-      ],
-      fallen: [
-        { name: "Zusatzaufgabenfalle", text: "Veränderung wird erwartet, ohne dafür Raum und Zeit vorzusehen." },
-        { name: "Effizienzfalle", text: "Zeit für Lernen und Reflexion erscheint als unproduktiver Aufwand." },
-        { name: "Funktionalitätsfalle", text: "Raum wird auf Infrastruktur reduziert." },
-        { name: "Kontrollfalle", text: "Lernzeiten werden so stark reglementiert, dass sie ihre Wirkung verlieren." }
-      ],
-      beobachtung: [
-        "Welche Zeit steht tatsächlich für Lernen und Reflexion zur Verfügung?",
-        "Welche Termine oder Routinen verhindern heute Entwicklung?",
-        "Welche Räume sind für Experimente vorhanden?"
-      ],
-      kernfrage: "Gib Veränderung Raum und Zeit. Ermögliche Lernen dort, wo Arbeit stattfindet.",
-      reflexionsfragen: [
-        "Wo und wann kann und soll die gewünschte Entwicklung tatsächlich stattfinden?",
-        "Welche physischen, virtuellen und sozialen Räume unterstützen unsere Intention?",
-        "Wo konkurrieren Arbeits- und Lernzeit noch miteinander?",
-        "Woran erkennen wir, dass Raum und Zeit Entwicklung wirklich ermöglichen?"
-      ],
-      objekte: [
-        { typ: "artefakt", name: "Nutzungsvereinbarung & Kalender-Schutz-Regel", beschreibung: "Verbindliche Regel zum Schutz geblockter Fokus- und Entwicklungszeiten." },
-        { typ: "artefakt", name: "Digitaler/Physischer Maker-Space", beschreibung: "Speziell ausgestatteter Raum für kreatives Arbeiten und ungestörten Austausch." },
-        { typ: "soziofakt", name: "Geschützter Fokus-Block", beschreibung: "Wiederkehrendes Zeitfenster im Team, frei von operativen Meetings." },
-        { typ: "soziofakt", name: "Lern- & Debriefing-Rituale", beschreibung: "Fest verankerte kurze Reflexionsrunden am Ende von Projektphasen." },
-        { typ: "mentefakt", name: "Entwicklung ist Wertschöpfung", beschreibung: "Gemeinsam getragene Überzeugung, dass Zeit für Lernen Notwendigkeit statt Luxus ist." }
-      ]
+    "intro": "Menschen folgen selten Strategien – sie folgen Geschichten. Eine gemeinsame Geschichte macht verständlich, warum Veränderung notwendig ist, und lädt dazu ein, Teil davon zu werden.",
+    "ziel": "Eine Geschichte der Veränderung, die Mitarbeitende in eigenen Worten weitererzählen – nicht nur eine Kommunikationskampagne, sondern eine Erzählung, die im Alltag lebt und Orientierung gibt.",
+    "loops": {
+      "observe": {
+        "leitfrage": "Was wird erzählt?",
+        "fragen": [
+          "Welche Geschichten über die Organisation, ihre Vergangenheit, Veränderungen, Erfolge und Misserfolge sind für unsere Intention relevant – und wer erzählt sie?",
+          "Welche Bilder, Begriffe und Metaphern verwenden Menschen, wenn sie über Themen und Situationen sprechen, die unsere Intention berühren?",
+          "Welche inoffiziellen Erzählungen und Interpretationen kursieren neben der offiziellen Kommunikation?",
+          "Worauf sind Menschen erkennbar stolz – und was möchten sie aus ihrer bisherigen Geschichte und Identität bewahren?",
+          "Wo zeigen sich Widersprüche zwischen dem, was erzählt oder angekündigt wird, und dem, was tatsächlich geschieht?"
+        ]
+      },
+      "understand": {
+        "leitfrage": "Welche Deutungen und Identitäten machen Verhalten plausibel?",
+        "fragen": [
+          "Welche Geschichten und Narrative könnten Verhalten unterstützen, erschweren oder bestehendes Verhalten legitimieren und stabilisieren?",
+          "Welche Werte, Erfahrungen und Identitätsmuster könnten erklären, warum bestimmte Narrative Resonanz erzeugen und andere nicht?",
+          "Welche Hoffnungen, Befürchtungen oder emotional bedeutsamen Erfahrungen könnten erklären, warum bestimmte Geschichten Resonanz erzeugen – und andere nicht?",
+          "Welche Spannungen zwischen erzählter und erlebter Wirklichkeit könnten erklären, wie Menschen unsere Intention aufnehmen, umdeuten oder zurückweisen?"
+        ]
+      },
+      "design": {
+        "leitfrage": "Womit können wir Bedeutung und Anschluss gestalten?",
+        "fragen": [
+          "Wie könnten wir die Intention mit bestehenden Geschichten, Erfahrungen, Werten und Identitäten verbinden, ohne das Bisherige zu entwerten?",
+          "Wie könnten wir Veränderungsnotwendigkeit und angestrebte Zukunft so erzählen, dass die Intention nachvollziehbar wird – einschließlich realer Herausforderungen und Zumutungen?",
+          "Welche Bilder, Begriffe, Geschichten oder sichtbaren Zeichen könnten die mit der Intention verbundene Zukunft konkret und handlungsrelevant machen?",
+          "Wie könnten wir die Geschichte so offen gestalten, dass Menschen sie in eigenen Worten, gemeinsamen Gesprächen und konkretem Handeln weiterschreiben können?"
+        ]
+      },
+      "architect": {
+        "leitfrage": "Ist unsere Geschichte glaubwürdig und durch die Architektur einlösbar?",
+        "fragen": [
+          "Ergeben Herkunft, Veränderungsnotwendigkeit, angestrebte Zukunft und Beitrag der Beteiligten eine stimmige Geschichte?",
+          "Versprechen wir narrativ etwas, das Organisation, Führung und Alltag tatsächlich einlösen können?",
+          "Würdigt die Geschichte das Bestehende und macht zugleich nachvollziehbar, warum Veränderung notwendig ist?",
+          "Ist die Geschichte einfach, ehrlich und offen genug, dass Menschen sie in eigenen Worten und durch eigenes Handeln weitertragen können?"
+        ]
+      }
     }
-  ];
+  },
+  {
+    "key": "orgkultur",
+    "num": "02",
+    "title": "Organisation & Kultur",
+    "subtitle": "schafft Möglichkeiten",
+    "teaser": "Der limitierende Kontext. Wer Veränderung will, darf nicht nur bei den Menschen ansetzen.",
+    "sphere": "business",
+    "zitat": {
+      "text": "A bad system will beat a good person every time.",
+      "autor": "W. Edwards Deming"
+    },
+    "intro": "Verhalten entsteht selten allein aus Überzeugung. Es entsteht im Zusammenspiel organisationaler Bedingungen – Strukturen, Routinen, Regeln und kulturellen Mustern. Wer Verhalten verändern will, muss Organisation gestalten.",
+    "ziel": "Strukturen, Prozesse und Routinen, die das gewünschte Verhalten tatsächlich ermöglichen – nicht nur Appelle, sondern veränderte Rahmenbedingungen, an denen sich neues Verhalten festmachen kann.",
+    "loops": {
+      "observe": {
+        "leitfrage": "Welche Spielregeln gelten?",
+        "fragen": [
+          "Welche formellen und informellen Regeln und Entscheidungswege prägen das relevante Verhalten tatsächlich?",
+          "Welches Verhalten wird real belohnt, anerkannt oder erleichtert – und welches erschwert oder sanktioniert?",
+          "Welche Ziele, Kennzahlen, Berichtspflichten oder Freigaben beeinflussen das relevante Verhalten im Alltag?",
+          "Wo entstehen durch Prozesse und Schnittstellen Reibung, Bürokratie oder Wartezeiten – und welche informellen Wege nutzen Menschen, um trotzdem handlungsfähig zu bleiben?"
+        ]
+      },
+      "understand": {
+        "leitfrage": "Warum ist Verhalten unter den bestehenden Spielregeln logisch?",
+        "fragen": [
+          "Welche Strukturen, Routinen und kulturellen Muster könnten erklären, warum das heutige Verhalten unter den bestehenden Bedingungen organisationslogisch sinnvoll ist?",
+          "Wo könnten Widersprüche zwischen unserer Intention und bestehenden Regeln, Zielen, Kennzahlen oder Anreizen das heutige Verhalten stabilisieren?",
+          "Wie könnten formelle Vorgaben und informelle Regeln zusammenwirken – sich gegenseitig verstärken, abschwächen oder umgehen?",
+          "Wo könnten wir ein organisational bedingtes Verhalten fälschlicherweise als individuelles Lern-, Motivations- oder Haltungsproblem interpretieren?",
+          "Welche frühen realen Erfahrungen könnten Menschen machen, an denen sie erkennen, dass das neue Verhalten möglich und hilfreich ist?"
+        ]
+      },
+      "design": {
+        "leitfrage": "Welche Spielregeln und reale Erfahrungen könnten wir verändern?",
+        "fragen": [
+          "Welche Regeln, Prozesse oder Freigaben könnten wir verändern, vereinfachen oder streichen, damit das intendierte Verhalten leichter wird?",
+          "Wie könnten wir Rollen und Entscheidungsrechte gestalten, damit Menschen im Sinne unserer Intention tatsächlich handeln dürfen?",
+          "Welche Ziele, Kennzahlen oder Anreize könnten wir neu ausrichten, damit das intendierte Verhalten organisationslogischer wird?",
+          "Welche bestehenden informellen Wege, Netzwerke oder funktionierenden Praktiken könnten wir nutzen oder stärken?",
+          "Welche organisationalen Erfahrungen könnten Menschen erleben lassen, dass anderes Verhalten tatsächlich möglich, erwünscht und erlaubt ist?"
+        ]
+      },
+      "architect": {
+        "leitfrage": "Macht die Systemlogik das intendierte Verhalten tatsächlich möglich?",
+        "fragen": [
+          "Sind Prozesse, Entscheidungsrechte, Ziele und Anreize so aufeinander abgestimmt, dass das intendierte Verhalten organisationslogisch möglich wird?",
+          "Sind notwendige Handlungsspielräume so verlässlich abgesichert, dass Menschen sie tatsächlich nutzen können, ohne Nachteile befürchten zu müssen?",
+          "Welche bestehenden Regeln, Kennzahlen oder Routinen müssen tatsächlich verändert oder abgebaut werden, weil sie der gewählten Architektur entgegenwirken?",
+          "Verändern wir relevante organisationale Bedingungen – oder versuchen wir weiterhin, Menschen durch Kommunikation, Führung oder Lernen an unveränderte Bedingungen anzupassen?"
+        ]
+      }
+    }
+  },
+  {
+    "key": "fuehrung",
+    "num": "03",
+    "title": "Führung & Alltag",
+    "subtitle": "schafft Relevanz – der Zündfunke",
+    "teaser": "Der Alltag bremst. Führung ist Anstifterin und Ermöglicherin.",
+    "sphere": "business",
+    "zitat": {
+      "text": "Führung ist zugleich der Schlüssel und der Verschluss für nahezu alle Prozesse in Organisationen.",
+      "autor": "Rüdiger Hossiep"
+    },
+    "intro": "Veränderung entsteht im Alltag – dort, wo Menschen entscheiden, zusammenarbeiten und Prioritäten setzen. Führung übersetzt die Intention in den Arbeitsalltag und beantwortet: Was bedeutet das für mich?",
+    "ziel": "Führungskräfte, die die Veränderung im Alltag sichtbar vorleben, dafür geschützte Zeit schaffen und Mitarbeitenden konkret übersetzen, was sich für ihre tägliche Arbeit ändert.",
+    "loops": {
+      "observe": {
+        "leitfrage": "Was zählt im Alltag tatsächlich?",
+        "fragen": [
+          "Welche Prioritäten setzen Führungskräfte tatsächlich – insbesondere wenn Zeit-, Leistungs- oder Zielkonflikte entstehen?",
+          "Welches Verhalten, welche Entscheidungen und welche Mikrosignale von Führungskräften und anderen Schlüsselpersonen zeigen Menschen, was tatsächlich wichtig ist?",
+          "Welches Verhalten wird im Alltag anerkannt oder eingefordert – und welches trotz unserer Intention toleriert, weil andere Leistungen oder Erfolge es rechtfertigen?",
+          "Wie reagieren Führungskräfte tatsächlich auf Zweifel, Widerspruch, Fehler und Nicht-Wissen – und was lernen Menschen daraus darüber, wie sicher eigenes Ausprobieren ist?"
+        ]
+      },
+      "understand": {
+        "leitfrage": "Welche sozialen Signale und Prioritäten machen Verhalten im Alltag plausibel?",
+        "fragen": [
+          "Welche Führungssignale könnten erklären, welches Verhalten Menschen für tatsächlich erwünscht, wichtig oder riskant halten?",
+          "Wie könnten Vorbildhandeln, Anerkennung und stillschweigende Toleranz dazu beitragen, dass sich bestimmtes Verhalten verstärkt oder stabilisiert?",
+          "Welche Prioritäts- und Zielkonflikte könnten erklären, warum Verhalten im Sinne unserer Intention unter operativem Druck zurücktritt?",
+          "Was könnte erklären, warum Menschen vorhandene Gelegenheiten zum Ausprobieren, Reflektieren oder Lernen tatsächlich nutzen – oder nicht nutzen?"
+        ]
+      },
+      "design": {
+        "leitfrage": "Wie können wir gewünschtes Verhalten vorleben, ermöglichen und priorisieren?",
+        "fragen": [
+          "Wie könnten Führungskräfte die Intention durch ihr eigenes Verhalten und ihre täglichen Entscheidungen sichtbar vorleben?",
+          "Welche konkreten Anlässe und Situationen könnten Führungskräfte schaffen oder nutzen, in denen Menschen im Sinne unserer Intention handeln, ausprobieren und lernen können?",
+          "Welche Führungs- und Teamroutinen könnten helfen, Erfahrungen, Zielkonflikte und Fortschritte regelmäßig zu reflektieren und daraus zu handeln?",
+          "Was könnten Führungskräfte bewusst priorisieren, pausieren oder beenden, damit reale Aufmerksamkeit für das Neue entsteht?",
+          "Was könnten Führungskräfte bewusst zulassen oder loslassen, damit Menschen mehr Verantwortung im Sinne unserer Intention übernehmen können?"
+        ]
+      },
+      "architect": {
+        "leitfrage": "Wird das Neue im Tagesgeschäft tatsächlich vorgelebt und geschützt?",
+        "fragen": [
+          "Signalisieren Vorbildhandeln, Erwartungen, Anerkennung und tägliche Prioritäten klar und konsistent dieselbe Richtung?",
+          "Was muss Führung konkret priorisieren, pausieren oder beenden, damit das Neue im Alltag eine reale Chance bekommt?",
+          "Sind Ausprobieren, Lernen und eigenverantwortliches Handeln ausreichend legitimiert und vor operativem Verdrängungsdruck geschützt?",
+          "Übernimmt Führung die notwendige Gestaltungsverantwortung – oder hängt das Gelingen weiterhin überwiegend an HR, Corporate Learning oder einzelnen Formaten?"
+        ]
+      }
+    }
+  },
+  {
+    "key": "entdecken",
+    "num": "04",
+    "title": "Entdecken & Aneignen",
+    "subtitle": "ermöglicht individuelle Aneignung",
+    "teaser": "Jedes Lernen beginnt mit einer Frage. Entdecken ist die natürliche Antwort darauf.",
+    "sphere": "corporate_learning",
+    "zitat": {
+      "text": "Man kann einen Menschen nichts lehren, man kann ihm nur helfen, es in sich selbst zu entdecken.",
+      "autor": "Galileo Galilei"
+    },
+    "intro": "Lernen entsteht nicht durch Wissensvermittlung, sondern wenn Menschen selbst aktiv werden, Fragen verfolgen und Erfahrungen machen. Lernen ist die Leistung der Lernenden.",
+    "ziel": "Echte Gelegenheiten zum Ausprobieren an realen Herausforderungen – Menschen eignen sich die Veränderung an, indem sie selbst handeln, nicht indem sie Inhalte konsumieren.",
+    "loops": {
+      "observe": {
+        "leitfrage": "Wie erschließen Menschen sich selbst Neues?",
+        "fragen": [
+          "Wo probieren Menschen eigeninitiativ neue Wege aus – und wo warten sie eher auf fertige Lösungen oder Anweisungen?",
+          "Welche Fragen stellen Menschen bei relevanten Herausforderungen – und wo und wie suchen sie selbst nach Antworten?",
+          "Welche unterschiedlichen Quellen und Wege nutzen Menschen, um Feedback zu erhalten und bei eigenen Suchprozessen weiterzukommen?",
+          "Wo reflektieren Menschen eigene Erfahrungen und passen ihr Vorgehen daraufhin selbstständig an – und wo bleibt es beim einmaligen Ausprobieren?"
+        ]
+      },
+      "understand": {
+        "leitfrage": "Warum kommen Menschen selbst ins Suchen, Erproben und Übernehmen – oder nicht?",
+        "fragen": [
+          "Was könnte erklären, warum bestimmte Herausforderungen genügend persönliche Relevanz erzeugen, damit Menschen selbst nach neuen Handlungsmöglichkeiten suchen – und andere nicht?",
+          "Welche Bedingungen könnten erklären, warum Menschen sich trauen, Nicht-Wissen zuzulassen, Neues auszuprobieren und aus Fehlern zu lernen – oder dies vermeiden?",
+          "Wo könnten Vorgaben, fertige Lösungen oder vorbereitete Lernpfade eigene Such- und Aneignungsprozesse unbeabsichtigt ersetzen oder begrenzen?",
+          "Was könnte erklären, warum neue Erfahrungen in das eigene Handlungsrepertoire übernommen werden – oder nach dem ersten Ausprobieren wieder verschwinden?"
+        ]
+      },
+      "design": {
+        "leitfrage": "Welche Such- und Erfahrungsräume ermöglichen und begünstigen das neue Verhalten?",
+        "fragen": [
+          "Welche realen Herausforderungen oder Praxisaufgaben könnten Menschen dazu anregen, selbst nach neuen Lösungen zu suchen und sie auszuprobieren?",
+          "Welche Freiräume und Entscheidungsmöglichkeiten könnten eigenes Erkunden ermöglichen, statt den Lernweg vorzugeben?",
+          "Welche einfachen Handläufe, Orientierungshilfen oder Reflexionsimpulse könnten das eigene Erkunden unterstützen, ohne fertige Antworten zu liefern?",
+          "Wie könnten wir Lernen so mit realer Arbeit und Verantwortung verbinden, dass aus Erfahrungen zunehmend eigenes Handeln entsteht?"
+        ]
+      },
+      "architect": {
+        "leitfrage": "Ermöglichen wir Selbstaneignung, ohne zu übersteuern oder alleinzulassen?",
+        "fragen": [
+          "Beginnt unsere Gestaltung mit einer relevanten Herausforderung oder Erfahrung – oder wieder mit Content, den wir vermitteln wollen?",
+          "Gibt es genügend Freiraum für eigenes Erkunden und Ausprobieren, ohne Suchwege und Ergebnisse unnötig vorzugeben?",
+          "Ist zugleich genügend Orientierung und Unterstützung vorhanden, damit Selbststeuerung nicht zum Alleinlassen wird?",
+          "Ist die Gestaltung eng genug mit realer Arbeit, Reflexion und Anwendung verbunden, damit aus einzelnen Erfahrungen eigenes Handeln entstehen kann?"
+        ]
+      }
+    }
+  },
+  {
+    "key": "peers",
+    "num": "05",
+    "title": "Peers & Resonanz",
+    "subtitle": "verstärkt sozial",
+    "teaser": "Soziales Lernen ist eine geteilte Erfahrung. Was eine Gruppe verstärkt, wird wahrscheinlicher.",
+    "sphere": "corporate_learning",
+    "zitat": {
+      "text": "Wenn es ein Dorf braucht, um ein Kind aufzuziehen, dann braucht es einen Circle, um einen voll entwickelten Erwachsenen zu formen.",
+      "autor": "Joe Lightfoot"
+    },
+    "intro": "Menschen orientieren sich an Menschen. Erst wenn Erfahrungen geteilt und im sozialen Umfeld aufgegriffen werden, trägt Veränderung über Einzelne hinaus – sie wird zur gemeinsamen Normalität.",
+    "ziel": "Ein soziales Umfeld, in dem sich Menschen über die Veränderung austauschen, glaubwürdige Vorbilder sichtbar werden und neues Verhalten Schritt für Schritt zur gemeinsamen Normalität wird.",
+    "loops": {
+      "observe": {
+        "leitfrage": "Was wird sozial gespiegelt und verstärkt?",
+        "fragen": [
+          "An wen wenden sich Menschen bei relevanten Fragen oder Unsicherheiten tatsächlich – und wessen Einschätzung hat besonderes Gewicht?",
+          "Wo und wie sprechen Menschen untereinander über relevante Erfahrungen und Herausforderungen?",
+          "Welches Verhalten erfährt unter Peers Zustimmung, Anerkennung oder Nachahmung – und welches Irritation, Schweigen oder Ablehnung?",
+          "Wo werden Erfahrungen, Lösungen und Praktiken spontan weitergegeben und von anderen aufgegriffen?"
+        ]
+      },
+      "understand": {
+        "leitfrage": "Wie machen soziale Normen und Resonanz Verhalten legitim, riskant oder normal?",
+        "fragen": [
+          "Welche Personen, Gruppen, Netzwerke oder Gruppengrenzen könnten prägen, welches Verhalten als glaubwürdig, akzeptiert oder erstrebenswert gilt?",
+          "Welche informellen sozialen Normen könnten erklären, warum Menschen neues Verhalten zeigen, vermeiden oder nach ersten Versuchen wieder aufgeben?",
+          "Was könnte erklären, warum bestimmte Peer-Beziehungen Sicherheit für Ausprobieren, Feedback und gegenseitige Unterstützung schaffen – und andere nicht?",
+          "Wie könnten wir gegenseitige Unterstützung so erleichtern, dass Rat suchen, Feedback geben und Erfahrungen teilen zunehmend selbstverständlich werden?"
+        ]
+      },
+      "design": {
+        "leitfrage": "Womit fördern wir soziale Resonanz und ermöglichen Normalität?",
+        "fragen": [
+          "Welche Gelegenheiten könnten wir schaffen, in denen Menschen reale Erfahrungen auf Augenhöhe teilen, spiegeln und gemeinsam weiterentwickeln?",
+          "Wie könnten wir bestehende Netzwerke und informelle Schlüsselpersonen nutzen oder stärken, ohne sie zu zentral gesteuerten „Multiplikatoren“ zu machen?",
+          "Wie könnten glaubwürdige Versuche, Erfahrungen und Vorbilder unter Peers sichtbar und weitererzählbar werden?",
+          "Wie könnten wir gegenseitige Unterstützung so erleichtern, dass Peer-Feedback, Rat und Teilen zunehmend selbstverständlich werden?",
+          "Welche bestehenden Beziehungen/Netzwerke können wir nutzen – und wo müssen neue Verbindungen entstehen, damit andere Erfahrungen und Perspektiven miteinander in Kontakt kommen?"
+        ]
+      },
+      "architect": {
+        "leitfrage": "Kann echte, dezentrale soziale Verstärkung entstehen?",
+        "fragen": [
+          "Erreichen oder stärken wir tatsächlich jene Peer-Beziehungen, Gruppen und Netzwerke, die für soziale Orientierung und Resonanz relevant sind?",
+          "Ermöglichen die gewählten Impulse echten Austausch auf Augenhöhe – oder produzieren wir lediglich zentral gesteuerte Kommunikation und „Multiplikation“?",
+          "Sind die Peer-Gelegenheiten nah genug an realen Herausforderungen, damit Menschen einander tatsächlich helfen, spiegeln und voneinander lernen können?",
+          "Kann Resonanz zunehmend dezentral und selbsttragend entstehen – oder bleibt sie dauerhaft von organisierter Aktivierung abhängig?"
+        ]
+      }
+    }
+  },
+  {
+    "key": "methoden",
+    "num": "06",
+    "title": "Methoden & Formate",
+    "subtitle": "unterstützt professionell",
+    "teaser": "Methoden und Formate erleichtern Veränderung. Sie erzeugen sie nicht.",
+    "sphere": "corporate_learning",
+    "zitat": {
+      "text": "Lernen ist Erfahrung. Alles andere ist nur Information.",
+      "autor": "Albert Einstein"
+    },
+    "intro": "Methoden und Formate machen Veränderung erlebbar – sie bewirken sie nicht. Gute Gestaltung beginnt nicht mit der Methode, sondern mit der Frage nach der beabsichtigten Wirkung.",
+    "ziel": "Eine stimmige Lernarchitektur, deren Formate bewusst aus der gewünschten Wirkung abgeleitet sind – nicht Methoden um ihrer selbst willen, sondern gezielt gewählte Formate, die aufeinander aufbauen.",
+    "loops": {
+      "observe": {
+        "leitfrage": "Welche gestaltete Unterstützung wird tatsächlich genutzt?",
+        "fragen": [
+          "Welche Methoden, Formate und Hilfsmittel stehen zur Verfügung – und welche werden tatsächlich genutzt?",
+          "Was geschieht bei ihrer Nutzung: konsumieren Menschen überwiegend oder werden Ausprobieren, Austausch, Reflexion und Handeln sichtbar?",
+          "Wie leicht finden und nutzen Menschen Unterstützung genau dann, wenn sie diese im Arbeitsalltag brauchen?",
+          "Welche Methoden, Werkzeuge oder Vorgehensweisen werden anschließend selbstständig im Arbeitsalltag weiterverwendet – und welche verschwinden wieder?"
+        ]
+      },
+      "understand": {
+        "leitfrage": "Warum führt gestaltete Unterstützung zu Nutzung und Anwendung – oder nicht?",
+        "fragen": [
+          "Was könnte erklären, warum Menschen bestimmte Methoden oder Hilfsmittel im relevanten Arbeitsmoment tatsächlich nutzen – und andere nicht?",
+          "Welche Merkmale bestehender Formate könnten erklären, warum Menschen aktiv ausprobieren, reflektieren und handeln – oder überwiegend passiv bleiben?",
+          "Was könnte erklären, warum bestimmte Methoden Orientierung und Handlungssicherheit geben, während andere zusätzliche Komplexität erzeugen?",
+          "Was könnte erklären, warum Erfahrungen aus Methoden und Formaten in den Arbeitsalltag übernommen werden – oder dort wieder verschwinden?",
+          "Wo gestalten Menschen vorhandene Methoden, Hilfsmittel oder Formate bereits selbst weiter, damit sie für ihre reale Arbeit brauchbar werden?"
+        ]
+      },
+      "design": {
+        "leitfrage": "Womit können wir gezielte Handlungsunterstützung gestalten?",
+        "fragen": [
+          "Welche realen Erfahrungen, Übungen oder Simulationen könnten Menschen helfen, relevantes Verhalten auszuprobieren und Handlungssicherheit aufzubauen?",
+          "Welche einfachen Werkzeuge oder Orientierungshilfen könnten genau im Moment der Anwendung Handeln erleichtern?",
+          "Welche Formate könnten gemeinsames Üben, Feedback und Reflexion an realen Fällen ermöglichen?",
+          "Wie könnten Methoden und Formate so mit der Arbeit verbunden werden, dass sie zunehmend selbstständiges Handeln unterstützen statt dauerhafte Abhängigkeit von Lernangeboten zu erzeugen?",
+          "Wie könnten die Menschen, die mit der Unterstützung arbeiten sollen, an ihrer Gestaltung und Weiterentwicklung beteiligt werden?"
+        ]
+      },
+      "architect": {
+        "leitfrage": "Unterstützen wir das richtige Problem – arbeitsnah und ohne Abhängigkeit?",
+        "fragen": [
+          "Brauchen wir hier überhaupt eine Methode oder ein Format – und falls ja: Adressiert es einen relevanten Befähigungs- oder Unterstützungsbedarf?",
+          "Sind Erfahrung, Übung, Reflexion und Anwendung so verbunden, dass methodische Unterstützung in den realen Arbeitsalltag hineinführt statt eine parallele Lernwelt zu erzeugen?",
+          "Unterstützen die gewählten Methoden zunehmend selbstständiges Handeln – oder erzeugen wir dauerhafte Abhängigkeit von Trainings, Trainern oder Lernangeboten?"
+        ]
+      }
+    }
+  },
+  {
+    "key": "raumzeit",
+    "num": "Zentrum",
+    "title": "Raum & Zeit",
+    "subtitle": "Dreh- und Angelpunkt",
+    "teaser": "Veränderung braucht Raum. Entwicklung braucht Zeit.",
+    "sphere": "cross_spheric",
+    "zitat": {
+      "text": "Wenn Du keine Zeit hast besser zu werden, dann hast du eben keine Zeit, besser zu werden.",
+      "autor": "Markus Ebner"
+    },
+    "intro": "Ohne Raum und Zeit bleibt Veränderung Absicht. Raum und Zeit sind kein weiteres Element, sondern die gemeinsame Voraussetzung, damit alle anderen Elemente überhaupt wirksam werden können.",
+    "ziel": "Geschützte, wiederkehrende Zeit und ein sicherer Raum, in dem Ausprobieren, Reflexion und Austausch tatsächlich stattfinden können – ohne dieses Fundament bleibt jedes andere Element folgenlos.",
+    "loops": {
+      "observe": {
+        "leitfrage": "Wo und wann bekommt das Ganze Platz?",
+        "fragen": [
+          "Wann und wo entstehen tatsächlich Gelegenheiten für relevantes Handeln, Ausprobieren, Austausch oder Reflexion – und wie selbstständig können Menschen sie nutzen?",
+          "Welche bestehenden Termine, Orte und Arbeitsrhythmen geben unserer Intention bereits Raum – und welche stehen mit ihr in Konkurrenz?",
+          "Wo werden relevante Gelegenheiten durch Zeitdruck, Unterbrechungen oder andere Anforderungen verdrängt?",
+          "Wo schaffen sich Menschen selbst Zeit, Orte oder informelle Gelegenheiten, weil die vorgesehenen Strukturen nicht ausreichen?"
+        ]
+      },
+      "understand": {
+        "leitfrage": "Wie beeinflussen Gelegenheit, Taktung und Umgebung, was sich entwickeln kann?",
+        "fragen": [
+          "Welche zeitlichen Bedingungen könnten erklären, warum Menschen relevantes Verhalten ausprobieren und weiterentwickeln – oder unter Alltagsdruck auf bestehende Routinen zurückfallen?",
+          "Welche Rhythmen und Abstände könnten erklären, warum Erfahrungen aufgegriffen, reflektiert und weitergeführt werden – oder wieder versanden?",
+          "Welche physischen oder digitalen Räume könnten Konzentration, Erprobung, geplante oder spontane Begegnung und Zusammenarbeit unterstützen?",
+          "Wo könnte vermeintlich fehlende Motivation oder Lernbereitschaft eigentlich Ausdruck fehlender Zeit, ungünstiger Taktung oder konkurrierender Anforderungen sein?"
+        ]
+      },
+      "design": {
+        "leitfrage": "Wie und wo schaffen wir Gelegenheit und Rhythmus und schützen diese?",
+        "fragen": [
+          "Welche bestehenden Zeitfenster, Orte oder Arbeitsrhythmen könnten wir anders nutzen, bevor wir zusätzliche schaffen?",
+          "Welche Rhythmen und Zeiträume könnten Ausprobieren, Anwenden und Reflektieren sinnvoll miteinander verbinden?",
+          "Welche physischen oder digitalen Räume könnten die benötigte Konzentration, Erprobung, Begegnung oder Zusammenarbeit unterstützen?",
+          "Wie könnten Zeit und Aufmerksamkeit für relevantes Handeln so geschützt werden, dass sie im Tagesgeschäft nicht immer wieder verdrängt werden?"
+        ]
+      },
+      "architect": {
+        "leitfrage": "Bekommt die Architektur realen und geschützten Platz im richtigen Rhythmus?",
+        "fragen": [
+          "Bekommt unsere Gestaltungsarchitektur dort Raum und Zeit, wo relevantes Handeln, Lernen, Austausch und Reflexion tatsächlich stattfinden sollen?",
+          "Passen Dauer, Abstände, Rhythmus und zeitliche Zugänglichkeit zu den Menschen und der Entwicklung, die wir ermöglichen wollen?",
+          "Sind die notwendigen Räume und Zeiten durch Führung und Organisation so legitimiert und geschützt, dass sie unter operativem Druck nicht als Erstes entfallen?",
+          "Schaffen wir wirklich notwendige neue Räume und Zeitgefäße – oder könnten wir vorhandene Termine, Orte und Rhythmen intelligenter nutzen?",
+          "Wie wirken die vorgesehenen Räume, Zeiten und Rhythmen mit den übrigen Elementen unserer Architektur zusammen – was ermöglichen, verstärken oder begrenzen sie?"
+        ]
+      }
+    }
+  }
+];
 
-  var STATUS = {
-    offen: { key: "offen", label: "Offen", weight: 0 },
-    in_arbeit: { key: "in_arbeit", label: "In Arbeit", weight: 0.5 },
-    etabliert: { key: "etabliert", label: "Lebt im Alltag", weight: 1 }
-  };
+  function getElement(key) {
+    for (var i = 0; i < ELEMENTS.length; i++) {
+      if (ELEMENTS[i].key === key) return ELEMENTS[i];
+    }
+    return null;
+  }
 
-  function getStation(key) {
-    for (var i = 0; i < STATIONS.length; i++) {
-      if (STATIONS[i].key === key) return STATIONS[i];
+  function getLoop(key) {
+    for (var i = 0; i < LOOPS.length; i++) {
+      if (LOOPS[i].key === key) return LOOPS[i];
     }
     return null;
   }
 
   global.AVERA_DATA = {
-    SEQUENCE: SEQUENCE,
-    DIMENSIONS: DIMENSIONS,
     SPHERES: SPHERES,
-    STATIONS: STATIONS,
-    STATUS: STATUS,
-    getStation: getStation
+    SEQUENCE: SEQUENCE,
+    LOOPS: LOOPS,
+    LOOP_GENERAL_FRAGEN: LOOP_GENERAL_FRAGEN,
+    FAKTE_TYPEN: FAKTE_TYPEN,
+    WIRKSTUFEN: WIRKSTUFEN,
+    FAKTE: FAKTE,
+    INTENTION_PHASEN: INTENTION_PHASEN,
+    ELEMENTS: ELEMENTS,
+    getElement: getElement,
+    getLoop: getLoop
   };
 })(window);

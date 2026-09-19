@@ -5,59 +5,141 @@
 (function (global) {
   "use strict";
 
-  function statusLabel(status) {
-    return (AVERA_DATA.STATUS[status] || AVERA_DATA.STATUS.offen).label;
+  var LOOP_ORDER = ["observe", "understand", "design", "architect"];
+
+  function pushIfText(lines, label, text) {
+    if (text && String(text).trim()) {
+      lines.push("**" + label + ":** " + String(text).trim());
+    }
   }
 
-  // Baut denselben priorisierten Schritt-für-Schritt-Plan wie die
-  // Aktionsplan-Ansicht: Reihenfolge = Drehrichtung des Rads, je Station
-  // zuerst dringende, dann zu beobachtende Empfehlungen, Raum & Zeit als
-  // Grundvoraussetzung am Ende.
-  function buildPlanLines(initiative) {
+  function intentionSection(initiative) {
     var lines = [];
-    var stepNo = 1;
-    var totalQuestions = 0;
-    var answeredQuestions = 0;
-
-    function collect(stationKey, isRaumzeit) {
-      var station = AVERA_DATA.getStation(stationKey);
-      var st = (initiative.stations && initiative.stations[stationKey]) || { diagnose: {} };
-      var diagnoseAnswers = st.diagnose || {};
-      totalQuestions += station.diagnose.length;
-
-      var results = station.diagnose
-        .map(function (frage, i) {
-          var oi = diagnoseAnswers[i];
-          if (oi === undefined || oi === null || !frage.optionen[oi]) return null;
-          answeredQuestions++;
-          return { frage: frage.frage, opt: frage.optionen[oi] };
-        })
-        .filter(function (r) { return r !== null; });
-
-      if (!results.length) {
-        lines.push((isRaumzeit ? "- " : stepNo++ + ". ") + "**" + station.title + "**: noch nicht diagnostiziert.");
-        return;
-      }
-
-      results
-        .filter(function (r) { return r.opt.score < 2; })
-        .sort(function (a, b) { return a.opt.score - b.opt.score; })
-        .forEach(function (r) {
-          var tag = r.opt.score === 0 ? "Dringend" : "Im Blick behalten";
-          lines.push((isRaumzeit ? "- " : stepNo++ + ". ") + "**" + station.title + "** (" + tag + "): " + r.opt.empfehlung);
-        });
+    lines.push("## Intention");
+    if (initiative.intention.statement && initiative.intention.statement.trim()) {
+      lines.push("> " + initiative.intention.statement.trim());
+      lines.push("");
     }
 
-    AVERA_DATA.SEQUENCE.forEach(function (key) { collect(key, false); });
-    lines.push("");
-    lines.push("**Grundvoraussetzung Raum & Zeit:**");
-    collect("raumzeit", true);
+    ["erarbeiten", "schaerfen"].forEach(function (phaseKey) {
+      var phase = AVERA_DATA.INTENTION_PHASEN[phaseKey];
+      var values = initiative.intention[phaseKey] || [];
+      var any = values.some(function (v) { return v && v.trim(); });
+      if (!any) return;
+      lines.push("**" + phase.leitfrage + "**");
+      phase.fragen.forEach(function (fr, i) {
+        if (values[i] && values[i].trim()) {
+          lines.push("- _" + fr.kategorie + ":_ " + fr.frage);
+          lines.push("  > " + values[i].trim());
+        }
+      });
+      lines.push("");
+    });
 
-    return {
-      lines: lines,
-      totalQuestions: totalQuestions,
-      answeredQuestions: answeredQuestions
-    };
+    var reflexionen = initiative.intention.reflexionen || [];
+    if (reflexionen.length) {
+      lines.push("**Reflexionen im Verlauf:**");
+      reflexionen.forEach(function (r) {
+        lines.push("- Episode " + r.episodeNr + " (" + new Date(r.datum).toLocaleDateString("de-AT") + "): " + r.text);
+      });
+      lines.push("");
+    }
+
+    lines.push("---");
+    lines.push("");
+    return lines;
+  }
+
+  function loopSection(episode, loopKey) {
+    var lines = [];
+    var loop = AVERA_DATA.getLoop(loopKey);
+    var general = AVERA_DATA.LOOP_GENERAL_FRAGEN[loopKey];
+    var state = episode.loops[loopKey];
+
+    var anyGeneral = ["fokus", "wirkgefuege", "potenziale", "pruefung"].some(function (fk) {
+      return state.general[fk] && state.general[fk].trim();
+    });
+    var anyElemente = AVERA_DATA.ELEMENTS.some(function (elm) {
+      return state.elemente[elm.key] && state.elemente[elm.key].trim();
+    });
+    var anyDesign = loopKey === "design" && state.impulse.length > 0;
+    var anyArchitect = loopKey === "architect" && (state.ausgewaehlt.length > 0 || (state.begruendung && state.begruendung.trim()));
+    if (!anyGeneral && !anyElemente && !state.gate && !anyDesign && !anyArchitect) return lines;
+
+    lines.push("### " + loop.label + " (" + loop.funktion + ")");
+
+    if (anyGeneral) {
+      ["fokus", "wirkgefuege", "potenziale", "pruefung"].forEach(function (fk) {
+        pushIfText(lines, general[fk], state.general[fk]);
+      });
+      lines.push("");
+    }
+    if (state.gate) {
+      lines.push("✓ GATE: " + general.gate + (state.gateNotiz && state.gateNotiz.trim() ? " — " + state.gateNotiz.trim() : ""));
+      lines.push("");
+    }
+
+    if (anyElemente) {
+      AVERA_DATA.ELEMENTS.forEach(function (elm) {
+        var text = state.elemente[elm.key];
+        if (text && text.trim()) {
+          lines.push("- **" + elm.title + ":** " + text.trim());
+        }
+      });
+      lines.push("");
+    }
+
+    if (loopKey === "design" && state.impulse.length) {
+      lines.push("**Gesammelte Gestaltungsimpulse:**");
+      state.impulse.forEach(function (imp) {
+        var objekteText = imp.objekte.map(function (o) { return o.beispiel; }).join(", ");
+        lines.push("- **" + imp.name + "**: " + objekteText + (imp.notiz ? " — " + imp.notiz : ""));
+      });
+      lines.push("");
+    }
+
+    if (loopKey === "architect") {
+      var impulse = episode.loops.design.impulse;
+      var selected = state.ausgewaehlt || [];
+      var chosen = impulse.filter(function (imp) { return selected.indexOf(imp.id) !== -1; });
+      if (chosen.length) {
+        lines.push("**Gewählte Architektur:**");
+        chosen.forEach(function (imp) {
+          lines.push("- " + imp.name);
+        });
+        lines.push("");
+      }
+      pushIfText(lines, "Begründung", state.begruendung);
+      lines.push("");
+    }
+
+    return lines;
+  }
+
+  function episodeSection(episode) {
+    var lines = [];
+    lines.push("## Episode " + episode.nr);
+    if (episode.statusQuoNotiz && episode.statusQuoNotiz.trim()) {
+      lines.push("_Status quo:_ " + episode.statusQuoNotiz.trim());
+      lines.push("");
+    }
+
+    LOOP_ORDER.forEach(function (lk) {
+      lines = lines.concat(loopSection(episode, lk));
+    });
+
+    if (episode.realized) {
+      lines.push("**In die Welt gebracht:** " + new Date(episode.realized.at).toLocaleDateString("de-AT"));
+      if (episode.realized.notiz && episode.realized.notiz.trim()) {
+        lines.push("> " + episode.realized.notiz.trim());
+      }
+    } else {
+      lines.push("_Noch nicht realisiert._");
+    }
+    lines.push("");
+    lines.push("---");
+    lines.push("");
+    return lines;
   }
 
   function toMarkdown(initiative) {
@@ -65,101 +147,16 @@
     lines.push("# Gestaltungsarchitektur: " + initiative.name);
     if (initiative.org) lines.push("**Unternehmen/Team:** " + initiative.org);
     lines.push("");
-    lines.push("_Erstellt mit der AVERA-Change-App – auf Basis des Admonter Veränderungsrads (AVERA)._");
+    lines.push("_Erstellt mit der AVERA-Change-App – Episode für Episode, Drehung für Drehung._");
     lines.push("");
 
-    var plan = buildPlanLines(initiative);
-    lines.push("## Aktionsplan");
-    lines.push(
-      plan.answeredQuestions + " von " + plan.totalQuestions + " Diagnosefragen beantwortet. " +
-      (plan.answeredQuestions < plan.totalQuestions ? "Je vollständiger die Diagnose in der App, desto präziser dieser Plan." : "Diagnose vollständig.")
-    );
-    lines.push("");
-    lines = lines.concat(plan.lines);
-    lines.push("");
-    lines.push("---");
-    lines.push("");
+    lines = lines.concat(intentionSection(initiative));
 
-    var order = ["intention"].concat(AVERA_DATA.SEQUENCE.slice(1)).concat(["raumzeit"]);
-    // sicherstellen, dass jede Station genau einmal vorkommt
-    var seen = {};
-    order = order.filter(function (k) {
-      if (seen[k]) return false;
-      seen[k] = true;
-      return true;
+    initiative.episodes.forEach(function (episode) {
+      lines = lines.concat(episodeSection(episode));
     });
 
-    order.forEach(function (key) {
-      var station = AVERA_DATA.getStation(key);
-      var st = (initiative.stations && initiative.stations[key]) || { status: "offen", diagnose: {}, answers: {}, objekte: [], notiz: "" };
-      var diagnoseAnswers = st.diagnose || {};
-
-      lines.push("## " + station.num + " " + station.title);
-      lines.push("_" + station.subtitle + "_ — Status: **" + statusLabel(st.status) + "**");
-      lines.push("");
-
-      var diagnoseResults = station.diagnose
-        .map(function (frage, i) {
-          var oi = diagnoseAnswers[i];
-          if (oi === undefined || oi === null || !frage.optionen[oi]) return null;
-          return { frage: frage.frage, opt: frage.optionen[oi] };
-        })
-        .filter(function (r) { return r !== null; });
-
-      if (diagnoseResults.length) {
-        lines.push("**Standortbestimmung:**");
-        diagnoseResults.forEach(function (r) {
-          lines.push("- " + r.frage + " → **" + r.opt.label + "**");
-        });
-        lines.push("");
-
-        var dringend = diagnoseResults.filter(function (r) { return r.opt.score === 0; });
-        var imBlick = diagnoseResults.filter(function (r) { return r.opt.score === 1; });
-        if (dringend.length || imBlick.length) {
-          lines.push("**Handlungsempfehlungen:**");
-          dringend.forEach(function (r) {
-            lines.push("- _Dringend:_ " + r.opt.empfehlung);
-          });
-          imBlick.forEach(function (r) {
-            lines.push("- _Im Blick behalten:_ " + r.opt.empfehlung);
-          });
-          lines.push("");
-        }
-      }
-
-      var answered = false;
-      station.reflexionsfragen.forEach(function (frage, i) {
-        var antwort = (st.answers && st.answers[i]) || "";
-        if (antwort.trim()) {
-          if (!answered) {
-            lines.push("**Reflexion:**");
-            answered = true;
-          }
-          lines.push("- " + frage);
-          lines.push("  > " + antwort.trim());
-        }
-      });
-      if (answered) lines.push("");
-
-      if (st.objekte && st.objekte.length) {
-        lines.push("**Gewählte Gestaltungsobjekte / Maßnahmen:**");
-        st.objekte.forEach(function (obj) {
-          lines.push("- " + obj);
-        });
-        lines.push("");
-      }
-
-      if (st.notiz && st.notiz.trim()) {
-        lines.push("**Notiz:**");
-        lines.push(st.notiz.trim());
-        lines.push("");
-      }
-
-      lines.push("---");
-      lines.push("");
-    });
-
-    lines.push("_Framework-Grundlage: AVERA White Paper 2.0, Corporate Learning Community Österreich (#CLCA), CC BY-SA 4.0._");
+    lines.push("_Framework-Grundlage: AVERA White Paper 2.0 und Workflow „Episode & Schleife“, Corporate Learning Community Österreich (#CLCA), CC BY-SA 4.0._");
 
     return lines.join("\n");
   }

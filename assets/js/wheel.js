@@ -117,7 +117,7 @@
 
     // Ring-Segmente
     RING_KEYS.forEach(function (key, i) {
-      var station = AVERA_DATA.getStation(key);
+      var station = AVERA_DATA.getElement(key);
       var stState = (initiative.stations && initiative.stations[key]) || { status: "offen" };
       var startAngle = i * segAngle + 1.2;
       var endAngle = (i + 1) * segAngle - 1.2;

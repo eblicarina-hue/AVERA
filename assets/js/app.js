@@ -1,11 +1,19 @@
 /*
- * AVERA-Change-App: Steuerung der Ansichten (Start, Rad, Station, Export)
- * über einen einfachen Hash-Router. Keine Frameworks, keine Build-Tools.
+ * AVERA-Change-App: Steuerung der Ansichten über einen einfachen Hash-Router.
+ * Führt durch den episodischen AVERA-Workflow: eine Episode ist eine volle
+ * Drehung im Rad mit den Schleifen Observe -> Understand -> Design -> Architect,
+ * gefolgt von der Realisierung. Keine Frameworks, keine Build-Tools.
  */
 (function () {
   "use strict";
 
   var root = document.getElementById("app");
+  var LOOP_ORDER = ["observe", "understand", "design", "architect"];
+
+  // Formular-Entwurf beim Sammeln von Gestaltungsobjekten in der Design-Schleife
+  // (bewusst nicht persistiert, bis der Impuls gespeichert wird).
+  var designDraft = { scopeKey: null, objekte: [], name: "", notiz: "" };
+  var designFilter = { typ: "artefakt", wirkstufe: "beruehren" };
 
   function escapeHtml(str) {
     return String(str == null ? "" : str)
@@ -16,20 +24,21 @@
       .replace(/'/g, "&#39;");
   }
 
-  function el(html) {
-    var t = document.createElement("template");
-    t.innerHTML = html.trim();
-    return t.content.firstElementChild;
-  }
-
   function parseHash() {
     var hash = location.hash.replace(/^#\/?/, "");
     if (!hash) return { view: "start" };
     var parts = hash.split("/");
-    if (parts[0] === "rad" && parts[1]) return { view: "rad", id: parts[1] };
-    if (parts[0] === "station" && parts[1] && parts[2]) return { view: "station", id: parts[1], key: parts[2] };
-    if (parts[0] === "plan" && parts[1]) return { view: "plan", id: parts[1] };
-    if (parts[0] === "export" && parts[1]) return { view: "export", id: parts[1] };
+    if (parts[0] === "init" && parts[1]) {
+      var id = parts[1];
+      if (parts[2] === "intention") return { view: "intention", id: id };
+      if (parts[2] === "export") return { view: "export", id: id };
+      if (parts[2] === "episode" && parts[3] && parts[4]) {
+        var nr = parseInt(parts[3], 10);
+        if (parts[4] === "realize") return { view: "realize", id: id, nr: nr };
+        return { view: "loop", id: id, nr: nr, loop: parts[4] };
+      }
+      return { view: "overview", id: id };
+    }
     return { view: "start" };
   }
 
@@ -37,152 +46,69 @@
     location.hash = hash;
   }
 
-  function stationWeight(stState) {
-    return (AVERA_DATA.STATUS[(stState && stState.status) || "offen"] || AVERA_DATA.STATUS.offen).weight;
+  function resetDesignDraft(scopeKey) {
+    designDraft = { scopeKey: scopeKey, objekte: [], name: "", notiz: "" };
   }
 
-  function computeBalance(initiative) {
-    var dims = AVERA_DATA.DIMENSIONS;
-    var result = {};
-    Object.keys(dims).forEach(function (dimKey) {
-      var stations = dims[dimKey].stations;
-      var sum = 0;
-      stations.forEach(function (k) {
-        sum += stationWeight(initiative.stations[k]);
-      });
-      result[dimKey] = sum / stations.length;
+  // ---------- Ableitungen für die Rad-Übersicht ----------
+
+  function buildWheelAdapter(init, episode) {
+    var adapter = { stations: {} };
+    AVERA_DATA.ELEMENTS.forEach(function (elm) {
+      adapter.stations[elm.key] = { status: AVERA_STORE.deriveElementStatus(episode, elm.key) };
     });
-    return result;
+    adapter.stations.intention = { status: AVERA_STORE.deriveIntentionStatus(init) };
+    return adapter;
   }
 
-  function computeOverallProgress(initiative) {
-    var keys = Object.keys(initiative.stations);
-    var sum = 0;
-    keys.forEach(function (k) {
-      sum += stationWeight(initiative.stations[k]);
-    });
-    return keys.length ? sum / keys.length : 0;
-  }
-
-  // Erkennt ein Ungleichgewicht der drei Dimensionen als benanntes
-  // Fehlmuster (statt nur "schwächste Dimension"), analog zur AVERA-Regel:
-  // die schwächste Dimension setzt die Grenze der Wirksamkeit.
-  function detectPathology(balance) {
-    var w = balance.wollen, d = balance.duerfen, k = balance.koennen;
-    var entries = [
-      { key: "wollen", value: w },
-      { key: "duerfen", value: d },
-      { key: "koennen", value: k }
-    ].sort(function (a, b) { return a.value - b.value; });
-    var weakest = entries[0];
-    var othersAvg = (entries[1].value + entries[2].value) / 2;
-    var gap = othersAvg - weakest.value;
-
-    if (gap < 0.3 || othersAvg < 0.4) return null;
-
-    if (weakest.key === "duerfen") {
-      return { weak: "Dürfen", label: "Frustration & Widerstand", text: "Können und Wollen sind da, aber es fehlt der Spielraum, danach zu handeln (Dürfen) – ein klassischer Nährboden für Frustration und Widerstand." };
+  function firstUnfinishedLoop(episode) {
+    for (var i = 0; i < LOOP_ORDER.length; i++) {
+      if (!episode.loops[LOOP_ORDER[i]].gate) return LOOP_ORDER[i];
     }
-    if (weakest.key === "koennen") {
-      return { weak: "Können", label: "Leichtsinn & Überforderung", text: "Dürfen und Wollen sind da, aber es fehlt die Befähigung (Können) – das erzeugt Leichtsinn und Überforderung statt souveränes Handeln." };
-    }
-    return { weak: "Wollen", label: "Dienst nach Vorschrift", text: "Können und Dürfen sind da, aber es fehlt die innere Bereitschaft (Wollen) – das führt zu Dienst nach Vorschrift statt echtem Engagement." };
+    return null;
   }
 
-  function computeGeisterfahrtWarnings(initiative) {
-    var seq = AVERA_DATA.SEQUENCE;
-    var warnings = [];
-    for (var i = 1; i < seq.length; i++) {
-      var prevKey = seq[i - 1];
-      var currKey = seq[i];
-      var prevW = stationWeight(initiative.stations[prevKey]);
-      var currW = stationWeight(initiative.stations[currKey]);
-      if (prevW === 0 && currW > 0) {
-        warnings.push({
-          prev: AVERA_DATA.getStation(prevKey),
-          curr: AVERA_DATA.getStation(currKey)
-        });
-      }
-    }
-    return warnings;
+  function loopDotsHtml(id, nr, currentLoop, episode) {
+    return (
+      '<div class="loop-dots">' +
+      LOOP_ORDER.map(function (lk, i) {
+        var loop = AVERA_DATA.getLoop(lk);
+        var cls = "loop-dot";
+        if (lk === currentLoop) cls += " active";
+        if (episode.loops[lk].gate) cls += " done";
+        return (
+          '<a class="' + cls + '" href="#/init/' + id + "/episode/" + nr + "/" + lk + '" title="' +
+          escapeHtml(loop.label) + '">' +
+          '<span class="loop-dot-num">' + (i + 1) + "</span>" +
+          '<span class="loop-dot-label">' + escapeHtml(loop.label) + "</span>" +
+          "</a>"
+        );
+      }).join("") +
+      "</div>"
+    );
   }
 
-  // Baut den zusammengeführten, priorisierten Aktionsplan über alle acht
-  // Elemente: Reihenfolge = Drehrichtung des Rads (Intention zuerst), pro
-  // Element zuerst die dringenden (Score 0), dann die zu beobachtenden
-  // (Score 1) Empfehlungen. Raum & Zeit steht als Grundvoraussetzung am
-  // Ende, weil es alle anderen Elemente erst wirksam werden lässt.
-  function buildActionPlan(initiative) {
-    var mainSteps = [];
-    var raumzeitSteps = [];
-    var totalQuestions = 0;
-    var answeredQuestions = 0;
+  // ---------- Start ----------
 
-    function collect(stationKey, target) {
-      var station = AVERA_DATA.getStation(stationKey);
-      var stState = initiative.stations[stationKey] || { diagnose: {} };
-      var diagnoseAnswers = stState.diagnose || {};
-      totalQuestions += station.diagnose.length;
-
-      var results = station.diagnose
-        .map(function (frage, qi) {
-          var oi = diagnoseAnswers[qi];
-          if (oi === undefined || oi === null || !frage.optionen[oi]) return null;
-          answeredQuestions++;
-          return { qi: qi, frage: frage.frage, opt: frage.optionen[oi] };
-        })
-        .filter(function (r) { return r !== null; });
-
-      if (!results.length) {
-        target.push({
-          type: "diagnose",
-          stationKey: stationKey,
-          stationTitle: station.title
-        });
-        return;
-      }
-
-      results
-        .filter(function (r) { return r.opt.score < 2; })
-        .sort(function (a, b) { return a.opt.score - b.opt.score; })
-        .forEach(function (r) {
-          target.push({
-            type: "action",
-            stationKey: stationKey,
-            stationTitle: station.title,
-            stepKey: stationKey + ":" + r.qi,
-            text: r.opt.empfehlung,
-            severity: r.opt.score === 0 ? "hoch" : "mittel"
-          });
-        });
-    }
-
-    AVERA_DATA.SEQUENCE.forEach(function (key) { collect(key, mainSteps); });
-    collect("raumzeit", raumzeitSteps);
-
-    return {
-      mainSteps: mainSteps,
-      raumzeitSteps: raumzeitSteps,
-      totalQuestions: totalQuestions,
-      answeredQuestions: answeredQuestions
-    };
+  function episodeStatusLabel(init) {
+    var ep = AVERA_STORE.currentEpisode(init);
+    if (ep.realized) return "Episode " + ep.nr + " abgeschlossen";
+    var loopKey = firstUnfinishedLoop(ep);
+    if (!loopKey) return "Episode " + ep.nr + " · bereit für Realisierung";
+    return "Episode " + ep.nr + " · " + AVERA_DATA.getLoop(loopKey).label;
   }
-
-  // ---------- Views ----------
 
   function renderStart() {
     var initiatives = AVERA_STORE.list();
     var listHtml = initiatives.length
       ? initiatives
           .map(function (init) {
-            var progress = Math.round(computeOverallProgress(init) * 100);
             return (
               '<li class="initiative-row">' +
-              '<a class="initiative-link" href="#/rad/' + encodeURIComponent(init.id) + '">' +
+              '<a class="initiative-link" href="#/init/' + encodeURIComponent(init.id) + '">' +
               '<span class="initiative-name">' + escapeHtml(init.name) + "</span>" +
               (init.org ? '<span class="initiative-org">' + escapeHtml(init.org) + "</span>" : "") +
-              '<span class="initiative-progress"><span class="initiative-progress-bar" style="width:' + progress + '%"></span></span>' +
-              '<span class="initiative-progress-num">' + progress + "% im Alltag verankert</span>" +
+              '<span class="initiative-progress-num">' + escapeHtml(episodeStatusLabel(init)) + "</span>" +
               "</a>" +
               '<button class="btn-icon-delete" data-delete-id="' + init.id + '" title="Löschen" aria-label="Initiative löschen">✕</button>' +
               "</li>"
@@ -195,11 +121,11 @@
       '<div class="view view-start">' +
       '<header class="hero">' +
       "<h1>AVERA – das Rad ins Rollen bringen</h1>" +
-      "<p>Diese App ist ein interaktiver Coach für euer Veränderungsvorhaben: Sie diagnostiziert gemeinsam mit euch, wie tragfähig jedes der sieben AVERA-Gestaltungselemente aktuell ist, und leitet daraus konkrete, priorisierte Handlungsempfehlungen ab. Das Ziel ist kein ausgefülltes Formular, sondern ein belastbarer, Schritt-für-Schritt-Aktionsplan, mit dem ihr eure Initiative auf den Boden bringt – in der Reihenfolge, die AVERA für wirksame Veränderung vorschlägt: nicht bei der sichtbarsten Maßnahme beginnen, sondern bei der Intention.</p>" +
+      "<p>Diese App begleitet euch durch den AVERA-Workflow: Veränderung entsteht nicht in einem einmaligen Durchlauf, sondern in <strong>Episoden</strong> – jede Episode ist eine volle Drehung im Rad mit vier Schleifen: <strong>Beobachten → Verstehen → Entwerfen → Komponieren</strong>. Am Ende jeder Episode wird die entwickelte Gestaltung in die Welt gebracht; die nächste Episode setzt dort an, wo die Organisation tatsächlich angekommen ist. Die Intention bleibt dabei die stabile Richtung – nicht der Weg.</p>" +
       '<div class="how-it-works">' +
-      '<div class="how-step"><span class="how-num">1</span><div><strong>Diagnostizieren</strong><p>Für jedes der acht Elemente beantwortet ihr drei kurze Fragen zum Ist-Zustand – ehrlich, nicht wunschgemäß.</p></div></div>' +
-      '<div class="how-step"><span class="how-num">2</span><div><strong>Empfehlungen erhalten</strong><p>Aus jeder Antwort entsteht sofort eine konkrete, auf euch zugeschnittene Handlungsempfehlung.</p></div></div>' +
-      '<div class="how-step"><span class="how-num">3</span><div><strong>Aktionsplan umsetzen</strong><p>Sobald genug diagnostiziert ist, bündelt die App alles zu einem priorisierten Schritt-für-Schritt-Plan für die ganze Initiative.</p></div></div>' +
+      '<div class="how-step"><span class="how-num">1</span><div><strong>Beobachten &amp; Verstehen</strong><p>Ihr erfasst den Status quo je Gestaltungselement und entwickelt ein plausibles Wirkmodell – noch ohne zu gestalten.</p></div></div>' +
+      '<div class="how-step"><span class="how-num">2</span><div><strong>Entwerfen &amp; Komponieren</strong><p>Aus einem Katalog von Artefakten, Soziofakten, Mentefakten und Ethofakten baut ihr Gestaltungsimpulse und verdichtet sie zu einer minimal hinreichenden Architektur.</p></div></div>' +
+      '<div class="how-step"><span class="how-num">3</span><div><strong>In die Welt bringen</strong><p>Die Architektur wird realisiert. Was sich dabei tatsächlich zeigt, ist der Ausgangspunkt der nächsten Episode.</p></div></div>' +
       "</div>" +
       "</header>" +
 
@@ -208,7 +134,7 @@
       '<form id="new-initiative-form" class="inline-form">' +
       '<input type="text" id="new-initiative-name" placeholder="Titel des Vorhabens (z. B. „Führung neu denken“)" required />' +
       '<input type="text" id="new-initiative-org" placeholder="Unternehmen / Team (optional)" />' +
-      '<button type="submit" class="btn btn-primary">Rad anlegen</button>' +
+      '<button type="submit" class="btn btn-primary">Initiative anlegen</button>' +
       "</form>" +
       "</section>" +
 
@@ -219,10 +145,10 @@
 
       '<section class="panel about-panel">' +
       "<h2>Worauf AVERA hinweist</h2>" +
-      '<p><strong>Die Geisterfahrt:</strong> Viele Change-Vorhaben scheitern, weil dort gestaltet wird, wo Veränderung sichtbar wird (Training, Kommunikation, Tools) – nicht dort, wo sie entsteht. Diese App macht sichtbar, wenn eine sichtbare Maßnahme vorausläuft, während ihre Grundlage im Rad noch offen ist.</p>' +
-      '<p><strong>Veränderung oder Lernangebot? Beides – kein Entweder-Oder:</strong> AVERA behandelt Change und Lernen als gemeinsame Gestaltungsaufgabe. Intention, Story, Organisation und Führung (Elemente 00–03) treibt meist das Business, Entdecken, Peers und Methoden (04–06) meist Corporate Learning/HR – Raum &amp; Zeit (07) verbindet beide. Jedes Element im Rad zeigt seine Sphäre, damit klar bleibt, wer gerade am Zug ist.</p>' +
-      '<p><strong>Kein lineares Projekt, sondern ein Rad:</strong> Alle sieben Gestaltungselemente wirken gleichzeitig. Kein Element muss perfekt sein – bleibt eines aber dauerhaft unterentwickelt, verliert das ganze System an Wirkung.</p>' +
-      '<p class="source-note">Grundlage: AVERA White Paper 2.0/3.1, Corporate Learning Community Österreich (#CLCA), CC BY-SA 4.0.</p>' +
+      '<p><strong>Die Geisterfahrt:</strong> Viele Change-Vorhaben scheitern, weil vorschnell von einer Beobachtung zu einer vertrauten Maßnahme gesprungen wird – ohne Verstehen und Entwerfen dazwischen. Die vier Schleifen sind gerichtet, aber rekursiv: Fehlt die Grundlage, geht es zurück.</p>' +
+      '<p><strong>Veränderung oder Lernangebot? Beides – kein Entweder-Oder:</strong> AVERA behandelt Change und Lernen als gemeinsame Gestaltungsaufgabe. Story, Organisation und Führung treibt meist das Business, Entdecken, Peers und Methoden meist Corporate Learning/HR – Raum &amp; Zeit verbindet beide. Jedes Element zeigt seine Sphäre, damit klar bleibt, wer gerade am Zug ist.</p>' +
+      '<p><strong>Hinreichend statt vollständig:</strong> AVERA strebt keine vollständige Erfassung der Wirklichkeit an, sondern eine für diese Episode, unter den gegenwärtigen Bedingungen tragfähige Grundlage für den nächsten Schritt.</p>' +
+      '<p class="source-note">Grundlage: AVERA White Paper 2.0, Workflow „Episode &amp; Schleife“ und die Fragen-/4Fakte-Matrix, Corporate Learning Community Österreich (#CLCA), CC BY-SA 4.0.</p>' +
       "</section>" +
       "</div>";
 
@@ -232,7 +158,7 @@
       var org = document.getElementById("new-initiative-org").value.trim();
       if (!name) return;
       var init = AVERA_STORE.create(name, org);
-      navigate("#/rad/" + init.id);
+      navigate("#/init/" + init.id);
     });
 
     root.querySelectorAll("[data-delete-id]").forEach(function (btn) {
@@ -249,46 +175,55 @@
     });
   }
 
-  function renderRad(id) {
+  // ---------- Initiative-Übersicht ----------
+
+  function renderOverview(id) {
     var init = AVERA_STORE.get(id);
     if (!init) {
       navigate("#/");
       return;
     }
-    var balance = computeBalance(init);
-    var overall = Math.round(computeOverallProgress(init) * 100);
-    var warnings = computeGeisterfahrtWarnings(init);
-    var pathology = detectPathology(balance);
+    var ep = AVERA_STORE.currentEpisode(init);
+    var adapter = buildWheelAdapter(init, ep);
 
-    var dimBars = Object.keys(AVERA_DATA.DIMENSIONS)
-      .map(function (dimKey) {
-        var dim = AVERA_DATA.DIMENSIONS[dimKey];
-        var pct = Math.round(balance[dimKey] * 100);
-        return (
-          '<div class="dim-bar-row">' +
-          '<div class="dim-bar-label">' + dim.label + '<span class="dim-bar-sub">' + dim.subtitle + "</span></div>" +
-          '<div class="dim-bar-track"><div class="dim-bar-fill dim-' + dimKey + '" style="width:' + pct + '%"></div></div>' +
-          '<div class="dim-bar-pct">' + pct + "%</div>" +
-          "</div>"
-        );
-      })
-      .join("");
-
-    var warningsHtml = warnings.length
-      ? '<div class="warning-box"><strong>⚠ Geisterfahrt-Check:</strong> ' +
-        warnings
-          .map(function (w) {
+    var pastEpisodes = init.episodes.filter(function (e) { return e.nr !== ep.nr || e.realized; });
+    var historyHtml = pastEpisodes.length
+      ? pastEpisodes
+          .map(function (e) {
             return (
-              '<div class="warning-item">„' + escapeHtml(w.curr.title) + '“ ist schon in Bearbeitung, aber „' +
-              escapeHtml(w.prev.title) + '“ – ein Schritt davor im Rad – ist noch offen. ' +
-              "Prüft, ob hier am sichtbaren Ende statt an der Ursache gestaltet wird.</div>"
+              '<div class="episode-card' + (e.realized ? " realized" : "") + '">' +
+              '<div class="episode-card-head"><strong>Episode ' + e.nr + "</strong>" +
+              (e.realized ? '<span class="episode-card-date">realisiert am ' + new Date(e.realized.at).toLocaleDateString("de-AT") + "</span>" : '<span class="episode-card-date">läuft noch</span>') +
+              "</div>" +
+              (e.realized && e.realized.notiz ? "<p>" + escapeHtml(e.realized.notiz) + "</p>" : "") +
+              '<a class="btn btn-ghost btn-small" href="#/init/' + id + "/episode/" + e.nr + '/observe">Ansehen</a>' +
+              "</div>"
             );
           })
-          .join("") +
-        "</div>"
-      : '<div class="ok-box">✓ Keine Geisterfahrt erkennbar – die Bearbeitung folgt bislang der Wirkungskette.</div>';
+          .join("")
+      : "";
 
-    var plan = buildActionPlan(init);
+    var ctaHtml;
+    if (ep.realized) {
+      ctaHtml =
+        '<div class="ok-box">✓ Episode ' + ep.nr + " abgeschlossen am " + new Date(ep.realized.at).toLocaleDateString("de-AT") + ".</div>" +
+        '<button id="next-episode-btn" class="btn btn-primary btn-block">Nächste Episode starten</button>';
+    } else {
+      var loopKey = firstUnfinishedLoop(ep);
+      if (loopKey) {
+        var loop = AVERA_DATA.getLoop(loopKey);
+        ctaHtml =
+          '<a class="btn btn-primary btn-block" href="#/init/' + id + "/episode/" + ep.nr + "/" + loopKey + '">' +
+          "Weiter in Episode " + ep.nr + ": " + escapeHtml(loop.label) + " →</a>";
+      } else {
+        ctaHtml =
+          '<a class="btn btn-primary btn-block" href="#/init/' + id + "/episode/" + ep.nr + '/realize">Bereit für die Realisierung →</a>';
+      }
+    }
+
+    var intentionHint = init.intention.statement && init.intention.statement.trim()
+      ? '<blockquote class="intention-statement">„' + escapeHtml(init.intention.statement) + "“</blockquote>"
+      : '<p class="hint-text">Die Intention ist noch nicht verdichtet – das ist die Grundlage, an der sich alle Episoden orientieren.</p>';
 
     root.innerHTML =
       '<div class="view view-rad">' +
@@ -302,31 +237,32 @@
       '<div class="rad-layout">' +
       '<div id="wheel-container" class="wheel-container"></div>' +
       '<aside class="rad-sidebar">' +
-      '<div class="overall-progress"><strong>' + overall + "%</strong> des Rads lebt bereits im Alltag</div>" +
-      '<div class="dim-bars">' + dimBars +
-      (pathology ? '<p class="pathology-note">⚠ ' + escapeHtml(pathology.text) + "</p>" : "") +
+      '<div class="intention-box">' +
+      '<span class="ziel-tag">Intention</span>' +
+      intentionHint +
+      '<a class="btn btn-ghost btn-small" href="#/init/' + id + '/intention">Intention bearbeiten →</a>' +
       "</div>" +
-      "<p class='sphere-legend'>Intention–Führung: Business · Entdecken–Methoden: Corporate Learning · Raum &amp; Zeit: beide gemeinsam</p>" +
-      warningsHtml +
-      '<button id="plan-btn" class="btn btn-primary btn-block">Aktionsplan ansehen</button>' +
-      '<p class="plan-progress-hint">' + plan.answeredQuestions + " / " + plan.totalQuestions + " Diagnosefragen beantwortet</p>" +
+      "<p class='sphere-legend'>Story–Führung: Business · Entdecken–Methoden: Corporate Learning · Raum &amp; Zeit: beide gemeinsam</p>" +
+      ctaHtml +
       '<button id="export-btn" class="btn btn-secondary btn-block">Gestaltungsarchitektur exportieren</button>' +
       "</aside>" +
       "</div>" +
 
-      '<p class="wheel-hint">Klicke auf ein Segment des Rads, um es zu bearbeiten. Die Reihenfolge im Kreis ist die empfohlene Drehrichtung – kein starres Projektschema, sondern die Wirklogik, an der ihr euch orientieren könnt.</p>' +
+      '<p class="wheel-hint">Klicke auf ein Segment, um direkt in die aktuelle Episode zu springen. Eingefärbt ist, wie weit ein Element in der laufenden Episode bereits bearbeitet ist.</p>' +
+
+      (historyHtml ? '<section class="panel"><h2>Episoden-Historie</h2><div class="episode-history">' + historyHtml + "</div></section>" : "") +
       "</div>";
 
-    AVERA_WHEEL.render(document.getElementById("wheel-container"), init, function (key) {
-      navigate("#/station/" + init.id + "/" + key);
-    });
-
-    document.getElementById("plan-btn").addEventListener("click", function () {
-      navigate("#/plan/" + init.id);
+    AVERA_WHEEL.render(document.getElementById("wheel-container"), adapter, function (key) {
+      if (key === "intention") {
+        navigate("#/init/" + id + "/intention");
+        return;
+      }
+      navigate("#/init/" + id + "/episode/" + ep.nr + "/observe");
     });
 
     document.getElementById("export-btn").addEventListener("click", function () {
-      navigate("#/export/" + init.id);
+      navigate("#/init/" + id + "/export");
     });
 
     document.getElementById("edit-initiative-btn").addEventListener("click", function () {
@@ -335,407 +271,503 @@
       var org = prompt("Unternehmen / Team", init.org || "");
       if (org === null) return;
       AVERA_STORE.rename(init.id, name.trim() || init.name, org.trim());
-      renderRad(id);
+      renderOverview(id);
     });
-  }
 
-  function statusBadgeHtml(status) {
-    var s = AVERA_DATA.STATUS[status] || AVERA_DATA.STATUS.offen;
-    return '<span class="status-badge status-' + status + '">' + s.label + "</span>";
-  }
-
-  // Frage, Antwort-Chips und die daraus folgende Empfehlung erscheinen als
-  // ein zusammenhängender Block direkt untereinander (statt in getrennten
-  // Panels), damit Diagnose und Empfehlung ohne Bruch ineinander übergehen.
-  function diagnoseHtml(station, stState) {
-    var answers = stState.diagnose || {};
-    return station.diagnose
-      .map(function (frage, qi) {
-        var chosen = answers[qi];
-        var optsHtml = frage.optionen
-          .map(function (opt, oi) {
-            var active = chosen === oi ? " active" : "";
-            return (
-              '<button type="button" class="chip diag-chip' + active + '" data-diag-q="' + qi + '" data-diag-opt="' + oi + '">' +
-              escapeHtml(opt.label) +
-              "</button>"
-            );
-          })
-          .join("");
-
-        var empfehlungHtml = "";
-        if (chosen !== undefined && chosen !== null && frage.optionen[chosen]) {
-          var opt = frage.optionen[chosen];
-          var sevCls = opt.score === 0 ? "severity-hoch" : opt.score === 1 ? "severity-mittel" : "severity-gut";
-          var tag = opt.score === 0 ? "Dringend" : opt.score === 1 ? "Im Blick behalten" : "Läuft bereits gut";
-          empfehlungHtml =
-            '<div class="empfehlung-card inline ' + sevCls + '">' +
-            '<span class="empfehlung-tag">' + tag + "</span>" +
-            '<p class="empfehlung-text">' + escapeHtml(opt.empfehlung) + "</p>" +
-            "</div>";
-        }
-
-        return (
-          '<div class="diagnose-item">' +
-          '<p class="diagnose-frage">' + escapeHtml(frage.frage) + "</p>" +
-          '<div class="chip-row">' + optsHtml + "</div>" +
-          empfehlungHtml +
-          "</div>"
-        );
-      })
-      .join("");
-  }
-
-  function diagnoseAnsweredCount(station, stState) {
-    var answers = stState.diagnose || {};
-    return station.diagnose.filter(function (frage, qi) {
-      var oi = answers[qi];
-      return oi !== undefined && oi !== null && !!frage.optionen[oi];
-    }).length;
-  }
-
-  function renderStation(id, key) {
-    var init = AVERA_STORE.get(id);
-    var station = AVERA_DATA.getStation(key);
-    if (!init || !station) {
-      navigate("#/rad/" + id);
-      return;
+    var nextBtn = document.getElementById("next-episode-btn");
+    if (nextBtn) {
+      nextBtn.addEventListener("click", function () {
+        var next = AVERA_STORE.startNextEpisode(id);
+        navigate("#/init/" + id + "/episode/" + next.nr + "/observe");
+      });
     }
-    var stState = init.stations[key] || { status: "offen", diagnose: {}, checked: [], answers: {}, objekte: [], notiz: "" };
-    var answeredCount = diagnoseAnsweredCount(station, stState);
-    var totalCount = station.diagnose.length;
-    var sphere = AVERA_DATA.SPHERES[station.sphere];
+  }
 
-    var checklistHtml = station.wasZuTun
-      .map(function (item, i) {
-        var checked = (stState.checked || []).indexOf(i) !== -1;
-        return (
-          '<li class="checklist-item">' +
-          '<label><input type="checkbox" data-check-index="' + i + '" ' + (checked ? "checked" : "") + " />" +
-          "<span>" + escapeHtml(item) + "</span></label></li>"
-        );
-      })
-      .join("");
+  // ---------- Intention ----------
 
-    var hinweiseHtml = station.hinweise.map(function (h) {
-      return "<li>" + escapeHtml(h) + "</li>";
-    }).join("");
-
-    var fallenHtml = station.fallen
-      .map(function (f) {
-        return '<div class="falle-card"><strong>' + escapeHtml(f.name) + "</strong><p>" + escapeHtml(f.text) + "</p></div>";
-      })
-      .join("");
-
-    var beobachtungHtml = station.beobachtung.length
-      ? "<ul>" + station.beobachtung.map(function (b) { return "<li>" + escapeHtml(b) + "</li>"; }).join("") + "</ul>"
-      : "";
-
-    var reflexionHtml = station.reflexionsfragen
-      .map(function (frage, i) {
-        var antwort = (stState.answers && stState.answers[i]) || "";
+  function intentionPhaseHtml(id, phaseKey, values) {
+    var phase = AVERA_DATA.INTENTION_PHASEN[phaseKey];
+    var items = phase.fragen
+      .map(function (fr, i) {
+        var val = values[i] || "";
         return (
           '<div class="reflexion-item">' +
-          '<label class="reflexion-label">' + escapeHtml(frage) + "</label>" +
-          '<textarea data-answer-index="' + i + '" rows="2" placeholder="Antwort im Team festhalten…">' + escapeHtml(antwort) + "</textarea>" +
+          '<label class="reflexion-label"><strong>' + escapeHtml(fr.kategorie) + ":</strong> " + escapeHtml(fr.frage) + "</label>" +
+          '<textarea data-intention-phase="' + phaseKey + '" data-intention-index="' + i + '" rows="2" placeholder="Notiz…">' + escapeHtml(val) + "</textarea>" +
           "</div>"
         );
       })
       .join("");
-
-    var selectedObjekte = stState.objekte || [];
-    var OBJEKT_TYP_LABEL = { artefakt: "Artefakte — das Sichtbare", soziofakt: "Soziofakte — das Praktizierte", mentefakt: "Mentefakte — das Geglaubte" };
-    var objekteHtml = ["artefakt", "soziofakt", "mentefakt"]
-      .map(function (typ) {
-        var items = station.objekte.filter(function (o) { return o.typ === typ; });
-        if (!items.length) return "";
-        var cards = items
-          .map(function (o) {
-            var active = selectedObjekte.indexOf(o.name) !== -1 ? " active" : "";
-            return (
-              '<button type="button" class="objekt-card' + active + '" data-objekt="' + escapeHtml(o.name) + '">' +
-              '<span class="objekt-card-name">' + escapeHtml(o.name) + "</span>" +
-              '<span class="objekt-card-desc">' + escapeHtml(o.beschreibung) + "</span>" +
-              "</button>"
-            );
-          })
-          .join("");
-        return '<div class="objekt-group"><div class="objekt-aspekt">' + OBJEKT_TYP_LABEL[typ] + '</div><div class="objekt-card-row">' + cards + "</div></div>";
-      })
-      .join("");
-
-    var customObjekte = selectedObjekte.filter(function (o) {
-      return !station.objekte.some(function (item) { return item.name === o; });
-    });
-    var customChipsHtml = customObjekte
-      .map(function (o) {
-        return '<button type="button" class="chip active" data-objekt="' + escapeHtml(o) + '">' + escapeHtml(o) + "</button>";
-      })
-      .join("");
-
-    var seqIndex = AVERA_DATA.SEQUENCE.indexOf(key);
-    var prevKey = seqIndex > 0 ? AVERA_DATA.SEQUENCE[seqIndex - 1] : null;
-    var nextKey = seqIndex >= 0 && seqIndex < AVERA_DATA.SEQUENCE.length - 1 ? AVERA_DATA.SEQUENCE[seqIndex + 1] : null;
-    if (key === "methoden") nextKey = "raumzeit";
-    if (key === "raumzeit") prevKey = "methoden";
-
-    var allAnswered = answeredCount === totalCount;
-
-    root.innerHTML =
-      '<div class="view view-station">' +
-      '<a href="#/rad/' + id + '" class="back-link">← Zurück zum Rad</a>' +
-      '<header class="station-header">' +
-      '<div class="station-tags"><span class="station-num">' + escapeHtml(station.num) + "</span>" +
-      '<span class="sphere-tag sphere-' + station.sphere + '">' + escapeHtml(sphere.label) + "</span></div>" +
-      "<h1>" + escapeHtml(station.title) + "</h1>" +
-      '<p class="station-teaser">' + escapeHtml(station.teaser) + "</p>" +
-      '<div class="status-line">' + statusBadgeHtml(stState.status) +
-      '<span class="diagnose-progress">' + answeredCount + " / " + totalCount + " Fragen beantwortet</span></div>" +
-      "</header>" +
-
-      '<p class="station-zitat station-zitat-top">„' + escapeHtml(station.zitat.text) + '“ — ' + escapeHtml(station.zitat.autor) + "</p>" +
-
-      '<p class="station-intro">' + escapeHtml(station.intro) + "</p>" +
-
-      '<div class="ziel-box"><span class="ziel-tag">Ziel dieses Elements</span><p>' + escapeHtml(station.ziel) + "</p></div>" +
-
-      "<details class='reference-details'>" +
-      "<summary>Grundsätzliches &amp; Theorie zu diesem Element</summary>" +
-      "<div class='details-body'>" +
-
-      "<div class='subsection'>" +
-      "<h2>Was ist grundsätzlich zu tun?</h2>" +
-      '<ul class="checklist">' + checklistHtml + "</ul>" +
-      "</div>" +
-
-      "<div class='subsection'>" +
-      "<h2>Hinweise zur Gestaltung</h2>" +
-      "<ul>" + hinweiseHtml + "</ul>" +
-      "</div>" +
-
-      "<div class='subsection'>" +
-      "<h2>Achtung Falle!</h2>" +
-      '<div class="fallen-grid">' + fallenHtml + "</div>" +
-      "</div>" +
-
-      (beobachtungHtml
-        ? "<div class='subsection'><h2>Beobachtungshinweise</h2>" + beobachtungHtml + "</div>"
-        : "") +
-
-      "<div class='subsection'>" +
-      "<h2>Freie Reflexion im Team</h2>" +
-      '<p class="kernfrage">Kernfrage: ' + escapeHtml(station.kernfrage) + "</p>" +
-      reflexionHtml +
-      "</div>" +
-
-      "<div class='subsection'>" +
-      "<h2>Notiz</h2>" +
-      '<textarea id="station-notiz" rows="3" placeholder="Freie Notizen zu diesem Element…">' + escapeHtml(stState.notiz || "") + "</textarea>" +
-      "</div>" +
-
-      "</div>" +
-      "</details>" +
-
+    return (
       '<section class="panel">' +
-      "<h2>Standortbestimmung → Empfehlung</h2>" +
-      "<p class='hint-text'>Beantwortet jede Frage so, wie es aktuell tatsächlich ist – die passende Empfehlung erscheint sofort darunter, und daraus berechnet sich der Status dieses Elements.</p>" +
-      diagnoseHtml(station, stState) +
-      "</section>" +
-
-      '<section class="panel">' +
-      "<h2>Konkrete Maßnahmen wählen</h2>" +
-      "<p class='hint-text'>Wirksame Gestaltung kombiniert alle drei Ebenen: etwas Sichtbares (Artefakt), etwas Praktiziertes (Soziofakt) und eine geteilte Überzeugung (Mentefakt). Wählt aus, was helfen könnte, oder ergänzt eigene.</p>" +
-      objekteHtml +
-      (customChipsHtml ? '<div class="objekt-group"><div class="objekt-aspekt">Eigene</div><div class="chip-row">' + customChipsHtml + "</div></div>" : "") +
-      '<form id="custom-objekt-form" class="inline-form small">' +
-      '<input type="text" id="custom-objekt-input" placeholder="Eigene Maßnahme hinzufügen…" />' +
-      '<button type="submit" class="btn btn-secondary">Hinzufügen</button>' +
-      "</form>" +
-      "</section>" +
-
-      '<div class="station-nav">' +
-      (prevKey ? '<a class="btn btn-ghost" href="#/station/' + id + "/" + prevKey + '">← ' + escapeHtml(AVERA_DATA.getStation(prevKey).title) + "</a>" : "<span></span>") +
-      (nextKey
-        ? '<a class="btn btn-primary btn-next" href="#/station/' + id + "/" + nextKey + '">' +
-          (allAnswered ? "Weiter zu " + escapeHtml(AVERA_DATA.getStation(nextKey).title) : escapeHtml(AVERA_DATA.getStation(nextKey).title)) +
-          " →</a>"
-        : '<a class="btn btn-primary btn-next" href="#/rad/' + id + '">Zum Gesamtüberblick →</a>') +
-      "</div>" +
-      "</div>";
-
-    // Event wiring
-    root.querySelectorAll("[data-diag-q]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var qIndex = parseInt(btn.getAttribute("data-diag-q"), 10);
-        var optIndex = parseInt(btn.getAttribute("data-diag-opt"), 10);
-        AVERA_STORE.setDiagnoseAnswer(id, key, qIndex, optIndex);
-        renderStation(id, key);
-      });
-    });
-
-    root.querySelectorAll("[data-check-index]").forEach(function (box) {
-      box.addEventListener("change", function () {
-        AVERA_STORE.toggleChecklist(id, key, parseInt(box.getAttribute("data-check-index"), 10), box.checked);
-      });
-    });
-
-    root.querySelectorAll("[data-answer-index]").forEach(function (ta) {
-      ta.addEventListener("blur", function () {
-        AVERA_STORE.setAnswer(id, key, parseInt(ta.getAttribute("data-answer-index"), 10), ta.value);
-      });
-    });
-
-    document.getElementById("station-notiz").addEventListener("blur", function (evt) {
-      AVERA_STORE.setNotiz(id, key, evt.target.value);
-    });
-
-    function bindObjektChips() {
-      root.querySelectorAll("[data-objekt]").forEach(function (chip) {
-        chip.addEventListener("click", function () {
-          var value = chip.getAttribute("data-objekt");
-          var current = (AVERA_STORE.get(id).stations[key].objekte || []).slice();
-          var idx = current.indexOf(value);
-          if (idx === -1) current.push(value);
-          else current.splice(idx, 1);
-          AVERA_STORE.setObjekte(id, key, current);
-          renderStation(id, key);
-        });
-      });
-    }
-    bindObjektChips();
-
-    document.getElementById("custom-objekt-form").addEventListener("submit", function (evt) {
-      evt.preventDefault();
-      var input = document.getElementById("custom-objekt-input");
-      var value = input.value.trim();
-      if (!value) return;
-      var current = (AVERA_STORE.get(id).stations[key].objekte || []).slice();
-      if (current.indexOf(value) === -1) current.push(value);
-      AVERA_STORE.setObjekte(id, key, current);
-      renderStation(id, key);
-    });
+      "<h2>" + escapeHtml(phase.leitfrage) + "</h2>" +
+      items +
+      "</section>"
+    );
   }
 
-  function renderPlan(id) {
+  function renderIntention(id) {
     var init = AVERA_STORE.get(id);
     if (!init) {
       navigate("#/");
       return;
     }
-    var plan = buildActionPlan(init);
-    var erledigt = init.planErledigt || {};
-    var balance = computeBalance(init);
-
-    var dimEntries = Object.keys(AVERA_DATA.DIMENSIONS)
-      .map(function (k) { return { key: k, dim: AVERA_DATA.DIMENSIONS[k], value: balance[k] }; })
-      .sort(function (a, b) { return a.value - b.value; });
-    var weakest = dimEntries[0];
-    var pathology = detectPathology(balance);
-
-    var allSteps = plan.mainSteps.concat(plan.raumzeitSteps);
-    var actionSteps = allSteps.filter(function (s) { return s.type === "action"; });
-    var openDiagnoseCount = allSteps.filter(function (s) { return s.type === "diagnose"; }).length;
-    var progressPct = plan.totalQuestions ? Math.round((plan.answeredQuestions / plan.totalQuestions) * 100) : 0;
-
-    var summaryHtml;
-    if (plan.answeredQuestions === 0) {
-      summaryHtml =
-        '<section class="panel plan-empty">' +
-        "<h2>Noch keine Diagnose</h2>" +
-        "<p>Beantwortet zuerst die Standortbestimmung in den einzelnen Elementen – beginnt am besten bei der Intention, dem Nullpunkt des Rads. Erst daraus kann die App einen belastbaren, maßgeschneiderten Plan ableiten.</p>" +
-        '<a class="btn btn-primary" href="#/station/' + id + '/intention">Jetzt mit Intention starten</a>' +
-        "</section>";
-    } else {
-      var summaryLines = [
-        plan.answeredQuestions + " von " + plan.totalQuestions + " Fragen beantwortet (" + progressPct + " %)."
-      ];
-      if (pathology) {
-        summaryLines.push(
-          "Muster erkannt: " + pathology.text
-        );
-      } else if (weakest) {
-        summaryLines.push(
-          'Euer größter Hebel liegt aktuell in der Dimension „' + weakest.dim.label + '“ (' + weakest.dim.subtitle + "), im Schnitt bei " + Math.round(weakest.value * 100) + " %."
-        );
-      }
-      if (openDiagnoseCount > 0) {
-        summaryLines.push(openDiagnoseCount + " von 8 Element" + (openDiagnoseCount === 1 ? "" : "en") + " sind noch gar nicht diagnostiziert.");
-      }
-      if (actionSteps.length === 0 && plan.answeredQuestions === plan.totalQuestions) {
-        summaryLines.push("Kein akuter Handlungsbedarf – alle diagnostizierten Elemente stehen stabil.");
-      }
-      summaryHtml =
-        '<section class="panel plan-summary">' +
-        "<h2>Zusammenfassung</h2>" +
-        "<p>" + summaryLines.map(escapeHtml).join(" ") + "</p>" +
-        (plan.answeredQuestions < plan.totalQuestions
-          ? '<p class="hint-text">Je vollständiger die Diagnose, desto präziser der Plan – ergänzt die fehlenden Elemente, sobald ihr könnt.</p>'
-          : "") +
-        "</section>";
-    }
-
-    var stepCounter = 1;
-
-    function renderStepList(steps) {
-      return steps
-        .map(function (step) {
-          if (step.type === "diagnose") {
+    var reflexionen = init.intention.reflexionen || [];
+    var reflexionHtml = reflexionen.length
+      ? '<section class="panel"><h2>Bisherige Reflexionen</h2>' +
+        reflexionen
+          .map(function (r) {
             return (
-              '<div class="plan-step plan-step-diagnose">' +
-              '<span class="plan-step-station-tag">' + escapeHtml(step.stationTitle) + "</span>" +
-              "<p>Noch nicht diagnostiziert – ohne Antworten lässt sich hier kein konkreter Schritt ableiten.</p>" +
-              '<a class="btn btn-secondary btn-small" href="#/station/' + id + "/" + step.stationKey + '">Jetzt diagnostizieren →</a>' +
+              '<div class="reflexion-item">' +
+              '<label class="reflexion-label">Episode ' + r.episodeNr + " · " + new Date(r.datum).toLocaleDateString("de-AT") + "</label>" +
+              "<p>" + escapeHtml(r.text) + "</p>" +
               "</div>"
             );
-          }
-          var n = stepCounter++;
-          var done = !!erledigt[step.stepKey];
-          return (
-            '<div class="plan-step' + (done ? " done" : "") + '">' +
-            '<label class="plan-step-check">' +
-            '<input type="checkbox" data-plan-step="' + escapeHtml(step.stepKey) + '" ' + (done ? "checked" : "") + " />" +
-            '<span class="plan-step-number">' + n + "</span>" +
-            "</label>" +
-            '<div class="plan-step-body">' +
-            '<div class="plan-step-meta">' +
-            '<span class="plan-step-station-tag">' + escapeHtml(step.stationTitle) + "</span>" +
-            '<span class="plan-step-severity severity-' + step.severity + '">' + (step.severity === "hoch" ? "Dringend" : "Wichtig") + "</span>" +
-            "</div>" +
-            '<p class="plan-step-text">' + escapeHtml(step.text) + "</p>" +
-            "</div></div>"
-          );
-        })
-        .join("");
-    }
-
-    var mainStepsHtml = plan.mainSteps.length
-      ? '<section class="panel"><h2>Schritt für Schritt</h2>' + renderStepList(plan.mainSteps) + "</section>"
-      : "";
-
-    var raumzeitHtml = plan.raumzeitSteps.length
-      ? '<section class="panel plan-raumzeit"><h2>Grundvoraussetzung prüfen: Raum &amp; Zeit</h2>' +
-        "<p class='hint-text'>Raum &amp; Zeit ist der Dreh- und Angelpunkt des Rads – ohne diese Voraussetzung verpuffen alle Schritte oben.</p>" +
-        renderStepList(plan.raumzeitSteps) +
+          })
+          .join("") +
         "</section>"
       : "";
 
     root.innerHTML =
-      '<div class="view view-plan">' +
-      '<a href="#/rad/' + id + '" class="back-link">← Zurück zum Rad</a>' +
-      "<h1>Aktionsplan: " + escapeHtml(init.name) + "</h1>" +
-      "<p class='station-intro'>Maßgeschneiderte, priorisierte Handlungsempfehlungen für die gesamte Initiative – abgeleitet aus eurer Standortbestimmung, in der Reihenfolge der AVERA-Wirkungskette.</p>" +
-      summaryHtml +
-      mainStepsHtml +
-      raumzeitHtml +
+      '<div class="view view-station">' +
+      '<a href="#/init/' + id + '" class="back-link">← Zurück zur Initiative</a>' +
+      "<header class='station-header'>" +
+      "<h1>Intention</h1>" +
+      "<p class='station-teaser'>Der Nullpunkt jeder Gestaltung – gibt Richtung, nicht den Weg.</p>" +
+      "</header>" +
+
+      '<div class="ziel-box">' +
+      '<span class="ziel-tag">Verdichtete Intention</span>' +
+      '<textarea id="intention-statement" rows="3" placeholder="Ein Satz: welches Verhalten soll für wen, in welchen Situationen, wozu wahrscheinlicher werden?">' + escapeHtml(init.intention.statement || "") + "</textarea>" +
+      "</div>" +
+
+      intentionPhaseHtml(id, "erarbeiten", init.intention.erarbeiten) +
+      intentionPhaseHtml(id, "schaerfen", init.intention.schaerfen) +
+      reflexionHtml +
       "</div>";
 
-    root.querySelectorAll("[data-plan-step]").forEach(function (box) {
-      box.addEventListener("change", function () {
-        AVERA_STORE.togglePlanStep(id, box.getAttribute("data-plan-step"), box.checked);
-        renderPlan(id);
+    document.getElementById("intention-statement").addEventListener("blur", function (evt) {
+      AVERA_STORE.setIntentionStatement(id, evt.target.value);
+    });
+
+    root.querySelectorAll("[data-intention-phase]").forEach(function (ta) {
+      ta.addEventListener("blur", function () {
+        var phase = ta.getAttribute("data-intention-phase");
+        var index = parseInt(ta.getAttribute("data-intention-index"), 10);
+        AVERA_STORE.setIntentionField(id, phase, index, ta.value);
       });
     });
   }
+
+  // ---------- Episode-Schleife ----------
+
+  function generalSectionHtml(episode, loopKey) {
+    var general = AVERA_DATA.LOOP_GENERAL_FRAGEN[loopKey];
+    var state = episode.loops[loopKey];
+    var fields = ["fokus", "wirkgefuege", "potenziale", "pruefung"];
+    var itemsHtml = fields
+      .map(function (fk) {
+        return (
+          '<div class="reflexion-item">' +
+          '<label class="reflexion-label">' + escapeHtml(general[fk]) + "</label>" +
+          '<textarea data-general-field="' + fk + '" rows="2" placeholder="Notiz…">' + escapeHtml(state.general[fk] || "") + "</textarea>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    return (
+      '<section class="panel">' +
+      "<h2>Übergeordnete Reflexion</h2>" +
+      "<p class='hint-text'>Diese Fragen gelten für die ganze Episode, unabhängig vom einzelnen Element.</p>" +
+      itemsHtml +
+      '<div class="gate-box">' +
+      '<label class="gate-check"><input type="checkbox" id="gate-checkbox" ' + (state.gate ? "checked" : "") + " />" +
+      "<span>" + escapeHtml(general.gate) + "</span></label>" +
+      '<textarea id="gate-notiz" rows="1" placeholder="Kurze Begründung (optional)…">' + escapeHtml(state.gateNotiz || "") + "</textarea>" +
+      "</div>" +
+      "</section>"
+    );
+  }
+
+  function elementAccordionHtml(episode, loopKey) {
+    return AVERA_DATA.ELEMENTS
+      .map(function (elm) {
+        var sphere = AVERA_DATA.SPHERES[elm.sphere];
+        var loopInfo = elm.loops[loopKey];
+        var text = episode.loops[loopKey].elemente[elm.key] || "";
+        var fragenHtml = loopInfo.fragen.map(function (f) { return "<li>" + escapeHtml(f) + "</li>"; }).join("");
+        return (
+          "<details class='reference-details element-details'" + (text.trim() ? " open" : "") + ">" +
+          "<summary><span class='sphere-tag sphere-" + elm.sphere + "'>" + escapeHtml(sphere.label) + "</span> " +
+          "<strong>" + escapeHtml(elm.title) + "</strong> — " + escapeHtml(loopInfo.leitfrage) + "</summary>" +
+          "<div class='details-body'>" +
+          "<ul class='fragen-liste'>" + fragenHtml + "</ul>" +
+          '<textarea data-element-note="' + elm.key + '" rows="3" placeholder="Notiz zu ' + escapeHtml(elm.title) + '…">' + escapeHtml(text) + "</textarea>" +
+          "</div>" +
+          "</details>"
+        );
+      })
+      .join("");
+  }
+
+  function fakteFilterBarHtml() {
+    var typOpts = AVERA_DATA.FAKTE_TYPEN
+      .map(function (t) {
+        return '<option value="' + t.key + '"' + (t.key === designFilter.typ ? " selected" : "") + ">" + escapeHtml(t.label) + " — " + escapeHtml(t.subtitle) + "</option>";
+      })
+      .join("");
+    var wsOpts = AVERA_DATA.WIRKSTUFEN
+      .map(function (w) {
+        return '<option value="' + w.key + '"' + (w.key === designFilter.wirkstufe ? " selected" : "") + ">" + escapeHtml(w.label) + "</option>";
+      })
+      .join("");
+    return (
+      '<div class="fakte-filter-bar">' +
+      '<label>Fakt-Typ<select id="fakte-typ-select">' + typOpts + "</select></label>" +
+      '<label>Wirkstufe<select id="fakte-wirkstufe-select">' + wsOpts + "</select></label>" +
+      "</div>"
+    );
+  }
+
+  function fakteCatalogHtml() {
+    var groups = AVERA_DATA.FAKTE[designFilter.typ][designFilter.wirkstufe];
+    return groups
+      .map(function (g) {
+        var chips = g.beispiele
+          .map(function (beispiel) {
+            var active = designDraft.objekte.some(function (o) {
+              return o.typ === designFilter.typ && o.wirkstufe === designFilter.wirkstufe && o.kategorie === g.kategorie && o.beispiel === beispiel;
+            });
+            return (
+              '<button type="button" class="chip fakte-chip' + (active ? " active" : "") + '" data-fakte-beispiel="' + escapeHtml(beispiel) + '" data-fakte-kategorie="' + escapeHtml(g.kategorie) + '">' +
+              escapeHtml(beispiel) +
+              "</button>"
+            );
+          })
+          .join("");
+        return '<div class="objekt-group"><div class="objekt-aspekt">' + escapeHtml(g.kategorie) + '</div><div class="chip-row">' + chips + "</div></div>";
+      })
+      .join("");
+  }
+
+  function draftObjekteHtml() {
+    if (!designDraft.objekte.length) return "<p class='hint-text'>Noch keine Gestaltungsobjekte für diesen Impuls ausgewählt.</p>";
+    return (
+      '<div class="chip-row">' +
+      designDraft.objekte
+        .map(function (o, i) {
+          return '<button type="button" class="chip active" data-draft-remove="' + i + '">' + escapeHtml(o.beispiel) + " ✕</button>";
+        })
+        .join("") +
+      "</div>"
+    );
+  }
+
+  function designSectionHtml(episode) {
+    var impulse = episode.loops.design.impulse;
+    var impulseHtml = impulse.length
+      ? impulse
+          .map(function (imp) {
+            var tags = imp.objekte.map(function (o) { return '<span class="impuls-objekt-tag">' + escapeHtml(o.beispiel) + "</span>"; }).join("");
+            return (
+              '<div class="impuls-card">' +
+              '<div class="impuls-card-head"><strong>' + escapeHtml(imp.name) + "</strong>" +
+              '<button type="button" class="btn-icon-delete" data-remove-impuls="' + imp.id + '" title="Löschen">✕</button></div>' +
+              '<div class="impuls-objekte">' + tags + "</div>" +
+              (imp.notiz ? "<p>" + escapeHtml(imp.notiz) + "</p>" : "") +
+              "</div>"
+            );
+          })
+          .join("")
+      : "<p class='hint-text'>Noch keine Gestaltungsimpulse gebaut.</p>";
+
+    return (
+      '<section class="panel">' +
+      "<h2>Gestaltungsobjekte sammeln</h2>" +
+      "<p class='hint-text'>Ein wirksamer Gestaltungsimpuls kombiniert idealerweise alle vier 4Fakte-Ebenen. Filtert nach Typ und Wirkstufe, klickt Beispiele an und bündelt sie zu einem benannten Impuls.</p>" +
+      fakteFilterBarHtml() +
+      '<div id="fakte-catalog">' + fakteCatalogHtml() + "</div>" +
+      "<h3>Ausgewählt für diesen Impuls</h3>" +
+      '<div id="draft-objekte">' + draftObjekteHtml() + "</div>" +
+      '<form id="impuls-form" class="inline-form small">' +
+      '<input type="text" id="impuls-name-input" placeholder="Name des Gestaltungsimpulses…" value="' + escapeHtml(designDraft.name) + '" />' +
+      '<button type="submit" class="btn btn-secondary">Impuls speichern</button>' +
+      "</form>" +
+      "<h3>Gesammelte Impulse dieser Episode</h3>" +
+      impulseHtml +
+      "</section>"
+    );
+  }
+
+  function architectSectionHtml(episode) {
+    var impulse = episode.loops.design.impulse;
+    var selected = episode.loops.architect.ausgewaehlt || [];
+    if (!impulse.length) {
+      return (
+        '<section class="panel">' +
+        "<h2>Architektur komponieren</h2>" +
+        "<p class='hint-text'>In der Design-Schleife wurden noch keine Gestaltungsimpulse gebaut. Geht zurück zu Entwerfen, um Impulse zu sammeln.</p>" +
+        "</section>"
+      );
+    }
+    var itemsHtml = impulse
+      .map(function (imp) {
+        var checked = selected.indexOf(imp.id) !== -1;
+        var tags = imp.objekte.map(function (o) { return '<span class="impuls-objekt-tag">' + escapeHtml(o.beispiel) + "</span>"; }).join("");
+        return (
+          '<label class="impuls-select-row">' +
+          '<input type="checkbox" data-select-impuls="' + imp.id + '" ' + (checked ? "checked" : "") + " />" +
+          '<span><strong>' + escapeHtml(imp.name) + "</strong><br />" + tags + "</span>" +
+          "</label>"
+        );
+      })
+      .join("");
+    return (
+      '<section class="panel">' +
+      "<h2>Architektur komponieren</h2>" +
+      "<p class='hint-text'>So wenig wie möglich, so viel wie nötig: Wählt die Impulse aus, denen ihr unter den gegenwärtigen Bedingungen die größte Wirkwahrscheinlichkeit zuschreibt – und die sich gegenseitig stützen statt widersprechen.</p>" +
+      itemsHtml +
+      "<h3>Begründung</h3>" +
+      '<textarea id="architect-begruendung" rows="3" placeholder="Warum sind genau diese Impulse jetzt hinreichend?">' + escapeHtml(episode.loops.architect.begruendung || "") + "</textarea>" +
+      "</section>"
+    );
+  }
+
+  function renderLoop(id, nr, loopKey) {
+    var init = AVERA_STORE.get(id);
+    var ep = init ? AVERA_STORE.getEpisode(init, nr) : null;
+    var loop = AVERA_DATA.getLoop(loopKey);
+    if (!init || !ep || !loop) {
+      navigate("#/init/" + id);
+      return;
+    }
+    var scopeKey = id + ":" + nr;
+    if (designDraft.scopeKey !== scopeKey) resetDesignDraft(scopeKey);
+
+    var idx = LOOP_ORDER.indexOf(loopKey);
+    var prevLoop = idx > 0 ? LOOP_ORDER[idx - 1] : null;
+    var nextLoop = idx < LOOP_ORDER.length - 1 ? LOOP_ORDER[idx + 1] : null;
+
+    root.innerHTML =
+      '<div class="view view-station">' +
+      '<a href="#/init/' + id + '" class="back-link">← Zurück zur Initiative</a>' +
+      "<header class='station-header'>" +
+      "<div class='station-tags'><span class='station-num'>Episode " + ep.nr + "</span></div>" +
+      "<h1>" + escapeHtml(loop.label) + "</h1>" +
+      "<p class='station-teaser'>" + escapeHtml(loop.funktion) + " → " + escapeHtml(loop.ergebnis) + "</p>" +
+      "</header>" +
+
+      loopDotsHtml(id, nr, loopKey, ep) +
+
+      generalSectionHtml(ep, loopKey) +
+
+      '<section class="panel">' +
+      "<h2>Je Element</h2>" +
+      "<p class='hint-text'>" + escapeHtml(elementLeitfrageHint(loopKey)) + "</p>" +
+      elementAccordionHtml(ep, loopKey) +
+      "</section>" +
+
+      (loopKey === "design" ? designSectionHtml(ep) : "") +
+      (loopKey === "architect" ? architectSectionHtml(ep) : "") +
+      (loopKey === "understand" ? understandIntentionHtml(init, ep) : "") +
+
+      '<div class="station-nav">' +
+      (prevLoop
+        ? '<a class="btn btn-ghost" href="#/init/' + id + "/episode/" + nr + "/" + prevLoop + '">← ' + escapeHtml(AVERA_DATA.getLoop(prevLoop).label) + "</a>"
+        : '<a class="btn btn-ghost" href="#/init/' + id + '">← Zur Übersicht</a>') +
+      (nextLoop
+        ? '<a class="btn btn-primary btn-next" href="#/init/' + id + "/episode/" + nr + "/" + nextLoop + '">Weiter zu ' + escapeHtml(AVERA_DATA.getLoop(nextLoop).label) + " →</a>"
+        : '<a class="btn btn-primary btn-next" href="#/init/' + id + "/episode/" + nr + '/realize">Weiter zur Realisierung →</a>') +
+      "</div>" +
+      "</div>";
+
+    wireLoopEvents(id, nr, loopKey, ep, init);
+  }
+
+  function elementLeitfrageHint(loopKey) {
+    if (loopKey === "observe") return "Was beobachten wir je Element mit Blick auf unsere Intention?";
+    if (loopKey === "understand") return "Warum zeigt sich das beobachtete Verhalten heute so, je Element?";
+    if (loopKey === "design") return "Welche Gestaltungsoptionen könnten je Element die Intention unterstützen?";
+    return "Wie spielen die Gestaltungsoptionen je Element zusammen oder widersprechen sich?";
+  }
+
+  function understandIntentionHtml(init, episode) {
+    var phase = AVERA_DATA.INTENTION_PHASEN.reflektieren;
+    var fragenHtml = phase.fragen.map(function (f) { return "<li>" + escapeHtml(f.frage) + "</li>"; }).join("");
+    return (
+      "<details class='reference-details'>" +
+      "<summary><strong>Intention kurz reflektieren</strong> — " + escapeHtml(phase.leitfrage) + "</summary>" +
+      "<div class='details-body'>" +
+      "<ul class='fragen-liste'>" + fragenHtml + "</ul>" +
+      '<textarea id="intention-reflexion-input" rows="3" placeholder="Was bedeutet das für unsere Intention?"></textarea>' +
+      '<button type="button" id="save-intention-reflexion-btn" class="btn btn-secondary btn-small">Reflexion speichern</button>' +
+      "</div>" +
+      "</details>"
+    );
+  }
+
+  function wireLoopEvents(id, nr, loopKey, ep, init) {
+    root.querySelectorAll("[data-general-field]").forEach(function (ta) {
+      ta.addEventListener("blur", function () {
+        AVERA_STORE.setLoopGeneralNote(id, nr, loopKey, ta.getAttribute("data-general-field"), ta.value);
+      });
+    });
+
+    var gateBox = document.getElementById("gate-checkbox");
+    var gateNotiz = document.getElementById("gate-notiz");
+    function saveGate() {
+      AVERA_STORE.setLoopGate(id, nr, loopKey, gateBox.checked, gateNotiz.value);
+    }
+    gateBox.addEventListener("change", saveGate);
+    gateNotiz.addEventListener("blur", saveGate);
+
+    root.querySelectorAll("[data-element-note]").forEach(function (ta) {
+      ta.addEventListener("blur", function () {
+        AVERA_STORE.setLoopElementNote(id, nr, loopKey, ta.getAttribute("data-element-note"), ta.value);
+      });
+    });
+
+    if (loopKey === "design") {
+      document.getElementById("fakte-typ-select").addEventListener("change", function (evt) {
+        designFilter.typ = evt.target.value;
+        renderLoop(id, nr, loopKey);
+      });
+      document.getElementById("fakte-wirkstufe-select").addEventListener("change", function (evt) {
+        designFilter.wirkstufe = evt.target.value;
+        renderLoop(id, nr, loopKey);
+      });
+      root.querySelectorAll("[data-fakte-beispiel]").forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          var beispiel = chip.getAttribute("data-fakte-beispiel");
+          var kategorie = chip.getAttribute("data-fakte-kategorie");
+          var idx = designDraft.objekte.findIndex(function (o) {
+            return o.typ === designFilter.typ && o.wirkstufe === designFilter.wirkstufe && o.kategorie === kategorie && o.beispiel === beispiel;
+          });
+          if (idx === -1) {
+            designDraft.objekte.push({ typ: designFilter.typ, wirkstufe: designFilter.wirkstufe, kategorie: kategorie, beispiel: beispiel });
+          } else {
+            designDraft.objekte.splice(idx, 1);
+          }
+          renderLoop(id, nr, loopKey);
+        });
+      });
+      root.querySelectorAll("[data-draft-remove]").forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          designDraft.objekte.splice(parseInt(chip.getAttribute("data-draft-remove"), 10), 1);
+          renderLoop(id, nr, loopKey);
+        });
+      });
+      document.getElementById("impuls-form").addEventListener("submit", function (evt) {
+        evt.preventDefault();
+        var input = document.getElementById("impuls-name-input");
+        var name = input.value.trim();
+        if (!name || !designDraft.objekte.length) return;
+        AVERA_STORE.addImpuls(id, nr, { name: name, objekte: designDraft.objekte.slice(), notiz: "" });
+        resetDesignDraft(id + ":" + nr);
+        renderLoop(id, nr, loopKey);
+      });
+      root.querySelectorAll("[data-remove-impuls]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          AVERA_STORE.removeImpuls(id, nr, btn.getAttribute("data-remove-impuls"));
+          renderLoop(id, nr, loopKey);
+        });
+      });
+    }
+
+    if (loopKey === "architect") {
+      root.querySelectorAll("[data-select-impuls]").forEach(function (box) {
+        box.addEventListener("change", function () {
+          var current = (AVERA_STORE.getEpisode(AVERA_STORE.get(id), nr).loops.architect.ausgewaehlt || []).slice();
+          var impId = box.getAttribute("data-select-impuls");
+          var idx = current.indexOf(impId);
+          if (box.checked && idx === -1) current.push(impId);
+          if (!box.checked && idx !== -1) current.splice(idx, 1);
+          AVERA_STORE.setArchitectSelection(id, nr, current);
+        });
+      });
+      document.getElementById("architect-begruendung").addEventListener("blur", function (evt) {
+        AVERA_STORE.setArchitectBegruendung(id, nr, evt.target.value);
+      });
+    }
+
+    if (loopKey === "understand") {
+      document.getElementById("save-intention-reflexion-btn").addEventListener("click", function () {
+        var ta = document.getElementById("intention-reflexion-input");
+        var text = ta.value.trim();
+        if (!text) return;
+        AVERA_STORE.addIntentionReflexion(id, nr, text);
+        ta.value = "";
+        alert("Reflexion gespeichert. Ihr findet sie auf der Intention-Seite wieder.");
+      });
+    }
+  }
+
+  // ---------- Realisierung ----------
+
+  function renderRealize(id, nr) {
+    var init = AVERA_STORE.get(id);
+    var ep = init ? AVERA_STORE.getEpisode(init, nr) : null;
+    if (!init || !ep) {
+      navigate("#/init/" + id);
+      return;
+    }
+    var impulse = ep.loops.design.impulse;
+    var selected = ep.loops.architect.ausgewaehlt || [];
+    var chosenImpulse = impulse.filter(function (imp) { return selected.indexOf(imp.id) !== -1; });
+    var isLatest = init.episodes[init.episodes.length - 1].nr === ep.nr;
+
+    var architekturHtml = chosenImpulse.length
+      ? chosenImpulse
+          .map(function (imp) {
+            var tags = imp.objekte.map(function (o) { return '<span class="impuls-objekt-tag">' + escapeHtml(o.beispiel) + "</span>"; }).join("");
+            return '<div class="impuls-card"><strong>' + escapeHtml(imp.name) + "</strong><div class='impuls-objekte'>" + tags + "</div></div>";
+          })
+          .join("")
+      : "<p class='hint-text'>Noch keine Impulse für die Architektur ausgewählt (siehe Komponieren-Schleife).</p>";
+
+    var bodyHtml;
+    if (ep.realized) {
+      bodyHtml =
+        '<div class="ok-box">✓ Realisiert am ' + new Date(ep.realized.at).toLocaleDateString("de-AT") + "</div>" +
+        (ep.realized.notiz ? "<p>" + escapeHtml(ep.realized.notiz) + "</p>" : "") +
+        (isLatest ? '<button id="next-episode-btn" class="btn btn-primary btn-block">Nächste Episode starten</button>' : "");
+    } else {
+      bodyHtml =
+        '<textarea id="realize-notiz" rows="4" placeholder="Wie kommt die Architektur in der Wirklichkeit an? Welche Bewegung entsteht, was bleibt stabil, was überrascht?"></textarea>' +
+        '<button id="realize-btn" class="btn btn-primary btn-block">In die Welt gebracht — Episode abschließen</button>';
+    }
+
+    root.innerHTML =
+      '<div class="view view-station">' +
+      '<a href="#/init/' + id + "/episode/" + nr + '/architect" class="back-link">← Zurück zu Komponieren</a>' +
+      "<header class='station-header'>" +
+      "<div class='station-tags'><span class='station-num'>Episode " + ep.nr + "</span></div>" +
+      "<h1>In die Welt bringen</h1>" +
+      "<p class='station-teaser'>Die konzeptionelle Arbeit endet hier – jetzt trifft die Gestaltung auf die organisationale Wirklichkeit.</p>" +
+      "</header>" +
+      '<section class="panel"><h2>Ausgewählte Architektur</h2>' + architekturHtml + "</section>" +
+      '<section class="panel">' + bodyHtml + "</section>" +
+      "</div>";
+
+    var realizeBtn = document.getElementById("realize-btn");
+    if (realizeBtn) {
+      realizeBtn.addEventListener("click", function () {
+        var text = document.getElementById("realize-notiz").value.trim();
+        AVERA_STORE.realizeEpisode(id, nr, text);
+        renderRealize(id, nr);
+      });
+    }
+    var nextBtn = document.getElementById("next-episode-btn");
+    if (nextBtn) {
+      nextBtn.addEventListener("click", function () {
+        var next = AVERA_STORE.startNextEpisode(id);
+        navigate("#/init/" + id + "/episode/" + next.nr + "/observe");
+      });
+    }
+  }
+
+  // ---------- Export ----------
 
   function renderExport(id) {
     var init = AVERA_STORE.get(id);
@@ -747,7 +779,7 @@
 
     root.innerHTML =
       '<div class="view view-export">' +
-      '<a href="#/rad/' + id + '" class="back-link">← Zurück zum Rad</a>' +
+      '<a href="#/init/' + id + '" class="back-link">← Zurück zur Initiative</a>' +
       "<h1>Gestaltungsarchitektur: " + escapeHtml(init.name) + "</h1>" +
       '<div class="export-actions">' +
       '<button id="download-md-btn" class="btn btn-primary">Als Markdown herunterladen</button>' +
@@ -765,12 +797,15 @@
     });
   }
 
+  // ---------- Router ----------
+
   function route() {
     var r = parseHash();
     if (r.view === "start") renderStart();
-    else if (r.view === "rad") renderRad(r.id);
-    else if (r.view === "station") renderStation(r.id, r.key);
-    else if (r.view === "plan") renderPlan(r.id);
+    else if (r.view === "overview") renderOverview(r.id);
+    else if (r.view === "intention") renderIntention(r.id);
+    else if (r.view === "loop") renderLoop(r.id, r.nr, r.loop);
+    else if (r.view === "realize") renderRealize(r.id, r.nr);
     else if (r.view === "export") renderExport(r.id);
     else renderStart();
   }

@@ -1,53 +1,70 @@
 /*
  * Persistenz für AVERA-Initiativen im Browser (localStorage).
- * Jede Initiative = ein Change-Vorhaben eines Unternehmens/Teams.
+ * Jede Initiative = ein Change-Vorhaben, das in Episoden (volle Drehungen im
+ * Rad: Observe -> Understand -> Design -> Architect) bearbeitet wird.
  */
 (function (global) {
   "use strict";
 
-  var LS_KEY = "avera:initiatives:v1";
+  var LS_KEY = "avera:initiatives:v2";
 
-  function uid() {
-    return "init_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+  function uid(prefix) {
+    return (prefix || "id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
   }
 
-  function emptyStationState() {
-    return { status: "offen", diagnose: {}, checked: [], answers: {}, objekte: [], notiz: "" };
-  }
-
-  // Der Status eines Elements wird nicht mehr manuell gesetzt, sondern aus
-  // den Antworten der Standortbestimmung abgeleitet: je Frage 0 (Nein) bis
-  // 2 (Ja), gemittelt über alle bereits beantworteten Fragen der Station.
-  function computeStatusFromDiagnose(stationKey, diagnoseAnswers) {
-    var station = AVERA_DATA.getStation(stationKey);
-    if (!station || !diagnoseAnswers) return "offen";
-    var scores = [];
-    station.diagnose.forEach(function (frage, i) {
-      var chosen = diagnoseAnswers[i];
-      if (chosen !== undefined && chosen !== null && frage.optionen[chosen]) {
-        scores.push(frage.optionen[chosen].score);
-      }
+  function emptyLoop() {
+    var elemente = {};
+    AVERA_DATA.ELEMENTS.forEach(function (el) {
+      elemente[el.key] = "";
     });
-    if (!scores.length) return "offen";
-    var avg = scores.reduce(function (a, b) { return a + b; }, 0) / scores.length;
-    if (avg >= 1.6) return "etabliert";
-    if (avg >= 0.8) return "in_arbeit";
-    return "offen";
+    return {
+      general: { fokus: "", wirkgefuege: "", potenziale: "", pruefung: "" },
+      gate: false,
+      gateNotiz: "",
+      elemente: elemente,
+      impulse: [],
+      ausgewaehlt: [],
+      begruendung: ""
+    };
+  }
+
+  function emptyEpisode(nr) {
+    return {
+      nr: nr,
+      startedAt: new Date().toISOString(),
+      statusQuoNotiz: "",
+      loops: {
+        observe: emptyLoop(),
+        understand: emptyLoop(),
+        design: emptyLoop(),
+        architect: emptyLoop()
+      },
+      realized: null
+    };
+  }
+
+  function emptyIntentionPhase(phaseKey) {
+    var count = AVERA_DATA.INTENTION_PHASEN[phaseKey].fragen.length;
+    var arr = [];
+    for (var i = 0; i < count; i++) arr.push("");
+    return arr;
   }
 
   function newInitiative(name, org) {
-    var stations = {};
-    AVERA_DATA.STATIONS.forEach(function (s) {
-      stations[s.key] = emptyStationState();
-    });
     return {
-      id: uid(),
+      id: uid("init"),
       name: name || "Neue Veränderungsinitiative",
       org: org || "",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      stations: stations,
-      planErledigt: {}
+      intention: {
+        erarbeiten: emptyIntentionPhase("erarbeiten"),
+        schaerfen: emptyIntentionPhase("schaerfen"),
+        statement: "",
+        reflexionen: []
+      },
+      episodes: [emptyEpisode(1)],
+      currentEpisodeNr: 1
     };
   }
 
@@ -123,59 +140,154 @@
     });
   }
 
-  function setStatus(id, stationKey, status) {
+  function getEpisode(init, nr) {
+    for (var i = 0; i < init.episodes.length; i++) {
+      if (init.episodes[i].nr === nr) return init.episodes[i];
+    }
+    return null;
+  }
+
+  function currentEpisode(init) {
+    return getEpisode(init, init.currentEpisodeNr) || init.episodes[init.episodes.length - 1];
+  }
+
+  function setIntentionField(id, phase, index, text) {
     return update(id, function (init) {
-      if (!init.stations[stationKey]) init.stations[stationKey] = emptyStationState();
-      init.stations[stationKey].status = status;
+      if (!init.intention[phase]) init.intention[phase] = emptyIntentionPhase(phase);
+      init.intention[phase][index] = text;
     });
   }
 
-  function togglePlanStep(id, stepKey, done) {
+  function setIntentionStatement(id, text) {
     return update(id, function (init) {
-      if (!init.planErledigt) init.planErledigt = {};
-      if (done) init.planErledigt[stepKey] = true;
-      else delete init.planErledigt[stepKey];
+      init.intention.statement = text;
     });
   }
 
-  function setDiagnoseAnswer(id, stationKey, questionIndex, optionIndex) {
+  function addIntentionReflexion(id, episodeNr, text) {
     return update(id, function (init) {
-      var st = init.stations[stationKey] || (init.stations[stationKey] = emptyStationState());
-      if (!st.diagnose) st.diagnose = {};
-      st.diagnose[questionIndex] = optionIndex;
-      st.status = computeStatusFromDiagnose(stationKey, st.diagnose);
+      init.intention.reflexionen.push({ episodeNr: episodeNr, text: text, datum: new Date().toISOString() });
     });
   }
 
-  function toggleChecklist(id, stationKey, index, checked) {
+  function setLoopGeneralNote(id, episodeNr, loopKey, fieldKey, text) {
     return update(id, function (init) {
-      var st = init.stations[stationKey] || (init.stations[stationKey] = emptyStationState());
-      var set = new Set(st.checked || []);
-      if (checked) set.add(index);
-      else set.delete(index);
-      st.checked = Array.from(set);
+      var ep = getEpisode(init, episodeNr);
+      if (!ep) return;
+      ep.loops[loopKey].general[fieldKey] = text;
     });
   }
 
-  function setAnswer(id, stationKey, index, text) {
+  function setLoopGate(id, episodeNr, loopKey, value, notizText) {
     return update(id, function (init) {
-      var st = init.stations[stationKey] || (init.stations[stationKey] = emptyStationState());
-      st.answers[index] = text;
+      var ep = getEpisode(init, episodeNr);
+      if (!ep) return;
+      ep.loops[loopKey].gate = !!value;
+      if (notizText !== undefined) ep.loops[loopKey].gateNotiz = notizText;
     });
   }
 
-  function setNotiz(id, stationKey, text) {
+  function setLoopElementNote(id, episodeNr, loopKey, elementKey, text) {
     return update(id, function (init) {
-      var st = init.stations[stationKey] || (init.stations[stationKey] = emptyStationState());
-      st.notiz = text;
+      var ep = getEpisode(init, episodeNr);
+      if (!ep) return;
+      ep.loops[loopKey].elemente[elementKey] = text;
     });
   }
 
-  function setObjekte(id, stationKey, objekte) {
-    return update(id, function (init) {
-      var st = init.stations[stationKey] || (init.stations[stationKey] = emptyStationState());
-      st.objekte = objekte;
+  function addImpuls(id, episodeNr, impuls) {
+    var created = null;
+    update(id, function (init) {
+      var ep = getEpisode(init, episodeNr);
+      if (!ep) return;
+      created = {
+        id: uid("impuls"),
+        name: impuls.name || "Gestaltungsimpuls",
+        objekte: impuls.objekte || [],
+        notiz: impuls.notiz || ""
+      };
+      ep.loops.design.impulse.push(created);
     });
+    return created;
+  }
+
+  function removeImpuls(id, episodeNr, impulsId) {
+    return update(id, function (init) {
+      var ep = getEpisode(init, episodeNr);
+      if (!ep) return;
+      ep.loops.design.impulse = ep.loops.design.impulse.filter(function (imp) {
+        return imp.id !== impulsId;
+      });
+      ep.loops.architect.ausgewaehlt = ep.loops.architect.ausgewaehlt.filter(function (impId) {
+        return impId !== impulsId;
+      });
+    });
+  }
+
+  function setArchitectSelection(id, episodeNr, impulsIds) {
+    return update(id, function (init) {
+      var ep = getEpisode(init, episodeNr);
+      if (!ep) return;
+      ep.loops.architect.ausgewaehlt = impulsIds;
+    });
+  }
+
+  function setArchitectBegruendung(id, episodeNr, text) {
+    return update(id, function (init) {
+      var ep = getEpisode(init, episodeNr);
+      if (!ep) return;
+      ep.loops.architect.begruendung = text;
+    });
+  }
+
+  function setStatusQuoNotiz(id, episodeNr, text) {
+    return update(id, function (init) {
+      var ep = getEpisode(init, episodeNr);
+      if (!ep) return;
+      ep.statusQuoNotiz = text;
+    });
+  }
+
+  function realizeEpisode(id, episodeNr, notizText) {
+    return update(id, function (init) {
+      var ep = getEpisode(init, episodeNr);
+      if (!ep) return;
+      ep.realized = { at: new Date().toISOString(), notiz: notizText || "" };
+    });
+  }
+
+  function startNextEpisode(id) {
+    var created = null;
+    update(id, function (init) {
+      var last = init.episodes[init.episodes.length - 1];
+      var nextNr = last.nr + 1;
+      created = emptyEpisode(nextNr);
+      init.episodes.push(created);
+      init.currentEpisodeNr = nextNr;
+    });
+    return created;
+  }
+
+  // Für die Rad-Übersicht: grober Status je Element in der aktuellen Episode,
+  // abgeleitet daraus, in wie vielen der vier Schleifen bereits Notizen stehen.
+  function deriveElementStatus(episode, elementKey) {
+    if (!episode) return "offen";
+    var loopKeys = ["observe", "understand", "design", "architect"];
+    var filled = loopKeys.filter(function (lk) {
+      var text = episode.loops[lk].elemente[elementKey];
+      return !!(text && text.trim());
+    }).length;
+    if (filled === 0) return "offen";
+    if (filled === loopKeys.length) return "etabliert";
+    return "in_arbeit";
+  }
+
+  function deriveIntentionStatus(init) {
+    if (init.intention.statement && init.intention.statement.trim()) return "etabliert";
+    var anyFilled = init.intention.erarbeiten.concat(init.intention.schaerfen).some(function (t) {
+      return !!(t && t.trim());
+    });
+    return anyFilled ? "in_arbeit" : "offen";
   }
 
   function exportJSON(id) {
@@ -185,9 +297,9 @@
 
   function importJSON(jsonText) {
     var parsed = JSON.parse(jsonText);
-    if (!parsed || !parsed.stations) throw new Error("Ungültiges AVERA-Initiativen-Format.");
+    if (!parsed || !parsed.episodes) throw new Error("Ungültiges AVERA-Initiativen-Format.");
     var all = loadAll();
-    parsed.id = uid();
+    parsed.id = uid("init");
     parsed.updatedAt = new Date().toISOString();
     all.push(parsed);
     saveAll(all);
@@ -201,14 +313,23 @@
     update: update,
     remove: remove,
     rename: rename,
-    setStatus: setStatus,
-    setDiagnoseAnswer: setDiagnoseAnswer,
-    computeStatusFromDiagnose: computeStatusFromDiagnose,
-    togglePlanStep: togglePlanStep,
-    toggleChecklist: toggleChecklist,
-    setAnswer: setAnswer,
-    setNotiz: setNotiz,
-    setObjekte: setObjekte,
+    getEpisode: getEpisode,
+    currentEpisode: currentEpisode,
+    setIntentionField: setIntentionField,
+    setIntentionStatement: setIntentionStatement,
+    addIntentionReflexion: addIntentionReflexion,
+    setLoopGeneralNote: setLoopGeneralNote,
+    setLoopGate: setLoopGate,
+    setLoopElementNote: setLoopElementNote,
+    addImpuls: addImpuls,
+    removeImpuls: removeImpuls,
+    setArchitectSelection: setArchitectSelection,
+    setArchitectBegruendung: setArchitectBegruendung,
+    setStatusQuoNotiz: setStatusQuoNotiz,
+    realizeEpisode: realizeEpisode,
+    startNextEpisode: startNextEpisode,
+    deriveElementStatus: deriveElementStatus,
+    deriveIntentionStatus: deriveIntentionStatus,
     exportJSON: exportJSON,
     importJSON: importJSON
   };
