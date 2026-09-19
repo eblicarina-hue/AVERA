@@ -783,6 +783,31 @@
     );
   }
 
+  // Kompaktes Rad, das auf allen Episoden-Seiten mitläuft, damit der
+  // Gesamtüberblick beim Arbeiten in einer Schleife sichtbar bleibt.
+  function miniWheelAsideHtml(id) {
+    return (
+      '<aside class="station-mini-wheel">' +
+      '<div class="mini-wheel-head">Gesamtüberblick</div>' +
+      '<div id="mini-wheel-container" class="wheel-container wheel-container-mini"></div>' +
+      '<a class="btn btn-ghost btn-small" href="#/init/' + id + '">Zur Projekt-Übersicht →</a>' +
+      "</aside>"
+    );
+  }
+
+  function mountMiniWheel(id, init, ep) {
+    var container = document.getElementById("mini-wheel-container");
+    if (!container) return;
+    var adapter = buildWheelAdapter(init, ep);
+    AVERA_WHEEL.render(container, adapter, function (key) {
+      if (key === "intention") {
+        navigate("#/init/" + id + "/intention");
+        return;
+      }
+      navigate("#/init/" + id + "/episode/" + ep.nr + "/observe");
+    });
+  }
+
   function renderLoop(id, nr, loopKey) {
     var init = AVERA_STORE.get(id);
     var ep = init ? AVERA_STORE.getEpisode(init, nr) : null;
@@ -798,8 +823,7 @@
     var prevLoop = idx > 0 ? LOOP_ORDER[idx - 1] : null;
     var nextLoop = idx < LOOP_ORDER.length - 1 ? LOOP_ORDER[idx + 1] : null;
 
-    var html =
-      '<div class="view view-station">' +
+    var mainHtml =
       '<a href="#/init/' + id + '" class="back-link">← Zurück zum Projekt</a>' +
       "<header class='station-header'>" +
       "<div class='station-tags'><span class='station-num'>Episode " + ep.nr + "</span></div>" +
@@ -828,10 +852,18 @@
       (nextLoop
         ? '<a class="btn btn-primary btn-next" href="#/init/' + id + "/episode/" + nr + "/" + nextLoop + '">Weiter zu ' + escapeHtml(AVERA_DATA.getLoop(nextLoop).label) + " →</a>"
         : '<a class="btn btn-primary btn-next" href="#/init/' + id + "/episode/" + nr + '/realize">Weiter zur Realisierung →</a>') +
+      "</div>";
+
+    var html =
+      '<div class="view view-station">' +
+      '<div class="station-layout">' +
+      '<div class="station-main">' + mainHtml + "</div>" +
+      miniWheelAsideHtml(id) +
       "</div>" +
       "</div>";
 
     renderShell("projekte", html);
+    mountMiniWheel(id, init, ep);
     wireLoopEvents(id, nr, loopKey, ep, init);
   }
 
@@ -936,9 +968,12 @@
           AVERA_STORE.setArchitectSelection(id, nr, current);
         });
       });
-      document.getElementById("architect-begruendung").addEventListener("blur", function (evt) {
-        AVERA_STORE.setArchitectBegruendung(id, nr, evt.target.value);
-      });
+      var begruendungTa = document.getElementById("architect-begruendung");
+      if (begruendungTa) {
+        begruendungTa.addEventListener("blur", function (evt) {
+          AVERA_STORE.setArchitectBegruendung(id, nr, evt.target.value);
+        });
+      }
     }
 
     if (loopKey === "understand") {
@@ -988,8 +1023,7 @@
         '<button id="realize-btn" class="btn btn-primary btn-block">In die Welt gebracht — Episode abschließen</button>';
     }
 
-    var html =
-      '<div class="view view-station">' +
+    var mainHtml =
       '<a href="#/init/' + id + "/episode/" + nr + '/architect" class="back-link">← Zurück zu Komponieren</a>' +
       "<header class='station-header'>" +
       "<div class='station-tags'><span class='station-num'>Episode " + ep.nr + "</span></div>" +
@@ -997,10 +1031,18 @@
       "<p class='station-teaser'>Die konzeptionelle Arbeit endet hier – jetzt trifft die Gestaltung auf die organisationale Wirklichkeit.</p>" +
       "</header>" +
       '<section class="panel"><h2>Ausgewählte Architektur</h2>' + architekturHtml + "</section>" +
-      '<section class="panel">' + bodyHtml + "</section>" +
+      '<section class="panel">' + bodyHtml + "</section>";
+
+    var html =
+      '<div class="view view-station">' +
+      '<div class="station-layout">' +
+      '<div class="station-main">' + mainHtml + "</div>" +
+      miniWheelAsideHtml(id) +
+      "</div>" +
       "</div>";
 
     renderShell("projekte", html);
+    mountMiniWheel(id, init, ep);
 
     var realizeBtn = document.getElementById("realize-btn");
     if (realizeBtn) {

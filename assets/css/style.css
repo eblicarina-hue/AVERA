@@ -330,7 +330,39 @@ a { color: var(--accent); }
 
 .wheel-container > svg { width: 100%; height: auto; display: block; }
 
-.rad-sidebar { position: sticky; top: 20px; }
+.rad-sidebar { position: sticky; top: 84px; }
+
+/* Episoden-Ansichten: Hauptinhalt + kompaktes Rad zur Orientierung */
+.station-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .station-layout { grid-template-columns: 1fr; }
+  .station-mini-wheel { position: static; order: -1; }
+}
+.station-mini-wheel {
+  position: sticky;
+  top: 84px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.mini-wheel-head {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.wheel-container-mini { margin-bottom: 12px; }
 
 .overall-progress {
   background: var(--panel-bg);
