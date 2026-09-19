@@ -29,6 +29,20 @@
   --dim-duerfen: #6a2d8a;
   --dim-koennen: #1f9152;
 
+  /* Je Gestaltungselement eine eigene Farbe fürs Rad (Logo-Palette). */
+  --el-story: #d9603f;
+  --el-story-soft: #fbe7e0;
+  --el-orgkultur: #6a2d8a;
+  --el-orgkultur-soft: #f1e9f6;
+  --el-fuehrung: #1f7fb3;
+  --el-fuehrung-soft: #e7f3fa;
+  --el-entdecken: #1f8f82;
+  --el-entdecken-soft: #e3f5f3;
+  --el-peers: #d99a2b;
+  --el-peers-soft: #faf0d9;
+  --el-methoden: #1f9152;
+  --el-methoden-soft: #e8f6ee;
+
   --radius-sm: 9px;
   --radius: 14px;
   --shadow: 0 1px 3px rgba(15, 27, 42, 0.08), 0 1px 2px rgba(15, 27, 42, 0.04);
@@ -77,6 +91,19 @@
     --dim-wollen: #e0697a;
     --dim-duerfen: #b98fd6;
     --dim-koennen: #6cd39a;
+
+    --el-story: #e88a6c;
+    --el-story-soft: #3a2620;
+    --el-orgkultur: #b98fd6;
+    --el-orgkultur-soft: #33253d;
+    --el-fuehrung: #6ab8e6;
+    --el-fuehrung-soft: #1f3a4c;
+    --el-entdecken: #5fc9bd;
+    --el-entdecken-soft: #1c3733;
+    --el-peers: #e8bf6e;
+    --el-peers-soft: #3a3020;
+    --el-methoden: #6cd39a;
+    --el-methoden-soft: #1c3628;
   }
 }
 
@@ -110,6 +137,19 @@
   --dim-wollen: #e0697a;
   --dim-duerfen: #b98fd6;
   --dim-koennen: #6cd39a;
+
+  --el-story: #e88a6c;
+  --el-story-soft: #3a2620;
+  --el-orgkultur: #b98fd6;
+  --el-orgkultur-soft: #33253d;
+  --el-fuehrung: #6ab8e6;
+  --el-fuehrung-soft: #1f3a4c;
+  --el-entdecken: #5fc9bd;
+  --el-entdecken-soft: #1c3733;
+  --el-peers: #e8bf6e;
+  --el-peers-soft: #3a3020;
+  --el-methoden: #6cd39a;
+  --el-methoden-soft: #1c3628;
 }
 
 * { box-sizing: border-box; }
@@ -288,7 +328,7 @@ a { color: var(--accent); }
   .rad-layout { grid-template-columns: 1fr; }
 }
 
-.wheel-container svg { width: 100%; height: auto; display: block; }
+.wheel-container > svg { width: 100%; height: auto; display: block; }
 
 .rad-sidebar { position: sticky; top: 20px; }
 
@@ -350,25 +390,26 @@ a { color: var(--accent); }
 
 /* SVG wheel */
 .wheel-segment, .wheel-hub, .wheel-intention { cursor: pointer; outline: none; }
-.wheel-segment-path, .wheel-hub-circle, .wheel-intention-circle {
-  stroke: var(--panel-bg);
-  stroke-width: 3;
-  transition: opacity 0.15s ease;
-}
+.wheel-segment-hit { fill: transparent; }
+.wheel-segment-path { transition: opacity 0.15s ease; }
+.wheel-hub-circle, .wheel-intention-circle { transition: opacity 0.15s ease; }
 .wheel-segment:hover .wheel-segment-path,
 .wheel-segment:focus-visible .wheel-segment-path,
 .wheel-hub:hover .wheel-hub-circle,
 .wheel-hub:focus-visible .wheel-hub-circle,
 .wheel-intention:hover .wheel-intention-circle,
-.wheel-intention:focus-visible .wheel-intention-circle { opacity: 0.85; }
-.wheel-segment-label { font-family: var(--font-display); font-size: 14px; font-weight: 700; pointer-events: none; }
-.wheel-segment-num { font-family: var(--font-display); font-size: 15px; font-weight: 700; opacity: 0.9; pointer-events: none; }
+.wheel-intention:focus-visible .wheel-intention-circle { opacity: 0.82; }
+.wheel-segment-icon { font-size: 17px; pointer-events: none; }
+.wheel-segment-label { font-family: var(--font-display); font-size: 13px; font-weight: 700; pointer-events: none; fill: var(--heading); }
+.wheel-badge { fill: var(--panel-bg); stroke: var(--border-strong); stroke-width: 1.5; pointer-events: none; }
+.wheel-badge-num { font-family: var(--font-display); font-size: 10px; font-weight: 700; fill: var(--heading); pointer-events: none; dominant-baseline: middle; }
 .wheel-hub-label { font-family: var(--font-display); font-size: 15px; fill: var(--heading); font-weight: 700; pointer-events: none; }
 .wheel-hub-sub { font-family: var(--font-body); font-size: 9px; letter-spacing: 0.04em; fill: var(--text-muted); pointer-events: none; text-transform: uppercase; }
 .wheel-intention-label { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.03em; font-weight: 700; pointer-events: none; text-transform: uppercase; }
 .wheel-spoke { stroke: var(--panel-bg); stroke-width: 2; }
 .wheel-frame { fill: none; stroke: var(--avera-red); stroke-width: 2; }
 .wheel-backdrop { fill: var(--border); opacity: 0.5; }
+.wheel-guide-ring { fill: none; stroke: var(--border-strong); stroke-width: 1.5; stroke-dasharray: 2 8; }
 
 /* Station view */
 .station-header { position: relative; padding-top: 4px; }

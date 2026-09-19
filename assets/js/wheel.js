@@ -6,42 +6,47 @@
   "use strict";
 
   var RING_KEYS = ["story", "orgkultur", "fuehrung", "entdecken", "peers", "methoden"];
+  var ELEMENT_ICON = {
+    story: "💬",
+    orgkultur: "👥",
+    fuehrung: "🧭",
+    entdecken: "🌱",
+    peers: "🤝",
+    methoden: "⚙️"
+  };
   var SIZE = 600;
   var CX = SIZE / 2;
   var CY = SIZE / 2;
   var OUTER_R = 260;
   var INNER_R = 150;
-  var HUB_R = 110;
-  var INTENTION_R = 40;
+  var HUB_R = 100;
+  var INTENTION_R = 34;
+  var INTENTION_W = 118;
   var INTENTION_CY = 60;
 
-  // Farbfamilien je Sphäre (Business/Corporate Learning/Cross-Spheric) aus dem
-  // AVERA White Paper, moduliert nach Standortbestimmung (offen/in Arbeit/etabliert).
-  var SPHERE_SHADES = {
-    business: {
-      offen: "var(--sphere-business-soft)",
-      in_arbeit: "color-mix(in srgb, var(--sphere-business) 55%, var(--sphere-business-soft))",
-      etabliert: "var(--sphere-business)"
-    },
-    corporate_learning: {
-      offen: "var(--sphere-cl-soft)",
-      in_arbeit: "color-mix(in srgb, var(--sphere-cl) 55%, var(--sphere-cl-soft))",
-      etabliert: "var(--sphere-cl)"
-    },
-    cross_spheric: {
-      offen: "var(--sphere-cross-soft)",
-      in_arbeit: "color-mix(in srgb, var(--sphere-cross) 55%, var(--sphere-cross-soft))",
-      etabliert: "var(--sphere-cross)"
-    },
-    intention: {
-      offen: "var(--avera-red-soft)",
-      in_arbeit: "color-mix(in srgb, var(--avera-red) 55%, var(--avera-red-soft))",
-      etabliert: "var(--avera-red)"
-    }
+  // Farbfamilien: je Gestaltungselement eine eigene Farbe (aus der Logo-Palette),
+  // moduliert nach Standortbestimmung (offen/in Arbeit/etabliert).
+  var SHADES = {
+    story: shadeTrio("el-story"),
+    orgkultur: shadeTrio("el-orgkultur"),
+    fuehrung: shadeTrio("el-fuehrung"),
+    entdecken: shadeTrio("el-entdecken"),
+    peers: shadeTrio("el-peers"),
+    methoden: shadeTrio("el-methoden"),
+    raumzeit: shadeTrio("sphere-cross"),
+    intention: shadeTrio("avera-red")
   };
 
-  function sphereFill(sphereKey, status) {
-    var shades = SPHERE_SHADES[sphereKey] || SPHERE_SHADES.business;
+  function shadeTrio(tokenBase) {
+    return {
+      offen: "var(--" + tokenBase + "-soft)",
+      in_arbeit: "color-mix(in srgb, var(--" + tokenBase + ") 55%, var(--" + tokenBase + "-soft))",
+      etabliert: "var(--" + tokenBase + ")"
+    };
+  }
+
+  function fillFor(key, status) {
+    var shades = SHADES[key] || SHADES.story;
     return shades[status] || shades.offen;
   }
 
@@ -63,6 +68,15 @@
       "A", innerR, innerR, 0, largeArc, 0, p4.x, p4.y,
       "Z"
     ].join(" ");
+  }
+
+  // Ein einzelnes Ring-Segment als dick gestrichener, rund gekappter Bogen
+  // (statt spitzer Kuchenstück-Ecken) – das ergibt die weiche, "blobby" Form.
+  function arcStrokePath(cx, cy, midR, startAngle, endAngle) {
+    var p1 = polar(cx, cy, midR, startAngle);
+    var p2 = polar(cx, cy, midR, endAngle);
+    var largeArc = endAngle - startAngle > 180 ? 1 : 0;
+    return ["M", p1.x, p1.y, "A", midR, midR, 0, largeArc, 1, p2.x, p2.y].join(" ");
   }
 
   function svgEl(tag, attrs) {
@@ -90,6 +104,47 @@
     return lines;
   }
 
+  // AVERA-Blütenlogo als eigenständiges, wiederverwendbares SVG-Fragment
+  // (6 Blütenblätter im Uhrzeigersinn: Blau, Türkis, Gelb, Koralle, Magenta, Violett).
+  var LOGO_PETAL_D = "M50,50 C36,45 26,26 41,8 C46,2 54,2 59,8 C74,26 64,45 50,50 Z";
+  var LOGO_COLORS = [
+    ["#2f6fe0", "#9cc9f7"],
+    ["#16b892", "#a7f0dc"],
+    ["#f0a72e", "#ffdd8f"],
+    ["#f0654f", "#ffb7a3"],
+    ["#e0468f", "#f6a9d3"],
+    ["#7c4fd1", "#c6aef2"]
+  ];
+  var logoIdSeq = 0;
+
+  function buildLogoNode(x, y, size) {
+    logoIdSeq += 1;
+    var uid = "avera-logo-" + logoIdSeq;
+    var nested = svgEl("svg", { x: x, y: y, width: size, height: size, viewBox: "0 0 100 100" });
+    var defs = svgEl("defs", {});
+    LOGO_COLORS.forEach(function (pair, i) {
+      var grad = svgEl("linearGradient", { id: uid + "-" + i, x1: "0.5", y1: "1", x2: "0.5", y2: "0" });
+      var stop1 = svgEl("stop", { offset: "0%" });
+      stop1.setAttribute("stop-color", pair[0]);
+      var stop2 = svgEl("stop", { offset: "100%" });
+      stop2.setAttribute("stop-color", pair[1]);
+      grad.appendChild(stop1);
+      grad.appendChild(stop2);
+      defs.appendChild(grad);
+    });
+    nested.appendChild(defs);
+    LOGO_COLORS.forEach(function (pair, i) {
+      nested.appendChild(
+        svgEl("path", {
+          d: LOGO_PETAL_D,
+          fill: "url(#" + uid + "-" + i + ")",
+          transform: "rotate(" + i * 60 + " 50 50)"
+        })
+      );
+    });
+    return nested;
+  }
+
   function render(container, initiative, onSelect) {
     container.innerHTML = "";
     var svg = svgEl("svg", {
@@ -99,12 +154,26 @@
       "aria-label": "AVERA Veränderungsrad"
     });
 
+    var defs = svgEl("defs", {});
+    var marker = svgEl("marker", {
+      id: "avera-arrow",
+      viewBox: "0 0 10 10",
+      refX: "8",
+      refY: "5",
+      markerWidth: "6",
+      markerHeight: "6",
+      orient: "auto-start-reverse"
+    });
+    marker.appendChild(svgEl("path", { d: "M 0 0 L 10 5 L 0 10 z", class: "wheel-arrowhead" }));
+    defs.appendChild(marker);
+    svg.appendChild(defs);
+
     var segAngle = 360 / RING_KEYS.length;
 
     // Grauer Backdrop-Halo hinter dem Ring (dezente Tiefe)
-    svg.appendChild(
-      svgEl("circle", { cx: CX, cy: CY, r: OUTER_R + 10, class: "wheel-backdrop" })
-    );
+    svg.appendChild(svgEl("circle", { cx: CX, cy: CY, r: OUTER_R + 14, class: "wheel-backdrop" }));
+    // Gepunkteter Führungsring außen (dekorativ, wie im White Paper)
+    svg.appendChild(svgEl("circle", { cx: CX, cy: CY, r: OUTER_R + 26, class: "wheel-guide-ring" }));
 
     // Verbindungsspeichen (dezent)
     RING_KEYS.forEach(function (key, i) {
@@ -115,24 +184,43 @@
       svg.appendChild(svgEl("line", { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, class: "wheel-spoke" }));
     });
 
-    // Ring-Segmente
+    // Ring-Segmente: unsichtbare Sektor-Fläche fürs Klicken + sichtbarer, rund
+    // gekappter Bogen fürs Aussehen (weiche "Blob"-Form statt spitzer Ecken).
+    var midR = (OUTER_R + INNER_R) / 2;
+    var strokeWidth = OUTER_R - INNER_R - 6;
     RING_KEYS.forEach(function (key, i) {
-      var station = AVERA_DATA.getElement(key);
+      var element = AVERA_DATA.getElement(key);
       var stState = (initiative.stations && initiative.stations[key]) || { status: "offen" };
-      var startAngle = i * segAngle + 1.2;
-      var endAngle = (i + 1) * segAngle - 1.2;
-      var d = annularSectorPath(CX, CY, INNER_R, OUTER_R, startAngle, endAngle);
+      var startAngle = i * segAngle + 3;
+      var endAngle = (i + 1) * segAngle - 3;
 
       var g = svgEl("g", { class: "wheel-segment", "data-key": key, tabindex: "0", role: "button" });
-      var path = svgEl("path", {
-        d: d,
-        class: "wheel-segment-path status-" + stState.status + " sphere-" + station.sphere,
-        fill: sphereFill(station.sphere, stState.status)
-      });
-      g.appendChild(path);
 
-      var labelPos = polar(CX, CY, (OUTER_R + INNER_R) / 2, startAngle + (endAngle - startAngle) / 2);
-      var lines = wrapLabel(station.title, 12);
+      var hit = svgEl("path", {
+        d: annularSectorPath(CX, CY, INNER_R, OUTER_R, i * segAngle + 1, (i + 1) * segAngle - 1),
+        class: "wheel-segment-hit"
+      });
+      g.appendChild(hit);
+
+      var arc = svgEl("path", {
+        d: arcStrokePath(CX, CY, midR, startAngle, endAngle),
+        class: "wheel-segment-path status-" + stState.status + " el-" + key,
+        fill: "none",
+        stroke: fillFor(key, stState.status),
+        "stroke-width": strokeWidth,
+        "stroke-linecap": "round"
+      });
+      g.appendChild(arc);
+
+      var midAngle = startAngle + (endAngle - startAngle) / 2;
+
+      var iconPos = polar(CX, CY, midR + 12, midAngle);
+      var iconText = svgEl("text", { x: iconPos.x, y: iconPos.y, class: "wheel-segment-icon", "text-anchor": "middle" });
+      iconText.textContent = ELEMENT_ICON[key] || "";
+      g.appendChild(iconText);
+
+      var labelPos = polar(CX, CY, midR - 32, midAngle);
+      var lines = wrapLabel(element.title, 12);
       var text = svgEl("text", {
         x: labelPos.x,
         y: labelPos.y - ((lines.length - 1) * 7),
@@ -146,15 +234,11 @@
       });
       g.appendChild(text);
 
-      var numLabelPos = polar(CX, CY, OUTER_R - 18, startAngle + (endAngle - startAngle) / 2);
-      var numText = svgEl("text", {
-        x: numLabelPos.x,
-        y: numLabelPos.y,
-        class: "wheel-segment-num",
-        "text-anchor": "middle"
-      });
-      numText.textContent = station.num;
-      g.appendChild(numText);
+      var badgePos = polar(CX, CY, OUTER_R - 16, startAngle + 4);
+      g.appendChild(svgEl("circle", { cx: badgePos.x, cy: badgePos.y, r: 11, class: "wheel-badge" }));
+      var badgeText = svgEl("text", { x: badgePos.x, y: badgePos.y, class: "wheel-badge-num", "text-anchor": "middle" });
+      badgeText.textContent = element.num;
+      g.appendChild(badgeText);
 
       g.addEventListener("click", function () {
         onSelect(key);
@@ -172,7 +256,7 @@
     // Roter Rahmen um den gesamten Ring (Signaturelement aus dem White Paper)
     svg.appendChild(svgEl("circle", { cx: CX, cy: CY, r: OUTER_R + 4, class: "wheel-frame" }));
 
-    // Zentrum: Raum & Zeit
+    // Zentrum: Raum & Zeit – weißer Kern mit Blütenlogo, Status als Ringfarbe.
     var hubState = (initiative.stations && initiative.stations.raumzeit) || { status: "offen" };
     var hubG = svgEl("g", { class: "wheel-hub", "data-key": "raumzeit", tabindex: "0", role: "button" });
     hubG.appendChild(
@@ -180,13 +264,16 @@
         cx: CX,
         cy: CY,
         r: HUB_R,
-        class: "wheel-hub-circle status-" + hubState.status + " sphere-cross_spheric",
-        fill: sphereFill("cross_spheric", hubState.status)
+        class: "wheel-hub-circle status-" + hubState.status,
+        fill: "var(--panel-bg)",
+        stroke: fillFor("raumzeit", hubState.status),
+        "stroke-width": 6
       })
     );
-    var hubText1 = svgEl("text", { x: CX, y: CY - 6, class: "wheel-hub-label", "text-anchor": "middle" });
+    hubG.appendChild(buildLogoNode(CX - 22, CY - 46, 44));
+    var hubText1 = svgEl("text", { x: CX, y: CY + 18, class: "wheel-hub-label", "text-anchor": "middle" });
     hubText1.textContent = "Raum & Zeit";
-    var hubText2 = svgEl("text", { x: CX, y: CY + 14, class: "wheel-hub-sub", "text-anchor": "middle" });
+    var hubText2 = svgEl("text", { x: CX, y: CY + 34, class: "wheel-hub-sub", "text-anchor": "middle" });
     hubText2.textContent = "Dreh- und Angelpunkt";
     hubG.appendChild(hubText1);
     hubG.appendChild(hubText2);
@@ -201,11 +288,11 @@
     });
     svg.appendChild(hubG);
 
-    // Intention: Startpunkt oben, außerhalb des Rings
+    // Intention: Startpunkt oben, außerhalb des Rings – als Pill wie im White Paper.
     var intentionState = (initiative.stations && initiative.stations.intention) || { status: "offen" };
     var iPos = { x: CX, y: INTENTION_CY };
     var connectorStart = { x: CX, y: INTENTION_CY + INTENTION_R };
-    var connectorEnd = { x: CX, y: CY - OUTER_R - 4 };
+    var connectorEnd = { x: CX, y: CY - OUTER_R - 26 };
     svg.appendChild(
       svgEl("line", {
         x1: connectorStart.x,
@@ -217,29 +304,16 @@
       })
     );
 
-    var defs = svgEl("defs", {});
-    var marker = svgEl("marker", {
-      id: "avera-arrow",
-      viewBox: "0 0 10 10",
-      refX: "8",
-      refY: "5",
-      markerWidth: "6",
-      markerHeight: "6",
-      orient: "auto-start-reverse"
-    });
-    var arrowPath = svgEl("path", { d: "M 0 0 L 10 5 L 0 10 z", class: "wheel-arrowhead" });
-    marker.appendChild(arrowPath);
-    defs.appendChild(marker);
-    svg.insertBefore(defs, svg.firstChild);
-
     var intentG = svgEl("g", { class: "wheel-intention", "data-key": "intention", tabindex: "0", role: "button" });
     intentG.appendChild(
-      svgEl("circle", {
-        cx: iPos.x,
-        cy: iPos.y,
-        r: INTENTION_R,
-        class: "wheel-intention-circle status-" + intentionState.status + " sphere-intention",
-        fill: sphereFill("intention", intentionState.status)
+      svgEl("rect", {
+        x: iPos.x - INTENTION_W / 2,
+        y: iPos.y - INTENTION_R / 2,
+        width: INTENTION_W,
+        height: INTENTION_R,
+        rx: INTENTION_R / 2,
+        class: "wheel-intention-circle status-" + intentionState.status,
+        fill: fillFor("intention", intentionState.status)
       })
     );
     var intentText = svgEl("text", { x: iPos.x, y: iPos.y + 4, class: "wheel-intention-label", "text-anchor": "middle" });

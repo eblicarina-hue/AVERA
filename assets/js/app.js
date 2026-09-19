@@ -88,11 +88,30 @@
 
   // ---------- App-Shell (Sidebar + Topbar) ----------
 
+  // AVERA-Blütenlogo (6 Blütenblätter: Blau, Türkis, Gelb, Koralle, Magenta, Violett) —
+  // dieselbe Form wie im Rad-Zentrum (assets/js/wheel.js), hier als HTML-String fürs Sidebar-Icon.
+  var LOGO_PETAL_D = "M50,50 C36,45 26,26 41,8 C46,2 54,2 59,8 C74,26 64,45 50,50 Z";
+  var LOGO_COLORS = [
+    ["#2f6fe0", "#9cc9f7"],
+    ["#16b892", "#a7f0dc"],
+    ["#f0a72e", "#ffdd8f"],
+    ["#f0654f", "#ffb7a3"],
+    ["#e0468f", "#f6a9d3"],
+    ["#7c4fd1", "#c6aef2"]
+  ];
   var LOGO_MARK =
-    '<svg class="sidebar-logo-mark" viewBox="0 0 40 40" aria-hidden="true">' +
-    '<circle cx="16" cy="16" r="11" fill="#c11a2b" opacity="0.9" />' +
-    '<circle cx="26" cy="16" r="11" fill="#6a2d8a" opacity="0.85" />' +
-    '<circle cx="21" cy="26" r="11" fill="#1f9152" opacity="0.85" />' +
+    '<svg class="sidebar-logo-mark" viewBox="0 0 100 100" aria-hidden="true">' +
+    "<defs>" +
+    LOGO_COLORS.map(function (pair, i) {
+      return '<linearGradient id="app-logo-' + i + '" x1="0.5" y1="1" x2="0.5" y2="0">' +
+        '<stop offset="0%" stop-color="' + pair[0] + '" />' +
+        '<stop offset="100%" stop-color="' + pair[1] + '" />' +
+        "</linearGradient>";
+    }).join("") +
+    "</defs>" +
+    LOGO_COLORS.map(function (pair, i) {
+      return '<path d="' + LOGO_PETAL_D + '" fill="url(#app-logo-' + i + ')" transform="rotate(' + i * 60 + ' 50 50)" />';
+    }).join("") +
     "</svg>";
 
   function sidebarHtml(activeKey) {
