@@ -1262,16 +1262,6 @@
     );
   }
 
-  function elementNotizHtml(ep, loopKey, elKey, label) {
-    return (
-      '<div class="element-notiz">' +
-      '<label class="reflexion-label" for="element-notiz-feld">' + escapeHtml(label) + "</label>" +
-      '<textarea id="element-notiz-feld" data-element-note="' + elKey + '" rows="2" placeholder="Optional – was sonst noch zu diesem Element gehört.">' +
-      escapeHtml(ep.loops[loopKey].elemente[elKey] || "") + "</textarea>" +
-      "</div>"
-    );
-  }
-
   function elementNavHtml(elKey) {
     var keys = AVERA_DATA.ELEMENTS.map(function (e) { return e.key; });
     var i = keys.indexOf(elKey);
@@ -1290,13 +1280,12 @@
     );
   }
 
-  function elementPanelHtml(elm, loopKey, innenHtml, ep, notizLabel) {
+  function elementPanelHtml(elm, loopKey, innenHtml) {
     return (
       '<section class="panel element-panel">' +
       elementKopfHtml(elm, loopKey) +
       denkanstoesseHtml(elm, loopKey) +
       innenHtml +
-      elementNotizHtml(ep, loopKey, elm.key, notizLabel) +
       elementNavHtml(elm.key) +
       "</section>"
     );
@@ -1404,7 +1393,7 @@
         ? karten.map(function (b) { return beobKarteHtml(b, false); }).join("")
         : "<p class='hint-text'>Noch nichts erfasst – die Fragen oben sind der Einstieg.</p>") +
       "</div>";
-    return elementPanelHtml(elm, "observe", inner, ep, "Zwischenfazit zu " + elm.title);
+    return elementPanelHtml(elm, "observe", inner);
   }
 
   function observeBodyHtml(v, ep) {
@@ -1616,7 +1605,7 @@
       "</div>" +
       hypFormHtml(elm.key);
 
-    return elementPanelHtml(elm, "understand", inner, ep, "Zwischenfazit zu " + elm.title);
+    return elementPanelHtml(elm, "understand", inner);
   }
 
   function understandBodyHtml(v, ep) {
@@ -1626,14 +1615,7 @@
       hebelSectionHtml(ep) +
       elementTabsHtml(ep, "understand") +
       (elm ? understandElementHtml(ep, elm) : understandUeberblickHtml(ep)) +
-      kiPanelHtml("understand") +
-
-      "<details class='reference-details'><summary><strong>Intention kurz reflektieren</strong> — " + escapeHtml(AVERA_DATA.INTENTION_PHASEN.reflektieren.leitfrage) + "</summary>" +
-      "<div class='details-body'>" +
-      "<ul class='fragen-liste'>" + AVERA_DATA.INTENTION_PHASEN.reflektieren.fragen.map(function (f) { return "<li>" + escapeHtml(f.frage) + "</li>"; }).join("") + "</ul>" +
-      '<textarea id="intention-reflexion-input" rows="3" placeholder="Was bedeutet das für unsere Intention?"></textarea>' +
-      '<button type="button" id="save-intention-reflexion-btn" class="btn btn-secondary btn-small">Reflexion speichern</button>' +
-      "</div></details>"
+      kiPanelHtml("understand")
     );
   }
 
@@ -1688,16 +1670,6 @@
       });
     });
 
-    var refBtn = document.getElementById("save-intention-reflexion-btn");
-    if (refBtn) {
-      refBtn.addEventListener("click", function () {
-        var ta = document.getElementById("intention-reflexion-input");
-        if (!ta.value.trim()) return;
-        AVERA_STORE.addIntentionReflexion(id, nr, ta.value.trim());
-        ta.value = "";
-        alert("Reflexion gespeichert. Ihr findet sie auf der Intention-Seite wieder.");
-      });
-    }
   }
 
   // ---------- Schleife 3: Entwerfen ----------
@@ -1868,7 +1840,7 @@
           : "<p class='hint-text'>Noch kein Impuls zu diesem Element.</p>") +
         "</div>";
     }
-    return elementPanelHtml(elm, "design", inner, ep, "Zwischenfazit zu " + elm.title);
+    return elementPanelHtml(elm, "design", inner);
   }
 
   function designBodyHtml(v, ep) {
@@ -2089,7 +2061,7 @@
         "</div>"
       : "<p class='hint-text'>Zu diesem Element liegt kein Impuls vor. Nicht jedes Element muss in jeder Episode in die Architektur – hinreichend statt vollständig.</p>";
 
-    return elementPanelHtml(elm, "architect", inner, ep, "Zwischenfazit zu " + elm.title);
+    return elementPanelHtml(elm, "architect", inner);
   }
 
   function architectBodyHtml(v, ep) {
@@ -2203,11 +2175,6 @@
       });
     }
 
-    root.querySelectorAll("[data-element-note]").forEach(function (ta) {
-      ta.addEventListener("blur", function () {
-        AVERA_STORE.setLoopElementNote(id, nr, loopKey, ta.getAttribute("data-element-note"), ta.value);
-      });
-    });
 
     root.querySelectorAll("[data-el-tab]").forEach(function (btn) {
       btn.addEventListener("click", function () {

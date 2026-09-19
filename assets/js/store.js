@@ -272,12 +272,6 @@
     });
   }
 
-  function addIntentionReflexion(id, episodeNr, text) {
-    return update(id, function (v) {
-      v.intention.reflexionen.push({ episodeNr: episodeNr, text: text, datum: now() });
-    });
-  }
-
   // ---------- Observe: Beobachtungskarten ----------
 
   function addBeobachtung(id, nr, data) {
@@ -460,14 +454,6 @@
     return null;
   }
 
-  // ---------- Notiz je Element und Schleife (Zwischenfazit) ----------
-
-  function setLoopElementNote(id, nr, loopKey, elementKey, text) {
-    return inEpisode(id, nr, function (ep) {
-      ep.loops[loopKey].elemente[elementKey] = text;
-    });
-  }
-
   // ---------- Realisierung ----------
 
   function setStatusQuo(id, nr, text) {
@@ -603,7 +589,6 @@
     setIntentionText: setIntentionText,
     setIntentionZielgruppe: setIntentionZielgruppe,
     setIntentionField: setIntentionField,
-    addIntentionReflexion: addIntentionReflexion,
     addBeobachtung: addBeobachtung,
     updateBeobachtung: updateBeobachtung,
     removeBeobachtung: removeBeobachtung,
@@ -623,7 +608,6 @@
     gateOffen: gateOffen,
     loopErreichbar: loopErreichbar,
     ersteOffeneSchleife: ersteOffeneSchleife,
-    setLoopElementNote: setLoopElementNote,
     setStatusQuo: setStatusQuo,
     realizeEpisode: realizeEpisode,
     addMassnahme: addMassnahme,

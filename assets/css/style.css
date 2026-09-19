@@ -1761,7 +1761,6 @@ a.dreh-item:hover { background: var(--bg); }
 }
 .element-liste-kopf span { background: var(--bg); border-radius: 999px; padding: 1px 8px; }
 
-.element-notiz { border-top: 1px dashed var(--border-strong); padding-top: 14px; margin-top: 4px; }
 .element-nav {
   display: flex;
   align-items: center;
