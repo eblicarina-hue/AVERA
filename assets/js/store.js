@@ -460,13 +460,7 @@
     return null;
   }
 
-  // ---------- Notizen je Schleife (Denkanstöße aus der Fragenmatrix) ----------
-
-  function setLoopGeneralNote(id, nr, loopKey, fieldKey, text) {
-    return inEpisode(id, nr, function (ep) {
-      ep.loops[loopKey].general[fieldKey] = text;
-    });
-  }
+  // ---------- Notiz je Element und Schleife (Zwischenfazit) ----------
 
   function setLoopElementNote(id, nr, loopKey, elementKey, text) {
     return inEpisode(id, nr, function (ep) {
@@ -629,7 +623,6 @@
     gateOffen: gateOffen,
     loopErreichbar: loopErreichbar,
     ersteOffeneSchleife: ersteOffeneSchleife,
-    setLoopGeneralNote: setLoopGeneralNote,
     setLoopElementNote: setLoopElementNote,
     setStatusQuo: setStatusQuo,
     realizeEpisode: realizeEpisode,

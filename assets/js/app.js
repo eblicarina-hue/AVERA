@@ -58,8 +58,13 @@
   var observeFilter = "alle";
 
   // Welches Gestaltungselement ist in der aktuellen Schleife aufgeschlagen?
-  // "ueberblick" zeigt stattdessen alles auf einmal.
-  var elementTab = { scope: null, key: "ueberblick" };
+  // Eine Schleife beginnt beim ersten Element – von dort klickt man sich
+  // durch; "ueberblick" am Ende zeigt alles auf einmal.
+  var elementTab = { scope: null, key: null };
+
+  function erstesElement() {
+    return AVERA_DATA.ELEMENTS[0].key;
+  }
 
   function escapeHtml(str) {
     return String(str == null ? "" : str)
@@ -741,7 +746,7 @@
       "<h2>So läuft eine Episode</h2>" +
       "<p>Jedes <strong>Projekt</strong> hat eine Intention und läuft in <strong>Episoden</strong>. Eine Episode ist eine volle Drehung: <strong>Beobachten → Verstehen → Entwerfen → Komponieren</strong>, danach „in die Welt bringen“. Das erneute Beobachten startet die nächste Episode.</p>" +
       "<p>Zwischen den Schleifen liegt je ein <strong>Gate</strong>. Ein Gate ist kein Weiter-Button: Ihr beantwortet eine Reflexionsfrage und begründet sie schriftlich. Erst dann wird die nächste Schleife freigeschaltet. Reicht die Grundlage nicht, führt das Gate ausdrücklich zurück.</p>" +
-      "<p>Innerhalb einer Schleife arbeitet ihr <strong>Element für Element</strong>: Ihr schlagt ein Gestaltungselement auf, lest die Leitfrage und die Denkanstöße der AVERA-Matrix für genau diese Schleife – und erfasst direkt darunter, was dabei herauskommt. Über „Nächstes Element“ klickt ihr euch durch alle sieben; der <strong>Überblick</strong> zeigt jederzeit alles auf einmal.</p>" +
+      "<p>Innerhalb einer Schleife arbeitet ihr <strong>Element für Element</strong>: Sie öffnet beim ersten Gestaltungselement mit dessen Leitfrage und den Denkanstößen der AVERA-Matrix für genau diese Schleife – und darunter erfasst ihr, was dabei herauskommt. Über „Nächstes Element“ klickt ihr euch durch alle sieben; am Ende steht der <strong>Überblick</strong>, der alles auf einmal zeigt.</p>" +
       "</section>" +
 
       '<section class="panel">' +
@@ -1116,29 +1121,6 @@
     );
   }
 
-  function generalSectionHtml(episode, loopKey) {
-    var general = AVERA_DATA.LOOP_GENERAL_FRAGEN[loopKey];
-    var state = episode.loops[loopKey];
-    var fields = ["fokus", "wirkgefuege", "potenziale", "pruefung"];
-    var itemsHtml = fields
-      .map(function (fk) {
-        return (
-          '<div class="reflexion-item">' +
-          '<label class="reflexion-label">' + escapeHtml(general[fk]) + "</label>" +
-          '<textarea data-general-field="' + fk + '" rows="2" placeholder="Notiz…">' + escapeHtml(state.general[fk] || "") + "</textarea>" +
-          "</div>"
-        );
-      })
-      .join("");
-
-    return (
-      "<details class='reference-details'>" +
-      "<summary><strong>Übergeordnete Reflexion</strong> — gilt für die ganze Schleife, unabhängig vom einzelnen Element</summary>" +
-      "<div class='details-body'>" + itemsHtml + "</div>" +
-      "</details>"
-    );
-  }
-
   function statusQuoHtml(episode) {
     if (episode.nr === 1 && !episode.statusQuo) {
       return "<p class='hint-text'>Episode 1 startet ohne Vorgeschichte – der Status quo entsteht erst aus euren Beobachtungen.</p>";
@@ -1248,9 +1230,9 @@
 
     return (
       '<div class="el-tabs">' +
+      tabs +
       '<button type="button" class="el-tab ueberblick' + (elementTab.key === "ueberblick" ? " active" : "") + '" data-el-tab="ueberblick">' +
       '<span class="el-tab-num">≡</span><span class="el-tab-name">Überblick</span></button>' +
-      tabs +
       "</div>"
     );
   }
@@ -1299,7 +1281,7 @@
       '<div class="element-nav">' +
       (prev
         ? '<button type="button" class="btn btn-ghost btn-small" data-el-tab="' + prev.key + '">← ' + escapeHtml(prev.title) + "</button>"
-        : '<button type="button" class="btn btn-ghost btn-small" data-el-tab="ueberblick">← Überblick</button>') +
+        : "<span></span>") +
       '<span class="element-nav-pos">' + (i + 1) + " von " + keys.length + "</span>" +
       (next
         ? '<button type="button" class="btn btn-secondary btn-small" data-el-tab="' + next.key + '">' + escapeHtml(next.title) + " →</button>"
@@ -1432,8 +1414,7 @@
       rollenBoxHtml("observe") +
       elementTabsHtml(ep, "observe") +
       (elm ? observeElementHtml(ep, elm) : observeUeberblickHtml(ep)) +
-      kiPanelHtml("observe") +
-      generalSectionHtml(ep, "observe")
+      kiPanelHtml("observe")
     );
   }
 
@@ -1551,6 +1532,30 @@
     );
   }
 
+  function hebelSectionHtml(ep) {
+    var hebelHtml = ep.wirkmodell.hebel.length
+      ? ep.wirkmodell.hebel.map(function (h) {
+          return (
+            '<div class="hebel-zeile">' +
+            '<textarea data-hebel-id="' + h.id + '" rows="1">' + escapeHtml(h.text) + "</textarea>" +
+            '<button type="button" class="btn-icon-delete" data-hebel-del="' + h.id + '" title="Löschen">✕</button>' +
+            "</div>"
+          );
+        }).join("")
+      : "<p class='hint-text'>Noch keine Hebel benannt.</p>";
+
+    return (
+      '<section class="panel">' +
+      "<h2>Hebel</h2>" +
+      "<p class='hint-text'>Wo im Wirkgefüge könnte Gestaltung überhaupt ansetzen? Hebel gelten für die ganze Schleife, nicht für ein einzelnes Element.</p>" +
+      '<div id="hebel-liste">' + hebelHtml + "</div>" +
+      '<form id="hebel-form" class="inline-form small">' +
+      '<input type="text" id="hebel-input" class="text-input" placeholder="Neuer Hebel…" />' +
+      '<button type="submit" class="btn btn-secondary">Hebel hinzufügen</button></form>' +
+      "</section>"
+    );
+  }
+
   function understandUeberblickHtml(ep) {
     var befundeHtml = ep.beobachtungen.length
       ? AVERA_DATA.ELEMENTS.map(function (el) {
@@ -1573,17 +1578,6 @@
         })()
       : "<p class='hint-text'>In der Beobachten-Schleife wurden noch keine Karten erfasst.</p>";
 
-    var hebelHtml = ep.wirkmodell.hebel.length
-      ? ep.wirkmodell.hebel.map(function (h) {
-          return (
-            '<div class="hebel-zeile">' +
-            '<textarea data-hebel-id="' + h.id + '" rows="1">' + escapeHtml(h.text) + "</textarea>" +
-            '<button type="button" class="btn-icon-delete" data-hebel-del="' + h.id + '" title="Löschen">✕</button>' +
-            "</div>"
-          );
-        }).join("")
-      : "<p class='hint-text'>Noch keine Hebel benannt.</p>";
-
     var hypothesenHtml = ep.wirkmodell.hypothesen.length
       ? ep.wirkmodell.hypothesen.map(function (h) { return hypKarteHtml(h, true); }).join("")
       : "<p class='hint-text'>Noch keine Gestaltungshypothese formuliert.</p>";
@@ -1591,15 +1585,6 @@
     return (
       "<details class='reference-details' open><summary><strong>Befunde aus Beobachten</strong> — " + ep.beobachtungen.length + " Karten</summary>" +
       "<div class='details-body befund-liste'>" + befundeHtml + "</div></details>" +
-
-      '<section class="panel">' +
-      "<h2>Hebel</h2>" +
-      "<p class='hint-text'>Wo im Wirkgefüge könnte Gestaltung überhaupt ansetzen? Hebel gelten für die ganze Episode, nicht für ein einzelnes Element.</p>" +
-      '<div id="hebel-liste">' + hebelHtml + "</div>" +
-      '<form id="hebel-form" class="inline-form small">' +
-      '<input type="text" id="hebel-input" class="text-input" placeholder="Neuer Hebel…" />' +
-      '<button type="submit" class="btn btn-secondary">Hebel hinzufügen</button></form>' +
-      "</section>" +
 
       '<section class="panel">' +
       "<h2>Alle Gestaltungshypothesen</h2>" +
@@ -1638,6 +1623,7 @@
     var elm = elementTab.key === "ueberblick" ? null : AVERA_DATA.getElement(elementTab.key);
     return (
       rollenBoxHtml("understand") +
+      hebelSectionHtml(ep) +
       elementTabsHtml(ep, "understand") +
       (elm ? understandElementHtml(ep, elm) : understandUeberblickHtml(ep)) +
       kiPanelHtml("understand") +
@@ -1647,9 +1633,7 @@
       "<ul class='fragen-liste'>" + AVERA_DATA.INTENTION_PHASEN.reflektieren.fragen.map(function (f) { return "<li>" + escapeHtml(f.frage) + "</li>"; }).join("") + "</ul>" +
       '<textarea id="intention-reflexion-input" rows="3" placeholder="Was bedeutet das für unsere Intention?"></textarea>' +
       '<button type="button" id="save-intention-reflexion-btn" class="btn btn-secondary btn-small">Reflexion speichern</button>' +
-      "</div></details>" +
-
-      generalSectionHtml(ep, "understand")
+      "</div></details>"
     );
   }
 
@@ -1893,8 +1877,7 @@
       rollenBoxHtml("design") +
       elementTabsHtml(ep, "design") +
       (elm ? designElementHtml(v, ep, elm) : designUeberblickHtml(v, ep)) +
-      kiPanelHtml("design") +
-      generalSectionHtml(ep, "design")
+      kiPanelHtml("design")
     );
   }
 
@@ -2061,25 +2044,29 @@
       );
     }
 
-    var gewaehlt = ep.architektur.gewaehlt || [];
-    var auswahlHtml = ep.impulse.map(function (imp) { return archZeileHtml(ep, imp, true); }).join("");
+    return (
+      '<section class="panel">' +
+      "<h2>Alle Impulse dieser Episode</h2>" +
+      "<p class='hint-text'>So wenig wie möglich, so viel wie nötig: Wählt die Impulse, denen ihr unter den gegenwärtigen Bedingungen die größte Wirkwahrscheinlichkeit zuschreibt – und die sich gegenseitig stützen statt widersprechen.</p>" +
+      ep.impulse.map(function (imp) { return archZeileHtml(ep, imp, true); }).join("") +
+      "</section>"
+    );
+  }
 
+  // Der Kohärenz-Check schaut über alle Elemente hinweg – er steht darum
+  // immer da, nicht nur im Überblick.
+  function kohaerenzSectionHtml(ep) {
+    if (!ep.impulse.length) return "";
     var warnungen = kohaerenzWarnungen(ep);
-    var warnHtml = gewaehlt.length
+    var warnHtml = (ep.architektur.gewaehlt || []).length
       ? warnungen.length
         ? '<ul class="kohaerenz-liste">' + warnungen.map(function (w) {
             return '<li class="warn-' + w.art + '">' + escapeHtml(w.text) + "</li>";
           }).join("") + "</ul>"
         : '<div class="luecken-box ok"><strong>Keine Auffälligkeiten.</strong> Jede Hypothese ist abgedeckt, keine Doppelung, jeder Impuls greift mehrschichtig an.</div>'
-      : "<p class='hint-text'>Wählt oben Impulse aus, dann prüft die App auf Doppelungen, Lücken und flache Impulse.</p>";
+      : "<p class='hint-text'>Wählt Impulse aus, dann prüft die App auf Doppelungen, Lücken und flache Impulse.</p>";
 
     return (
-      '<section class="panel">' +
-      "<h2>Architektur zusammenstellen</h2>" +
-      "<p class='hint-text'>So wenig wie möglich, so viel wie nötig: Wählt die Impulse, denen ihr unter den gegenwärtigen Bedingungen die größte Wirkwahrscheinlichkeit zuschreibt – und die sich gegenseitig stützen statt widersprechen.</p>" +
-      auswahlHtml +
-      "</section>" +
-
       '<section class="panel">' +
       "<h2>Kohärenz- und Minimalismus-Check</h2>" +
       warnHtml +
@@ -2111,8 +2098,8 @@
       rollenBoxHtml("architect") +
       elementTabsHtml(ep, "architect") +
       (elm ? architectElementHtml(v, ep, elm) : architectUeberblickHtml(v, ep)) +
-      kiPanelHtml("architect") +
-      generalSectionHtml(ep, "architect")
+      kohaerenzSectionHtml(ep) +
+      kiPanelHtml("architect")
     );
   }
 
@@ -2161,7 +2148,7 @@
       resetDesignDraft(scope, ep.wirkmodell.hypothesen.length ? ep.wirkmodell.hypothesen[0].id : null);
     }
     var tabScope = scope + ":" + loopKey;
-    if (elementTab.scope !== tabScope) elementTab = { scope: tabScope, key: "ueberblick" };
+    if (elementTab.scope !== tabScope) elementTab = { scope: tabScope, key: erstesElement() };
 
     // Im Entwerfen hängt der Entwurf an einer Hypothese. Ist ein Element
     // aufgeschlagen, kommen nur dessen Hypothesen in Frage.
@@ -2216,11 +2203,6 @@
       });
     }
 
-    root.querySelectorAll("[data-general-field]").forEach(function (ta) {
-      ta.addEventListener("blur", function () {
-        AVERA_STORE.setLoopGeneralNote(id, nr, loopKey, ta.getAttribute("data-general-field"), ta.value);
-      });
-    });
     root.querySelectorAll("[data-element-note]").forEach(function (ta) {
       ta.addEventListener("blur", function () {
         AVERA_STORE.setLoopElementNote(id, nr, loopKey, ta.getAttribute("data-element-note"), ta.value);
