@@ -1381,6 +1381,82 @@
     el.dimension = extra.dimension;
   });
 
+
+  // ---------------------------------------------------------------------------
+  // Prozessmodell aus "AVERA App – Konzept (Option 3: KI eingebettet je
+  // Schleife)": Rollenverteilung Mensch/KI je Schleife, die Gate-Fragen und
+  // die Rücksprünge, wenn ein Gate nicht passiert wird.
+  // ---------------------------------------------------------------------------
+  var PROZESS = {
+    observe: {
+      mensch: "Beobachtungen als strukturierte Karten erfassen, getrennt in Fakt und Vermutung, getaggt nach AVERA-Gestaltungselement.",
+      ki: "Schlägt fehlende Gestaltungselemente vor (welche Blickwinkel sind noch unberührt?) und unterstützt beim Taggen.",
+      kiNicht: "Interpretiert nicht, erklärt nicht.",
+      gateFrage: "Ist das Bild hinreichend differenziert?",
+      zurueckZu: "observe",
+      zurueckLabel: "Weiter beobachten"
+    },
+    understand: {
+      mensch: "Bewertet und priorisiert die Vorschläge, formuliert Hebel und Gestaltungshypothesen final.",
+      ki: "Schlägt aus den Befunden mögliche Muster vor (Verstärkungen, Widersprüche) – immer mit mindestens einer Gegenhypothese; jeder Vorschlag ist als Hypothese markiert, nie als Befund.",
+      kiNicht: "Erklärt Verhalten nicht vorschnell über Motivations- oder Kompetenzdefizite; liefert kein „objektives“ Wirkmodell.",
+      gateFrage: "Ist unser Wirkverständnis tragfähig genug – und hält die Intention noch?",
+      zurueckZu: "observe",
+      zurueckLabel: "Zurück zu Beobachten"
+    },
+    design: {
+      mensch: "Wählt, kombiniert und ergänzt Gestaltungsobjekte zu Impulsen.",
+      ki: "Schlägt pro Gestaltungshypothese Objekte vor, sortiert nach den 4Fakten – und schlägt mehrere Kombinationen vor.",
+      kiNicht: "Entscheidet nicht, was umgesetzt wird.",
+      gateFrage: "Liegen plausible, unterschiedliche Gestaltungsmöglichkeiten vor?",
+      zurueckZu: "understand",
+      zurueckLabel: "Zurück zu Verstehen"
+    },
+    architect: {
+      mensch: "Trifft die Auswahl und priorisiert nach dem Minimalismusprinzip.",
+      ki: "Prüft die gewählten Impulse auf Widersprüche und Doppelungen; stellt bei jedem Impuls die Frage „Was passiert, wenn er entfällt?“.",
+      kiNicht: "Trifft die Auswahl nicht selbst.",
+      gateFrage: "Ist die Architektur minimal hinreichend und kohärent?",
+      zurueckZu: "design",
+      zurueckLabel: "Zurück zu Entwerfen"
+    }
+  };
+
+  // Die vier KI-Funktionen mit ihrem festgelegten Kontextzuschnitt. Der
+  // Zuschnitt ist bewusst eng: nie die komplette Episoden-Historie, sondern
+  // genau das, was die Funktion braucht.
+  var KI_FUNKTIONEN = {
+    observe: {
+      titel: "Lücken-Hinweis",
+      beschreibung: "Welche Gestaltungselemente sind bisher unberührt geblieben?",
+      kontext: "nur die aktuelle Episode",
+      modell: "kleines/günstiges Modell"
+    },
+    understand: {
+      titel: "Muster- und Hebel-Vorschlag",
+      beschreibung: "Mögliche Muster aus den Befunden – mit Pflicht-Gegenhypothese.",
+      kontext: "Observe-Befunde der aktuellen Episode + Kurzfassung des Vorgänger-Wirkmodells (nicht die volle Historie)",
+      modell: "leistungsfähigeres Modell (Synthese-Aufgabe)"
+    },
+    design: {
+      titel: "Objektvorschläge je 4Fakt",
+      beschreibung: "Passende Gestaltungsobjekte je Hypothese, sortiert nach den vier Fakt-Ebenen.",
+      kontext: "gewählte Gestaltungshypothese(n)",
+      modell: "mittleres Modell"
+    },
+    architect: {
+      titel: "Kohärenz-Check",
+      beschreibung: "Widersprüche, Doppelungen und die Weglass-Frage je Impuls.",
+      kontext: "gewählte Impulse der aktuellen Episode",
+      modell: "mittleres/leistungsfähiges Modell"
+    }
+  };
+
+  var BEOBACHTUNG_TYPEN = [
+    { key: "fakt", label: "Fakt", hinweis: "beobachtbar, überprüfbar, ohne Deutung" },
+    { key: "vermutung", label: "Vermutung", hinweis: "Eindruck, Deutung, Hörensagen – bewusst als solche markiert" }
+  ];
+
   function getElement(key) {
     for (var i = 0; i < ELEMENTS.length; i++) {
       if (ELEMENTS[i].key === key) return ELEMENTS[i];
@@ -1405,6 +1481,9 @@
     FAKTE: FAKTE,
     INTENTION_PHASEN: INTENTION_PHASEN,
     FRAMEWORK: FRAMEWORK,
+    PROZESS: PROZESS,
+    KI_FUNKTIONEN: KI_FUNKTIONEN,
+    BEOBACHTUNG_TYPEN: BEOBACHTUNG_TYPEN,
     ELEMENTS: ELEMENTS,
     getElement: getElement,
     getLoop: getLoop

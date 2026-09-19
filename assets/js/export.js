@@ -1,31 +1,31 @@
 /*
- * Erzeugt aus einer Initiative ein lesbares Markdown-Dokument
- * ("Gestaltungsarchitektur") und bietet Download als .md an.
+ * Erzeugt aus einem Vorhaben ein lesbares Markdown-Dokument
+ * ("Gestaltungsarchitektur") und bietet den Download als .md an.
+ * Der Aufbau folgt dem Datenmodell des App-Konzepts: Intention, dann je
+ * Episode die vier Schleifen-Ergebnisse, die Gate-Entscheidungen und die
+ * Realisierung samt Maßnahmen.
  */
 (function (global) {
   "use strict";
 
-  var LOOP_ORDER = ["observe", "understand", "design", "architect"];
-
-  function pushIfText(lines, label, text) {
-    if (text && String(text).trim()) {
-      lines.push("**" + label + ":** " + String(text).trim());
-    }
+  function elementTitel(key) {
+    var el = key && AVERA_DATA.getElement(key);
+    return el ? el.title : "ungetaggt";
   }
 
-  function intentionSection(initiative) {
-    var lines = [];
-    lines.push("## Intention");
-    if (initiative.intention.statement && initiative.intention.statement.trim()) {
-      lines.push("> " + initiative.intention.statement.trim());
-      lines.push("");
+  function intentionSection(v) {
+    var lines = ["## Intention"];
+    if (v.intention.text && v.intention.text.trim()) {
+      lines.push("> " + v.intention.text.trim(), "");
+    }
+    if (v.intention.zielgruppe && v.intention.zielgruppe.trim()) {
+      lines.push("**Zielgruppe:** " + v.intention.zielgruppe.trim(), "");
     }
 
     ["erarbeiten", "schaerfen"].forEach(function (phaseKey) {
       var phase = AVERA_DATA.INTENTION_PHASEN[phaseKey];
-      var values = initiative.intention[phaseKey] || [];
-      var any = values.some(function (v) { return v && v.trim(); });
-      if (!any) return;
+      var values = v.intention[phaseKey] || [];
+      if (!values.some(function (t) { return t && t.trim(); })) return;
       lines.push("**" + phase.leitfrage + "**");
       phase.fragen.forEach(function (fr, i) {
         if (values[i] && values[i].trim()) {
@@ -36,7 +36,7 @@
       lines.push("");
     });
 
-    var reflexionen = initiative.intention.reflexionen || [];
+    var reflexionen = v.intention.reflexionen || [];
     if (reflexionen.length) {
       lines.push("**Reflexionen im Verlauf:**");
       reflexionen.forEach(function (r) {
@@ -45,119 +45,180 @@
       lines.push("");
     }
 
-    lines.push("---");
-    lines.push("");
+    lines.push("---", "");
     return lines;
   }
 
-  function loopSection(episode, loopKey) {
-    var lines = [];
-    var loop = AVERA_DATA.getLoop(loopKey);
+  function gateLine(ep, loopKey) {
+    var g = (ep.gates && ep.gates[loopKey]) || {};
+    var frage = AVERA_DATA.PROZESS[loopKey].gateFrage;
+    if (g.offen && g.begruendung && g.begruendung.trim()) {
+      return "**Gate – " + frage + "** ✓ " +
+        (g.entschiedenAm ? "(" + new Date(g.entschiedenAm).toLocaleDateString("de-AT") + ") " : "") +
+        "— " + g.begruendung.trim();
+    }
+    return "_Gate – " + frage + " — noch nicht entschieden._";
+  }
+
+  // Die Notizen aus der Fragenmatrix (übergeordnet und je Element), soweit
+  // etwas darin steht.
+  function notizLines(ep, loopKey) {
     var general = AVERA_DATA.LOOP_GENERAL_FRAGEN[loopKey];
-    var state = episode.loops[loopKey];
-
-    var anyGeneral = ["fokus", "wirkgefuege", "potenziale", "pruefung"].some(function (fk) {
-      return state.general[fk] && state.general[fk].trim();
+    var state = ep.loops[loopKey];
+    var lines = [];
+    ["fokus", "wirkgefuege", "potenziale", "pruefung"].forEach(function (fk) {
+      var t = state.general[fk];
+      if (t && t.trim()) lines.push("**" + general[fk] + "** " + t.trim());
     });
-    var anyElemente = AVERA_DATA.ELEMENTS.some(function (elm) {
-      return state.elemente[elm.key] && state.elemente[elm.key].trim();
+    AVERA_DATA.ELEMENTS.forEach(function (elm) {
+      var t = state.elemente[elm.key];
+      if (t && t.trim()) lines.push("- **" + elm.title + ":** " + t.trim());
     });
-    var anyDesign = loopKey === "design" && state.impulse.length > 0;
-    var anyArchitect = loopKey === "architect" && (state.ausgewaehlt.length > 0 || (state.begruendung && state.begruendung.trim()));
-    if (!anyGeneral && !anyElemente && !state.gate && !anyDesign && !anyArchitect) return lines;
+    if (lines.length) lines.push("");
+    return lines;
+  }
 
-    lines.push("### " + loop.label + " (" + loop.funktion + ")");
+  function observeLines(ep) {
+    var lines = ["### 1 Beobachten"];
+    if (ep.beobachtungen.length) {
+      ["fakt", "vermutung"].forEach(function (typ) {
+        var karten = ep.beobachtungen.filter(function (b) { return b.typ === typ; });
+        if (!karten.length) return;
+        lines.push("**" + (typ === "fakt" ? "Fakten" : "Vermutungen") + " (" + karten.length + "):**");
+        karten.forEach(function (b) {
+          lines.push("- [" + elementTitel(b.element) + "] " + b.text);
+        });
+        lines.push("");
+      });
+    } else {
+      lines.push("_Keine Beobachtungen erfasst._", "");
+    }
+    return lines.concat(notizLines(ep, "observe"), [gateLine(ep, "observe"), ""]);
+  }
 
-    if (anyGeneral) {
-      ["fokus", "wirkgefuege", "potenziale", "pruefung"].forEach(function (fk) {
-        pushIfText(lines, general[fk], state.general[fk]);
+  function understandLines(ep) {
+    var lines = ["### 2 Verstehen"];
+    if (ep.wirkmodell.hebel.length) {
+      lines.push("**Hebel:**");
+      ep.wirkmodell.hebel.forEach(function (h) {
+        if (h.text && h.text.trim()) lines.push("- " + h.text.trim());
       });
       lines.push("");
     }
-    if (state.gate) {
-      lines.push("✓ GATE: " + general.gate + (state.gateNotiz && state.gateNotiz.trim() ? " — " + state.gateNotiz.trim() : ""));
-      lines.push("");
-    }
-
-    if (anyElemente) {
-      AVERA_DATA.ELEMENTS.forEach(function (elm) {
-        var text = state.elemente[elm.key];
-        if (text && text.trim()) {
-          lines.push("- **" + elm.title + ":** " + text.trim());
-        }
+    if (ep.wirkmodell.hypothesen.length) {
+      lines.push("**Gestaltungshypothesen:**");
+      ep.wirkmodell.hypothesen.forEach(function (h) {
+        lines.push("- **[" + elementTitel(h.element) + "]** " + h.text);
+        lines.push("  - _Gegenhypothese:_ " + (h.gegenhypothese && h.gegenhypothese.trim() ? h.gegenhypothese.trim() : "fehlt"));
       });
       lines.push("");
+    } else {
+      lines.push("_Kein Wirkmodell formuliert._", "");
     }
+    return lines.concat(notizLines(ep, "understand"), [gateLine(ep, "understand"), ""]);
+  }
 
-    if (loopKey === "design" && state.impulse.length) {
-      lines.push("**Gesammelte Gestaltungsimpulse:**");
-      state.impulse.forEach(function (imp) {
-        var objekteText = imp.objekte.map(function (o) { return o.beispiel; }).join(", ");
-        lines.push("- **" + imp.name + "**: " + objekteText + (imp.notiz ? " — " + imp.notiz : ""));
+  function impulsZeilen(imp, prefix) {
+    var abdeckung = AVERA_DATA.FAKTE_TYPEN.filter(function (t) {
+      return imp.objekte.some(function (o) { return o.typ === t.key; });
+    }).length;
+    var lines = [prefix + "**" + imp.titel + "** (" + abdeckung + "/4 Ebenen)"];
+    AVERA_DATA.FAKTE_TYPEN.forEach(function (t) {
+      var objekte = imp.objekte.filter(function (o) { return o.typ === t.key; });
+      if (objekte.length) {
+        lines.push("  - _" + t.label + ":_ " + objekte.map(function (o) { return o.beispiel; }).join(", "));
+      }
+    });
+    return lines;
+  }
+
+  function designLines(ep) {
+    var lines = ["### 3 Entwerfen"];
+    if (ep.impulse.length) {
+      ep.wirkmodell.hypothesen.forEach(function (h) {
+        var impulse = ep.impulse.filter(function (imp) { return imp.hypotheseId === h.id; });
+        if (!impulse.length) return;
+        lines.push("**Zur Hypothese:** " + h.text);
+        impulse.forEach(function (imp) {
+          lines = lines.concat(impulsZeilen(imp, "- "));
+        });
+        lines.push("");
       });
-      lines.push("");
-    }
-
-    if (loopKey === "architect") {
-      var impulse = episode.loops.design.impulse;
-      var selected = state.ausgewaehlt || [];
-      var chosen = impulse.filter(function (imp) { return selected.indexOf(imp.id) !== -1; });
-      if (chosen.length) {
-        lines.push("**Gewählte Architektur:**");
-        chosen.forEach(function (imp) {
-          lines.push("- " + imp.name);
+      var ohne = ep.impulse.filter(function (imp) { return !imp.hypotheseId; });
+      if (ohne.length) {
+        lines.push("**Ohne Hypothese:**");
+        ohne.forEach(function (imp) {
+          lines = lines.concat(impulsZeilen(imp, "- "));
         });
         lines.push("");
       }
-      pushIfText(lines, "Begründung", state.begruendung);
-      lines.push("");
+    } else {
+      lines.push("_Keine Gestaltungsimpulse entworfen._", "");
     }
-
-    return lines;
+    return lines.concat(notizLines(ep, "design"), [gateLine(ep, "design"), ""]);
   }
 
-  function episodeSection(episode) {
-    var lines = [];
-    lines.push("## Episode " + episode.nr);
-    if (episode.statusQuoNotiz && episode.statusQuoNotiz.trim()) {
-      lines.push("_Status quo:_ " + episode.statusQuoNotiz.trim());
+  function architectLines(ep) {
+    var lines = ["### 4 Komponieren"];
+    var gewaehlt = ep.architektur.gewaehlt || [];
+    var chosen = ep.impulse.filter(function (imp) { return gewaehlt.indexOf(imp.id) !== -1; });
+    if (chosen.length) {
+      lines.push("**Gestaltungsarchitektur (" + chosen.length + " von " + ep.impulse.length + " Impulsen):**");
+      chosen.forEach(function (imp) {
+        lines = lines.concat(impulsZeilen(imp, "- "));
+        var w = ep.architektur.weglassen[imp.id];
+        if (w && w.trim()) lines.push("  - _Wenn er entfällt:_ " + w.trim());
+      });
       lines.push("");
+    } else {
+      lines.push("_Keine Impulse in die Architektur übernommen._", "");
     }
+    if (ep.architektur.kohaerenzNotiz && ep.architektur.kohaerenzNotiz.trim()) {
+      lines.push("**Kohärenz:** " + ep.architektur.kohaerenzNotiz.trim(), "");
+    }
+    return lines.concat(notizLines(ep, "architect"), [gateLine(ep, "architect"), ""]);
+  }
 
-    LOOP_ORDER.forEach(function (lk) {
-      lines = lines.concat(loopSection(episode, lk));
-    });
+  function episodeSection(ep) {
+    var lines = ["## Episode " + ep.nr];
+    if (ep.statusQuo && ep.statusQuo.trim()) {
+      lines.push("_Status quo:_ " + ep.statusQuo.trim(), "");
+    }
+    lines = lines
+      .concat(observeLines(ep))
+      .concat(understandLines(ep))
+      .concat(designLines(ep))
+      .concat(architectLines(ep));
 
-    if (episode.realized) {
-      lines.push("**In die Welt gebracht:** " + new Date(episode.realized.at).toLocaleDateString("de-AT"));
-      if (episode.realized.notiz && episode.realized.notiz.trim()) {
-        lines.push("> " + episode.realized.notiz.trim());
-      }
+    lines.push("### In die Welt gebracht");
+    if (ep.realized) {
+      lines.push("Am " + new Date(ep.realized.at).toLocaleDateString("de-AT"));
+      if (ep.realized.notiz && ep.realized.notiz.trim()) lines.push("> " + ep.realized.notiz.trim());
     } else {
       lines.push("_Noch nicht realisiert._");
     }
-    lines.push("");
-    lines.push("---");
-    lines.push("");
+    var mn = ep.massnahmen || [];
+    if (mn.length) {
+      lines.push("", "**Maßnahmen:**");
+      mn.forEach(function (m) {
+        lines.push("- [" + (m.status === "erledigt" ? "x" : " ") + "] " + m.text);
+      });
+    }
+    lines.push("", "---", "");
     return lines;
   }
 
-  function toMarkdown(initiative) {
-    var lines = [];
-    lines.push("# Gestaltungsarchitektur: " + initiative.name);
-    if (initiative.org) lines.push("**Unternehmen/Team:** " + initiative.org);
-    lines.push("");
-    lines.push("_Erstellt mit der AVERA-Change-App – Episode für Episode, Drehung für Drehung._");
-    lines.push("");
+  function toMarkdown(v) {
+    var lines = ["# Gestaltungsarchitektur: " + v.name];
+    if (v.org) lines.push("**Unternehmen/Team:** " + v.org);
+    lines.push("", "_Erstellt mit der AVERA-App – Episode für Episode, Gate für Gate._", "");
 
-    lines = lines.concat(intentionSection(initiative));
-
-    initiative.episodes.forEach(function (episode) {
-      lines = lines.concat(episodeSection(episode));
+    lines = lines.concat(intentionSection(v));
+    v.episodes.forEach(function (ep) {
+      lines = lines.concat(episodeSection(ep));
     });
 
-    lines.push("_Framework-Grundlage: AVERA White Paper 2.0 und Workflow „Episode & Schleife“, Corporate Learning Community Österreich (#CLCA), CC BY-SA 4.0._");
-
+    lines.push("_Grundlage: AVERA White Paper 2.0, die Fragen-/4Fakte-Matrix und das App-Konzept „Option 3“, Corporate Learning Community Österreich (#CLCA), CC BY-SA 4.0._");
     return lines.join("\n");
   }
 
@@ -170,19 +231,17 @@
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(function () {
-      URL.revokeObjectURL(url);
-    }, 1000);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
   // Läuft die App eingebettet im Artifact-Viewer, gibt es kein direktes
-  // Dateisystem – dort läuft der Download über die "downloads"-Capability.
-  // Außerhalb eines Viewers (lokale Nutzung, eigenes Hosting) existiert
-  // window.claude gar nicht, dann greift sofort der Blob-Download.
-  async function downloadMarkdown(initiative) {
-    var safeName = (initiative.name || "avera-initiative").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-    var filename = "gestaltungsarchitektur-" + (safeName || "initiative") + ".md";
-    var text = toMarkdown(initiative);
+  // Dateisystem – dort liefe der Download über die "downloads"-Capability.
+  // Außerhalb eines Viewers existiert window.claude gar nicht, dann greift
+  // sofort der Blob-Download.
+  async function downloadMarkdown(v) {
+    var safeName = (v.name || "avera-vorhaben").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    var filename = "gestaltungsarchitektur-" + (safeName || "vorhaben") + ".md";
+    var text = toMarkdown(v);
 
     if (global.claude && typeof global.claude.use === "function") {
       try {

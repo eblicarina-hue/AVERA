@@ -1,8 +1,15 @@
 /*
- * AVERA-Change-App: Steuerung der Ansichten über einen einfachen Hash-Router.
- * Führt durch den episodischen AVERA-Workflow: eine Episode ist eine volle
- * Drehung im Rad mit den Schleifen Observe -> Understand -> Design -> Architect,
- * gefolgt von der Realisierung. Keine Frameworks, keine Build-Tools.
+ * AVERA-App – Steuerung der Ansichten über einen einfachen Hash-Router.
+ *
+ * Aufbau nach "AVERA App – Konzept (Option 3: KI eingebettet je Schleife)":
+ * Ein Vorhaben startet bei der Intention und läuft in Episoden durch die vier
+ * Schleifen Beobachten -> Verstehen -> Entwerfen -> Komponieren. Zwischen den
+ * Schleifen liegt je ein Gate: kein einfacher "Weiter"-Button, sondern eine
+ * Reflexionsfrage mit Freitext-Begründung, die den Übergang freischaltet.
+ * Die KI hat je Schleife genau eine begrenzte Funktion – Vorschläge,
+ * Gegenfragen, Kohärenz-Checks; entschieden wird am Gate, vom Menschen.
+ *
+ * Keine Frameworks, keine Build-Tools.
  */
 (function () {
   "use strict";
@@ -23,7 +30,7 @@
   ];
 
   var SOON_LABELS = {
-    massnahmen: { title: "Maßnahmen", text: "Eine bereichsübergreifende Sicht auf alle Gestaltungsimpulse eurer Projekte – gebündelt statt Projekt für Projekt." },
+    massnahmen: { title: "Maßnahmen", text: "Eine bereichsübergreifende Sicht auf alle Maßnahmen eurer Projekte – gebündelt statt Projekt für Projekt." },
     people: { title: "People & Kultur", text: "Perspektiven aus HR und Führung auf laufende Veränderungsprojekte." },
     wissen: { title: "Wissen", text: "Eine Wissensbasis rund um AVERA, Change- und Lernformate." },
     analyse: { title: "Analyse", text: "Auswertungen über mehrere Projekte hinweg: Fortschritt, Muster, Wirkung." },
@@ -34,20 +41,21 @@
   var TIPS = [
     "Beobachten, bevor ihr erklärt – und erklären, bevor ihr gestaltet.",
     "Hinreichend statt vollständig: Eine für diesen Moment tragfähige Grundlage reicht, um den nächsten Schritt zu gehen.",
-    "Design öffnet den Gestaltungsraum – Architect reduziert ihn wieder. Beides braucht seine Zeit.",
-    "So wenig wie möglich, so viel wie nötig: Nicht jedes Element muss in jeder Episode adressiert werden.",
-    "Ein Gestaltungsimpuls wirkt am stärksten im Zusammenspiel von Artefakt, Soziofakt, Mentefakt und Ethofakt – nicht als Einzelmaßnahme.",
+    "Trennt beim Beobachten Fakt und Vermutung. Eine Vermutung ist nicht schlechter – sie ist nur etwas anderes.",
+    "Zu jeder Hypothese gehört eine Gegenhypothese. Wer keine findet, hat noch nicht genug gesucht.",
+    "Entwerfen öffnet den Gestaltungsraum – Komponieren reduziert ihn wieder. Beides braucht seine Zeit.",
+    "Ein Gestaltungsimpuls wirkt am stärksten im Zusammenspiel von Artefakt, Soziofakt, Mentefakt und Ethofakt.",
     "Die Geisterfahrt: Wer am sichtbaren Ende gestaltet, ohne die Ursache zu verstehen, verpufft schnell wieder.",
     "Die Intention gibt Richtung, nicht den Weg. Sie darf sich schärfen, wenn neue Erkenntnisse ihre Annahmen infrage stellen.",
-    "Jede Episode setzt dort an, wo die Organisation tatsächlich angekommen ist – nicht dort, wo der Plan sie vermutet.",
-    "Raum & Zeit ist kein weiteres Element, sondern die Voraussetzung, damit alle anderen überhaupt wirksam werden.",
-    "Nach der Realisierung beginnt das Lernen nicht erst – das erneute Beobachten ist schon der Start der nächsten Drehung."
+    "Ein Gate ist kein Weiter-Button. Wenn die Begründung schwerfällt, ist die Schleife noch nicht fertig.",
+    "Fragt bei jedem Impuls: Was passiert, wenn er entfällt? Was dann nichts ändert, kann weg."
   ];
 
-  // Formular-Entwurf beim Sammeln von Gestaltungsobjekten in der Design-Schleife
-  // (bewusst nicht persistiert, bis der Impuls gespeichert wird).
-  var designDraft = { scopeKey: null, objekte: [], name: "", notiz: "" };
-  var designFilter = { typ: "artefakt", wirkstufe: "beruehren" };
+  // Entwurf beim Zusammenstellen eines Gestaltungsimpulses in der
+  // Entwerfen-Schleife (bewusst nicht persistiert, bis er gespeichert wird).
+  var designDraft = { scope: null, hypotheseId: null, titel: "", objekte: [] };
+  var designWirkstufe = "beruehren";
+  var observeFilter = "alle";
 
   function escapeHtml(str) {
     return String(str == null ? "" : str)
@@ -66,14 +74,15 @@
     if (parts[0] === "framework") return { view: "framework" };
     if (parts[0] === "hilfe") return { view: "hilfe" };
     if (parts[0] === "soon" && parts[1]) return { view: "soon", key: parts[1] };
-    if (parts[0] === "init" && parts[1]) {
+    if (parts[0] === "v" && parts[1]) {
       var id = parts[1];
       if (parts[2] === "intention") return { view: "intention", id: id };
       if (parts[2] === "export") return { view: "export", id: id };
-      if (parts[2] === "episode" && parts[3] && parts[4]) {
+      if (parts[2] === "ep" && parts[3]) {
         var nr = parseInt(parts[3], 10);
-        if (parts[4] === "realize") return { view: "realize", id: id, nr: nr };
-        return { view: "loop", id: id, nr: nr, loop: parts[4] };
+        if (parts[4] === "welt") return { view: "welt", id: id, nr: nr };
+        if (LOOP_ORDER.indexOf(parts[4]) !== -1) return { view: "loop", id: id, nr: nr, loop: parts[4] };
+        return { view: "loop", id: id, nr: nr, loop: "observe" };
       }
       return { view: "overview", id: id };
     }
@@ -84,14 +93,18 @@
     location.hash = hash;
   }
 
-  function resetDesignDraft(scopeKey) {
-    designDraft = { scopeKey: scopeKey, objekte: [], name: "", notiz: "" };
+  function resetDesignDraft(scope, hypotheseId) {
+    designDraft = { scope: scope, hypotheseId: hypotheseId || null, titel: "", objekte: [] };
+  }
+
+  function loopUrl(id, nr, loopKey) {
+    return "#/v/" + id + "/ep/" + nr + "/" + loopKey;
   }
 
   // ---------- App-Shell (Sidebar + Topbar) ----------
 
-  // AVERA-Blütenlogo (6 Blütenblätter: Blau, Türkis, Gelb, Koralle, Magenta, Violett) —
-  // dieselbe Form wie im Rad-Zentrum (assets/js/wheel.js), hier als HTML-String fürs Sidebar-Icon.
+  // AVERA-Blütenlogo (6 Blütenblätter) – dieselbe Form wie im Rad-Zentrum
+  // (assets/js/wheel.js), hier als HTML-String fürs Sidebar-Icon.
   var LOGO_PETAL_D = "M50,50 C36,45 26,26 41,8 C46,2 54,2 59,8 C74,26 64,45 50,50 Z";
   var LOGO_COLORS = [
     ["#2f6fe0", "#9cc9f7"],
@@ -159,10 +172,9 @@
     ta.style.height = ta.scrollHeight + "px";
   }
 
-  // Jedes Notizfeld soll mit seinem Inhalt wachsen, statt den eigenen Text
-  // zu verstecken und intern wegzuscrollen. Läuft einmal je Render über
-  // alle Textareas (inkl. der in noch geschlossenen <details>, die beim
-  // Öffnen per "toggle" nachträglich korrekt bemessen werden).
+  // Jedes Notizfeld wächst mit seinem Inhalt, statt den Text zu verstecken und
+  // intern wegzuscrollen. Läuft einmal je Render über alle Textareas (auch die
+  // in noch geschlossenen <details>, die beim Öffnen nachgemessen werden).
   function wireAutosize(container) {
     container.querySelectorAll("textarea").forEach(function (ta) {
       autosizeTextarea(ta);
@@ -185,6 +197,7 @@
       topbarHtml() +
       '<main class="app-main">' + contentHtml + "</main>" +
       "</div>" +
+      '<div id="overlay-root"></div>' +
       "</div>";
 
     wireAutosize(root);
@@ -202,71 +215,63 @@
     }
   }
 
+  // ---------- Overlay (Gate, KI-Prompt) ----------
+
+  function closeOverlay() {
+    var host = document.getElementById("overlay-root");
+    if (host) host.innerHTML = "";
+  }
+
+  function showOverlay(cls, innerHtml, onMount) {
+    var host = document.getElementById("overlay-root");
+    if (!host) return;
+    host.innerHTML =
+      '<div class="overlay-backdrop" id="overlay-backdrop">' +
+      '<div class="overlay-panel ' + cls + '" role="dialog" aria-modal="true">' + innerHtml + "</div>" +
+      "</div>";
+    wireAutosize(host);
+    document.getElementById("overlay-backdrop").addEventListener("click", function (evt) {
+      if (evt.target.id === "overlay-backdrop") closeOverlay();
+    });
+    host.querySelectorAll("[data-overlay-close]").forEach(function (btn) {
+      btn.addEventListener("click", closeOverlay);
+    });
+    if (onMount) onMount(host);
+  }
+
   // ---------- Ableitungen ----------
 
-  // Wurde ein Element in irgendeiner Episode (auch früheren) schon einmal
-  // beschrieben? Zeigt sich als dezenter Punkt, wenn die aktuelle Episode
-  // dafür noch offen ist – sonst würde jede neue Episode optisch wirken,
-  // als wäre die bisherige Arbeit spurlos verschwunden.
-  function elementEverTouched(init, elementKey) {
-    return init.episodes.some(function (ep) {
+  function elementEverTouched(v, elementKey) {
+    return v.episodes.some(function (ep) {
       return LOOP_ORDER.some(function (lk) {
-        var text = ep.loops[lk].elemente[elementKey];
-        return !!(text && text.trim());
+        return AVERA_STORE.elementLoopBeruehrt(ep, elementKey, lk);
       });
     });
   }
 
-  function buildWheelAdapter(init, episode) {
+  function buildWheelAdapter(v, episode) {
     var adapter = { stations: {} };
     AVERA_DATA.ELEMENTS.forEach(function (elm) {
       adapter.stations[elm.key] = {
         status: AVERA_STORE.deriveElementStatus(episode, elm.key),
-        touchedBefore: elementEverTouched(init, elm.key)
+        touchedBefore: elementEverTouched(v, elm.key)
       };
     });
-    adapter.stations.intention = { status: AVERA_STORE.deriveIntentionStatus(init) };
+    adapter.stations.intention = { status: AVERA_STORE.deriveIntentionStatus(v) };
     return adapter;
   }
 
-  function firstUnfinishedLoop(episode) {
-    for (var i = 0; i < LOOP_ORDER.length; i++) {
-      if (!episode.loops[LOOP_ORDER[i]].gate) return LOOP_ORDER[i];
-    }
-    return null;
-  }
-
-  function projectProgressPct(init) {
-    var ep = AVERA_STORE.currentEpisode(init);
-    var gates = LOOP_ORDER.filter(function (lk) { return ep.loops[lk].gate; }).length;
+  function projectProgressPct(v) {
+    var ep = AVERA_STORE.currentEpisode(v);
+    var gates = LOOP_ORDER.filter(function (lk) { return AVERA_STORE.gateOffen(ep, lk); }).length;
     return Math.round((gates / LOOP_ORDER.length) * 100);
   }
 
-  function loopDotsHtml(id, nr, currentLoop, episode) {
-    return (
-      '<div class="loop-dots">' +
-      LOOP_ORDER.map(function (lk, i) {
-        var loop = AVERA_DATA.getLoop(lk);
-        var cls = "loop-dot";
-        if (lk === currentLoop) cls += " active";
-        if (episode.loops[lk].gate) cls += " done";
-        return (
-          '<a class="' + cls + '" href="#/init/' + id + "/episode/" + nr + "/" + lk + '" title="' +
-          escapeHtml(loop.label) + '">' +
-          '<span class="loop-dot-num">' + (i + 1) + "</span>" +
-          '<span class="loop-dot-label">' + escapeHtml(loop.label) + "</span>" +
-          "</a>"
-        );
-      }).join("") +
-      "</div>"
-    );
-  }
-
-  function episodeStatusLabel(init) {
-    var ep = AVERA_STORE.currentEpisode(init);
+  function episodeStatusLabel(v) {
+    var ep = AVERA_STORE.currentEpisode(v);
     if (ep.realized) return "Episode " + ep.nr + " abgeschlossen";
-    var loopKey = firstUnfinishedLoop(ep);
-    if (!loopKey) return "Episode " + ep.nr + " · bereit für Realisierung";
+    var loopKey = AVERA_STORE.ersteOffeneSchleife(ep);
+    if (!loopKey) return "Episode " + ep.nr + " · bereit, in die Welt zu gehen";
     return "Episode " + ep.nr + " · " + AVERA_DATA.getLoop(loopKey).label;
   }
 
@@ -275,14 +280,245 @@
     return Math.floor((d - start) / 86400000);
   }
 
+  function elementOptionsHtml(selected, leerLabel) {
+    return (
+      '<option value=""' + (selected ? "" : " selected") + ">" + escapeHtml(leerLabel || "— Element wählen —") + "</option>" +
+      AVERA_DATA.ELEMENTS.map(function (el) {
+        return '<option value="' + el.key + '"' + (el.key === selected ? " selected" : "") + ">" + escapeHtml(el.title) + "</option>";
+      }).join("")
+    );
+  }
+
+  function elementTagHtml(key) {
+    if (!key) return '<span class="el-tag el-tag-leer">ungetaggt</span>';
+    var el = AVERA_DATA.getElement(key);
+    if (!el) return "";
+    return '<span class="el-tag" style="background: var(--el-' + key + '-soft); color: var(--el-' + key + ')">' + escapeHtml(el.title) + "</span>";
+  }
+
+  // ---------- Prozessrad ----------
+
+  function prozessradAsideHtml(v) {
+    var text = (v.intention.text || "").trim();
+    return (
+      '<aside class="prozess-aside">' +
+      '<div class="prozess-aside-head">Wo stehen wir?</div>' +
+      '<div id="prozessrad-container"></div>' +
+      '<a class="prozess-aside-intention" href="#/v/' + v.id + '/intention">' +
+      "<span>Intention</span>" +
+      (text ? "„" + escapeHtml(text) + "“" : "<em>noch nicht formuliert</em>") +
+      "</a>" +
+      '<p class="prozess-aside-hint">Klick auf ein Segment wechselt die Schleife, Klick auf ein Tor öffnet das Gate, Klick auf einen Ring eine Episode.</p>' +
+      "</aside>"
+    );
+  }
+
+  function mountProzessrad(v, ep, aktiveSchleife) {
+    var container = document.getElementById("prozessrad-container");
+    if (!container) return;
+    AVERA_PROZESSRAD.render(
+      container,
+      {
+        vorhaben: v,
+        episode: ep,
+        aktiveSchleife: aktiveSchleife,
+        gateOffen: function (k) { return AVERA_STORE.gateOffen(ep, k); },
+        erreichbar: function (k) { return AVERA_STORE.loopErreichbar(ep, k); }
+      },
+      {
+        onSchleife: function (k) { navigate(loopUrl(v.id, ep.nr, k)); },
+        onGate: function (k) { openGate(v.id, ep.nr, k); },
+        onIntention: function () { navigate("#/v/" + v.id + "/intention"); },
+        onEpisode: function (nr) { navigate("#/v/" + v.id + "/ep/" + nr + "/observe"); }
+      }
+    );
+  }
+
+  // ---------- Gate-Overlay ----------
+
+  // Was hat diese Schleife hervorgebracht? Steht im Gate mit drin, damit die
+  // Entscheidung nicht blind getroffen wird.
+  function gateBilanzHtml(ep, loopKey) {
+    var zeilen = [];
+    if (loopKey === "observe") {
+      var fakten = ep.beobachtungen.filter(function (b) { return b.typ === "fakt"; }).length;
+      var vermutungen = ep.beobachtungen.length - fakten;
+      var getaggt = {};
+      ep.beobachtungen.forEach(function (b) { if (b.element) getaggt[b.element] = true; });
+      zeilen.push(fakten + " Fakten, " + vermutungen + " Vermutungen");
+      zeilen.push(Object.keys(getaggt).length + " von " + AVERA_DATA.ELEMENTS.length + " Gestaltungselementen berührt");
+    } else if (loopKey === "understand") {
+      var ohneGegen = ep.wirkmodell.hypothesen.filter(function (h) { return !h.gegenhypothese || !h.gegenhypothese.trim(); }).length;
+      zeilen.push(ep.wirkmodell.hebel.length + " Hebel, " + ep.wirkmodell.hypothesen.length + " Gestaltungshypothesen");
+      if (ohneGegen) zeilen.push("⚠ " + ohneGegen + " Hypothese(n) ohne Gegenhypothese");
+    } else if (loopKey === "design") {
+      var hypMitImpuls = {};
+      ep.impulse.forEach(function (i) { if (i.hypotheseId) hypMitImpuls[i.hypotheseId] = true; });
+      zeilen.push(ep.impulse.length + " Gestaltungsimpulse");
+      zeilen.push(Object.keys(hypMitImpuls).length + " von " + ep.wirkmodell.hypothesen.length + " Hypothesen mit Impuls hinterlegt");
+    } else {
+      zeilen.push(ep.architektur.gewaehlt.length + " von " + ep.impulse.length + " Impulsen in der Architektur");
+      var ohneWeglass = ep.architektur.gewaehlt.filter(function (impId) {
+        var t = ep.architektur.weglassen[impId];
+        return !t || !t.trim();
+      }).length;
+      if (ohneWeglass) zeilen.push("⚠ " + ohneWeglass + " Impuls(e) ohne Weglass-Prüfung");
+    }
+    return '<ul class="gate-bilanz">' + zeilen.map(function (z) { return "<li>" + escapeHtml(z) + "</li>"; }).join("") + "</ul>";
+  }
+
+  function openGate(id, nr, loopKey) {
+    var v = AVERA_STORE.get(id);
+    var ep = v ? AVERA_STORE.getEpisode(v, nr) : null;
+    if (!v || !ep) return;
+    var prozess = AVERA_DATA.PROZESS[loopKey];
+    var gate = ep.gates[loopKey];
+    var gateNr = LOOP_ORDER.indexOf(loopKey) + 1;
+    var pruefFrage = AVERA_DATA.LOOP_GENERAL_FRAGEN[loopKey].gate;
+    var nextLoop = LOOP_ORDER[gateNr];
+
+    var html =
+      '<div class="gate-overlay-head">' +
+      '<span class="gate-badge">Gate ' + gateNr + "</span>" +
+      '<button type="button" class="overlay-close" data-overlay-close aria-label="Schließen">✕</button>' +
+      "</div>" +
+      "<h2 class='gate-frage'>" + escapeHtml(prozess.gateFrage) + "</h2>" +
+      "<p class='gate-pruef'>" + escapeHtml(pruefFrage) + "</p>" +
+      gateBilanzHtml(ep, loopKey) +
+      '<label class="gate-label" for="gate-begruendung">Begründung – warum ja, warum jetzt?</label>' +
+      '<textarea id="gate-begruendung" rows="3" placeholder="Ohne Begründung bleibt das Tor zu.">' + escapeHtml(gate.begruendung || "") + "</textarea>" +
+      (gate.offen && gate.entschiedenAm
+        ? "<p class='gate-stamp'>Geöffnet am " + new Date(gate.entschiedenAm).toLocaleDateString("de-AT") + "</p>"
+        : "") +
+      '<div class="gate-actions">' +
+      '<button type="button" class="btn btn-ghost" id="gate-zurueck">← ' + escapeHtml(prozess.zurueckLabel) + "</button>" +
+      '<button type="button" class="btn btn-primary" id="gate-oeffnen" disabled>' +
+      (nextLoop ? "Tor öffnen → " + escapeHtml(AVERA_DATA.getLoop(nextLoop).label) : "Tor öffnen → In die Welt bringen") +
+      "</button>" +
+      "</div>";
+
+    showOverlay("gate-overlay", html, function () {
+      var ta = document.getElementById("gate-begruendung");
+      var btn = document.getElementById("gate-oeffnen");
+      function sync() {
+        btn.disabled = !ta.value.trim();
+      }
+      ta.addEventListener("input", sync);
+      sync();
+      ta.focus();
+
+      btn.addEventListener("click", function () {
+        AVERA_STORE.setGate(id, nr, loopKey, true, ta.value.trim());
+        closeOverlay();
+        navigate(nextLoop ? loopUrl(id, nr, nextLoop) : "#/v/" + id + "/ep/" + nr + "/welt");
+      });
+
+      document.getElementById("gate-zurueck").addEventListener("click", function () {
+        // Begründung als Notiz behalten, Tor aber ausdrücklich zulassen.
+        AVERA_STORE.setGate(id, nr, loopKey, false, ta.value.trim());
+        closeOverlay();
+        navigate(loopUrl(id, nr, prozess.zurueckZu));
+      });
+    });
+  }
+
+  // ---------- KI-Panel je Schleife ----------
+
+  function kiPanelHtml(loopKey) {
+    var fn = AVERA_DATA.KI_FUNKTIONEN[loopKey];
+    var prozess = AVERA_DATA.PROZESS[loopKey];
+    return (
+      '<section class="panel ki-panel">' +
+      '<div class="ki-panel-head"><span class="ki-badge">KI-Funktion</span><strong>' + escapeHtml(fn.titel) + "</strong></div>" +
+      "<p class='ki-desc'>" + escapeHtml(fn.beschreibung) + "</p>" +
+      '<dl class="ki-meta">' +
+      "<div><dt>Kontext</dt><dd>" + escapeHtml(fn.kontext) + "</dd></div>" +
+      "<div><dt>Modell</dt><dd>" + escapeHtml(fn.modell) + "</dd></div>" +
+      "<div><dt>Tut nicht</dt><dd>" + escapeHtml(prozess.kiNicht) + "</dd></div>" +
+      "</dl>" +
+      '<button type="button" class="btn btn-secondary btn-small" id="ki-prompt-btn">Prompt für diese Funktion ansehen</button>' +
+      "</section>"
+    );
+  }
+
+  function wireKiPanel(loopKey, v, ep) {
+    var btn = document.getElementById("ki-prompt-btn");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      var req = AVERA_AI.buildRequest(loopKey, v, ep);
+      var groesse = AVERA_AI.groesse(req);
+      var text = AVERA_AI.toText(req);
+      var html =
+        '<div class="gate-overlay-head">' +
+        '<span class="ki-badge">' + escapeHtml(req.titel) + "</span>" +
+        '<button type="button" class="overlay-close" data-overlay-close aria-label="Schließen">✕</button>' +
+        "</div>" +
+        "<p class='ki-desc'>" + escapeHtml(req.beschreibung) + "</p>" +
+        '<dl class="ki-meta">' +
+        "<div><dt>Kontext</dt><dd>" + escapeHtml(req.kontextLabel) + "</dd></div>" +
+        "<div><dt>Modell</dt><dd>" + escapeHtml(req.modell) + "</dd></div>" +
+        "<div><dt>Umfang</dt><dd>~" + groesse.tokenSchaetzung + " Tokens</dd></div>" +
+        "</dl>" +
+        (AVERA_AI.verfuegbar()
+          ? ""
+          : "<p class='hint-text'>Für diese App ist kein Modellzugang hinterlegt – die Frage BYOK oder eigener API-Key ist im Konzept noch offen. Bis dahin: Prompt kopieren, im Modell eurer Wahl ausführen und die Vorschläge hier eintragen. Entschieden wird ohnehin am Gate.</p>") +
+        '<pre class="ki-prompt" id="ki-prompt-text"></pre>' +
+        '<div class="gate-actions">' +
+        '<button type="button" class="btn btn-ghost" data-overlay-close>Schließen</button>' +
+        '<button type="button" class="btn btn-primary" id="ki-copy-btn">Prompt kopieren</button>' +
+        "</div>";
+      showOverlay("ki-overlay", html, function () {
+        document.getElementById("ki-prompt-text").textContent = text;
+        document.getElementById("ki-copy-btn").addEventListener("click", function (evt) {
+          var b = evt.currentTarget;
+          function done() {
+            b.textContent = "Kopiert ✓";
+            setTimeout(function () { b.textContent = "Prompt kopieren"; }, 1800);
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, done);
+          } else {
+            var pre = document.getElementById("ki-prompt-text");
+            var range = document.createRange();
+            range.selectNodeContents(pre);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            done();
+          }
+        });
+      });
+    });
+  }
+
   // ---------- Dashboard ----------
+
+  function wpHeadHtml(sec) {
+    return (
+      '<span class="section-pill ' + (sec.pill || "blue") + '">' + escapeHtml(sec.label) + "</span>" +
+      '<h2 class="wp-headline">' + escapeHtml(sec.headline) + "</h2>" +
+      '<p class="wp-sub">' + escapeHtml(sec.sub) + "</p>" +
+      '<p class="wp-text">' + escapeHtml(sec.text) + "</p>"
+    );
+  }
+
+  function kernsatzHtml(sec, icon) {
+    if (!sec.kernsatz) return "";
+    return (
+      '<div class="kernsatz-box">' +
+      '<span class="kernsatz-icon">' + icon + "</span>" +
+      "<div><strong>" + escapeHtml(sec.kernsatz) + "</strong>" +
+      "<p>" + escapeHtml(sec.kernsatzText) + "</p></div>" +
+      "</div>"
+    );
+  }
 
   function renderFirstVisitDashboard() {
     var F = AVERA_DATA.FRAMEWORK;
     var html =
       '<div class="view view-dashboard">' +
       "<h1>Willkommen bei AVERA</h1>" +
-      "<p class='hint-text'>Diese App begleitet euch durch den AVERA-Workflow: Veränderung entsteht nicht in einem einmaligen Durchlauf, sondern in <strong>Episoden</strong> – jede Episode ist eine volle Drehung im Rad mit vier Schleifen: Beobachten → Verstehen → Entwerfen → Komponieren, gefolgt von der Realisierung.</p>" +
+      "<p class='hint-text'>Diese App begleitet euch durch den AVERA-Workflow: Ein Vorhaben läuft in <strong>Episoden</strong>, jede Episode einmal durch vier Schleifen – Beobachten → Verstehen → Entwerfen → Komponieren. Zwischen den Schleifen liegt je ein <strong>Gate</strong>: eine Frage, die ihr beantwortet, bevor es weitergeht.</p>" +
       '<div class="dash-hero">' +
       "<blockquote class='dash-hero-quote'>Legt euer erstes Veränderungsprojekt an und startet mit der Intention – dem Nullpunkt jeder Gestaltung.</blockquote>" +
       '<a class="btn btn-primary" href="#/projekte">Erstes Projekt anlegen →</a>' +
@@ -322,15 +558,16 @@
     var quote = quotedElements[dayOfYear(today) % quotedElements.length].zitat;
     var tip = TIPS[dayOfYear(today) % TIPS.length];
 
-    var activeCount = projects.length;
-    var avgProgress = projects.length
-      ? Math.round(projects.reduce(function (sum, p) { return sum + projectProgressPct(p); }, 0) / projects.length)
-      : 0;
+    var avgProgress = Math.round(
+      projects.reduce(function (sum, p) { return sum + projectProgressPct(p); }, 0) / projects.length
+    );
     var totalEpisodes = projects.reduce(function (sum, p) { return sum + p.episodes.length; }, 0);
-    var openImpulse = projects.reduce(function (sum, p) {
+    var offeneGates = projects.reduce(function (sum, p) {
       var ep = AVERA_STORE.currentEpisode(p);
-      var selected = ep.loops.architect.ausgewaehlt || [];
-      return sum + ep.loops.design.impulse.filter(function (i) { return selected.indexOf(i.id) === -1; }).length;
+      return sum + LOOP_ORDER.filter(function (lk) { return !AVERA_STORE.gateOffen(ep, lk); }).length;
+    }, 0);
+    var beobachtungen = projects.reduce(function (sum, p) {
+      return sum + p.episodes.reduce(function (s, ep) { return s + ep.beobachtungen.length; }, 0);
     }, 0);
 
     var heroHtml =
@@ -341,50 +578,46 @@
 
     var statHtml =
       '<div class="stat-grid">' +
-      '<div class="stat-tile"><div class="stat-tile-icon c1">📁</div><div><div class="stat-tile-value">' + activeCount + '</div><div class="stat-tile-label">Aktive Projekte</div></div></div>' +
-      '<div class="stat-tile"><div class="stat-tile-icon c2">📈</div><div><div class="stat-tile-value">' + avgProgress + '%</div><div class="stat-tile-label">Ø Fortschritt aktuelle Episode</div></div></div>' +
+      '<div class="stat-tile"><div class="stat-tile-icon c1">📁</div><div><div class="stat-tile-value">' + projects.length + '</div><div class="stat-tile-label">Aktive Projekte</div></div></div>' +
+      '<div class="stat-tile"><div class="stat-tile-icon c2">📈</div><div><div class="stat-tile-value">' + avgProgress + '%</div><div class="stat-tile-label">Ø Gates in der aktuellen Episode</div></div></div>' +
       '<div class="stat-tile"><div class="stat-tile-icon c3">🔁</div><div><div class="stat-tile-value">' + totalEpisodes + '</div><div class="stat-tile-label">Episoden insgesamt</div></div></div>' +
-      '<div class="stat-tile"><div class="stat-tile-icon c4">💡</div><div><div class="stat-tile-value">' + openImpulse + '</div><div class="stat-tile-label">Offene Gestaltungsimpulse</div></div></div>' +
+      '<div class="stat-tile"><div class="stat-tile-icon c4">🔎</div><div><div class="stat-tile-value">' + beobachtungen + '</div><div class="stat-tile-label">Beobachtungen erfasst</div></div></div>' +
       "</div>";
 
-    var progressListHtml = projects.length
-      ? projects
-          .slice(0, 6)
-          .map(function (p) {
-            var pct = projectProgressPct(p);
-            return (
-              '<div class="project-progress-row">' +
-              '<div class="project-progress-head"><a href="#/init/' + p.id + '">' + escapeHtml(p.name) + "</a><span>" + pct + "%</span></div>" +
-              '<div class="project-progress-track"><div class="project-progress-fill" style="width:' + pct + '%"></div></div>' +
-              "</div>"
-            );
-          })
-          .join("")
-      : "<p class='hint-text'>Noch keine Projekte angelegt.</p>";
+    var progressListHtml = projects
+      .slice(0, 6)
+      .map(function (p) {
+        var pct = projectProgressPct(p);
+        return (
+          '<div class="project-progress-row">' +
+          '<div class="project-progress-head"><a href="#/v/' + p.id + '">' + escapeHtml(p.name) + "</a><span>" + pct + "%</span></div>" +
+          '<div class="project-progress-track"><div class="project-progress-fill" style="width:' + pct + '%"></div></div>' +
+          "</div>"
+        );
+      })
+      .join("");
 
-    var activityHtml = projects.length
-      ? projects
-          .slice(0, 5)
-          .map(function (p) {
-            return (
-              '<div class="activity-item">' +
-              '<strong>' + escapeHtml(p.name) + "</strong>" +
-              "<span>" + escapeHtml(episodeStatusLabel(p)) + " · " + new Date(p.updatedAt).toLocaleDateString("de-AT") + "</span>" +
-              "</div>"
-            );
-          })
-          .join("")
-      : "<p class='hint-text'>Noch keine Aktivität.</p>";
+    var activityHtml = projects
+      .slice(0, 5)
+      .map(function (p) {
+        return (
+          '<div class="activity-item">' +
+          "<strong>" + escapeHtml(p.name) + "</strong>" +
+          "<span>" + escapeHtml(episodeStatusLabel(p)) + " · " + new Date(p.updatedAt).toLocaleDateString("de-AT") + "</span>" +
+          "</div>"
+        );
+      })
+      .join("");
 
     var html =
       '<div class="view view-dashboard">' +
       "<h1>Willkommen zurück</h1>" +
-      "<p class='hint-text'>Ein Überblick über eure laufenden Veränderungsprojekte.</p>" +
+      "<p class='hint-text'>" + offeneGates + " Gate(s) warten in den laufenden Episoden auf eine Entscheidung.</p>" +
       heroHtml +
       statHtml +
       '<div class="dash-columns">' +
-      '<section class="panel"><h2>Projektfortschritt</h2>' + progressListHtml + "</section>" +
-      '<div>' +
+      '<section class="panel"><h2>Gates der aktuellen Episode</h2>' + progressListHtml + "</section>" +
+      "<div>" +
       '<section class="panel" style="margin-bottom:16px;"><h2>Aktuelle Aktivitäten</h2><div class="activity-feed">' + activityHtml + "</div></section>" +
       '<div class="tip-card"><span class="tip-card-label">Change-Tipp des Tages</span><p>' + escapeHtml(tip) + "</p></div>" +
       "</div>" +
@@ -400,15 +633,15 @@
     var projects = AVERA_STORE.list();
     var listHtml = projects.length
       ? projects
-          .map(function (init) {
+          .map(function (v) {
             return (
-              '<li class="initiative-row" data-search-name="' + escapeHtml(init.name + " " + (init.org || "")) + '">' +
-              '<a class="initiative-link" href="#/init/' + encodeURIComponent(init.id) + '">' +
-              '<span class="initiative-name">' + escapeHtml(init.name) + "</span>" +
-              (init.org ? '<span class="initiative-org">' + escapeHtml(init.org) + "</span>" : "") +
-              '<span class="initiative-progress-num">' + escapeHtml(episodeStatusLabel(init)) + "</span>" +
+              '<li class="initiative-row" data-search-name="' + escapeHtml(v.name + " " + (v.org || "")) + '">' +
+              '<a class="initiative-link" href="#/v/' + encodeURIComponent(v.id) + '">' +
+              '<span class="initiative-name">' + escapeHtml(v.name) + "</span>" +
+              (v.org ? '<span class="initiative-org">' + escapeHtml(v.org) + "</span>" : "<span></span>") +
+              '<span class="initiative-progress-num">' + escapeHtml(episodeStatusLabel(v)) + "</span>" +
               "</a>" +
-              '<button class="btn-icon-delete" data-delete-id="' + init.id + '" title="Löschen" aria-label="Projekt löschen">✕</button>' +
+              '<button class="btn-icon-delete" data-delete-id="' + v.id + '" title="Löschen" aria-label="Projekt löschen">✕</button>' +
               "</li>"
             );
           })
@@ -418,7 +651,7 @@
     var html =
       '<div class="view view-start">' +
       "<h1>Projekte</h1>" +
-      "<p class='hint-text'>Jedes Projekt ist ein Veränderungsvorhaben, das ihr Episode für Episode entlang des AVERA-Rads gestaltet.</p>" +
+      "<p class='hint-text'>Jedes Projekt ist ein Veränderungsvorhaben mit einer Intention, das ihr Episode für Episode durch die vier Schleifen führt.</p>" +
 
       '<section class="panel new-initiative">' +
       "<h2>Neues Projekt starten</h2>" +
@@ -436,10 +669,9 @@
 
       '<section class="panel about-panel">' +
       "<h2>Worauf AVERA hinweist</h2>" +
-      '<p><strong>Die Geisterfahrt:</strong> Viele Change-Vorhaben scheitern, weil vorschnell von einer Beobachtung zu einer vertrauten Maßnahme gesprungen wird – ohne Verstehen und Entwerfen dazwischen. Die vier Schleifen sind gerichtet, aber rekursiv: Fehlt die Grundlage, geht es zurück.</p>' +
-      '<p><strong>Veränderung oder Lernangebot? Beides – kein Entweder-Oder:</strong> AVERA behandelt Change und Lernen als gemeinsame Gestaltungsaufgabe. Story, Organisation und Führung treibt meist das Business, Entdecken, Peers und Methoden meist Corporate Learning/HR – Raum &amp; Zeit verbindet beide.</p>' +
-      '<p><strong>Hinreichend statt vollständig:</strong> AVERA strebt keine vollständige Erfassung der Wirklichkeit an, sondern eine für diese Episode, unter den gegenwärtigen Bedingungen tragfähige Grundlage für den nächsten Schritt.</p>' +
-      '<p class="source-note">Grundlage: AVERA White Paper 2.0, Workflow „Episode &amp; Schleife“ und die Fragen-/4Fakte-Matrix, Corporate Learning Community Österreich (#CLCA), CC BY-SA 4.0.</p>' +
+      "<p><strong>Die Geisterfahrt:</strong> Viele Change-Vorhaben scheitern, weil vorschnell von einer Beobachtung zu einer vertrauten Maßnahme gesprungen wird – ohne Verstehen und Entwerfen dazwischen. Die vier Schleifen sind gerichtet, aber rekursiv: Fehlt die Grundlage, führt das Gate zurück.</p>" +
+      "<p><strong>Hinreichend statt vollständig:</strong> AVERA strebt keine vollständige Erfassung der Wirklichkeit an, sondern eine für diese Episode tragfähige Grundlage für den nächsten Schritt.</p>" +
+      '<p class="source-note">Grundlage: AVERA White Paper 2.0, die Fragen-/4Fakte-Matrix und das App-Konzept „Option 3“, Corporate Learning Community Österreich (#CLCA), CC BY-SA 4.0.</p>' +
       "</section>" +
       "</div>";
 
@@ -450,8 +682,8 @@
       var name = document.getElementById("new-initiative-name").value.trim();
       var org = document.getElementById("new-initiative-org").value.trim();
       if (!name) return;
-      var init = AVERA_STORE.create(name, org);
-      navigate("#/init/" + init.id);
+      var v = AVERA_STORE.create(name, org);
+      navigate("#/v/" + v.id + "/intention");
     });
 
     root.querySelectorAll("[data-delete-id]").forEach(function (btn) {
@@ -459,8 +691,8 @@
         evt.preventDefault();
         evt.stopPropagation();
         var id = btn.getAttribute("data-delete-id");
-        var init = AVERA_STORE.get(id);
-        if (init && confirm('Projekt "' + init.name + '" wirklich löschen?')) {
+        var v = AVERA_STORE.get(id);
+        if (v && confirm('Projekt "' + v.name + '" wirklich löschen?')) {
           AVERA_STORE.remove(id);
           renderProjekte();
         }
@@ -486,15 +718,39 @@
   }
 
   function renderHilfe() {
+    var rollenHtml = LOOP_ORDER.map(function (lk) {
+      var loop = AVERA_DATA.getLoop(lk);
+      var p = AVERA_DATA.PROZESS[lk];
+      return (
+        '<tr><th scope="row">' + escapeHtml(loop.label) + "</th>" +
+        "<td>" + escapeHtml(p.mensch) + "</td>" +
+        "<td>" + escapeHtml(p.ki) + "</td>" +
+        "<td>" + escapeHtml(p.kiNicht) + "</td>" +
+        "<td>" + escapeHtml(p.gateFrage) + "</td></tr>"
+      );
+    }).join("");
+
     var html =
       '<div class="view">' +
       "<h1>Hilfe</h1>" +
       '<section class="panel">' +
-      "<h2>So funktioniert AVERA in dieser App</h2>" +
-      "<p>Jedes <strong>Projekt</strong> durchläuft <strong>Episoden</strong> – eine Episode ist eine volle Drehung im Rad: <strong>Beobachten → Verstehen → Entwerfen → Komponieren</strong>, gefolgt von der Realisierung.</p>" +
-      "<p>In <strong>Beobachten</strong> und <strong>Verstehen</strong> erfasst ihr den Status quo je Gestaltungselement, ohne schon zu gestalten. In <strong>Entwerfen</strong> baut ihr aus dem 4Fakte-Katalog (Artefakte, Soziofakte, Mentefakte, Ethofakte) Gestaltungsimpulse. In <strong>Komponieren</strong> wählt ihr daraus die minimal hinreichende Architektur.</p>" +
-      "<p>Die <strong>Intention</strong> bleibt über alle Episoden hinweg stabil und wird nach jedem Verstehen-Schritt kurz reflektiert.</p>" +
-      "<p>Über <strong>Projekte</strong> in der Seitenleiste legt ihr neue Projekte an und seht laufende. Das <strong>Dashboard</strong> gibt einen Überblick über alle Projekte. Unter <strong>Das Rad</strong> stehen die Grundlagen aus dem AVERA White Paper 2.0: warum Veränderung oft scheitert, die sechs Gestaltungselemente, die drei Dimensionen Wollen/Dürfen/Können und die Drehrichtung.</p>" +
+      "<h2>So läuft eine Episode</h2>" +
+      "<p>Jedes <strong>Projekt</strong> hat eine Intention und läuft in <strong>Episoden</strong>. Eine Episode ist eine volle Drehung: <strong>Beobachten → Verstehen → Entwerfen → Komponieren</strong>, danach „in die Welt bringen“. Das erneute Beobachten startet die nächste Episode.</p>" +
+      "<p>Zwischen den Schleifen liegt je ein <strong>Gate</strong>. Ein Gate ist kein Weiter-Button: Ihr beantwortet eine Reflexionsfrage und begründet sie schriftlich. Erst dann wird die nächste Schleife freigeschaltet. Reicht die Grundlage nicht, führt das Gate ausdrücklich zurück.</p>" +
+      "</section>" +
+
+      '<section class="panel">' +
+      "<h2>Wer macht was – Mensch und KI</h2>" +
+      "<p class='hint-text'>Die KI ist kein Gesprächsfenster, sondern je Schleife genau eine begrenzte Funktion. Die Entscheidung am Gate trifft immer der Mensch.</p>" +
+      '<div class="table-scroll"><table class="rollen-tabelle">' +
+      "<thead><tr><th>Schleife</th><th>Mensch</th><th>KI</th><th>KI tut nicht</th><th>Gate-Frage</th></tr></thead>" +
+      "<tbody>" + rollenHtml + "</tbody></table></div>" +
+      "</section>" +
+
+      '<section class="panel">' +
+      "<h2>Die beiden Räder</h2>" +
+      "<p>Das <strong>Prozessrad</strong> begleitet euch auf jedem Schleifen-Screen: vier Segmente, die Tore dazwischen, die Episoden als Ringe, die Intention im Zentrum.</p>" +
+      "<p>Das <strong>Veränderungsrad</strong> mit den sechs Gestaltungselementen ist die inhaltliche Landkarte – ihr findet es auf der Projekt-Übersicht und unter „Das Rad“. Beobachtungen, Hypothesen und Impulse werden nach diesen Elementen getaggt, dadurch färbt es sich mit eurer Arbeit ein.</p>" +
       "</section>" +
       "</div>";
     renderShell("hilfe", html);
@@ -502,29 +758,6 @@
 
   // ---------- Das Veränderungsrad (White-Paper-Inhalte) ----------
 
-  // Abschnittskopf im Layout der White-Paper-Seiten: farbiges Pill-Label,
-  // große Headline, Unterzeile, Fließtext.
-  function wpHeadHtml(sec) {
-    return (
-      '<span class="section-pill ' + (sec.pill || "blue") + '">' + escapeHtml(sec.label) + "</span>" +
-      '<h2 class="wp-headline">' + escapeHtml(sec.headline) + "</h2>" +
-      '<p class="wp-sub">' + escapeHtml(sec.sub) + "</p>" +
-      '<p class="wp-text">' + escapeHtml(sec.text) + "</p>"
-    );
-  }
-
-  function kernsatzHtml(sec, icon) {
-    if (!sec.kernsatz) return "";
-    return (
-      '<div class="kernsatz-box">' +
-      '<span class="kernsatz-icon">' + icon + "</span>" +
-      "<div><strong>" + escapeHtml(sec.kernsatz) + "</strong>" +
-      "<p>" + escapeHtml(sec.kernsatzText) + "</p></div>" +
-      "</div>"
-    );
-  }
-
-  // Venn-Diagramm Wollen / Dürfen / Können, wie auf Seite 5 und 7.
   function vennHtml() {
     var circle = function (cx, cy, token) {
       return '<circle cx="' + cx + '" cy="' + cy + '" r="62" fill="var(--el-' + token + ')" opacity="0.32" />';
@@ -544,20 +777,16 @@
     );
   }
 
-  // Die sechs Elemente in ihrer Drehrichtung – optional als Links in eine Episode
-  // und eingefärbt nach Bearbeitungsstand.
   function drehStripHtml(adapter, hrefFor) {
     return (
       '<div class="dreh-strip">' +
       AVERA_DATA.SEQUENCE.map(function (key) {
         var elm = AVERA_DATA.getElement(key);
         var status = adapter && adapter.stations[key] ? adapter.stations[key].status : null;
-        var num =
+        var inner =
           '<span class="dreh-num" style="background: var(--el-' + key + ')">' +
           escapeHtml(String(parseInt(elm.num, 10) || elm.num)) +
-          "</span>";
-        var inner =
-          num +
+          "</span>" +
           "<strong>" + escapeHtml(elm.title) + "</strong>" +
           "<span>" + escapeHtml(elm.wirkung || elm.subtitle) + "</span>" +
           (status && status !== "offen"
@@ -591,10 +820,7 @@
       '<div class="wp-quote"><span class="mark">„</span><p>' + escapeHtml(F.scheitern.zitat) + "“</p></div>" +
       "</section>" +
 
-      '<section class="wp-section">' +
-      wpHeadHtml(F.idee) +
-      kernsatzHtml(F.idee, "↗") +
-      "</section>" +
+      '<section class="wp-section">' + wpHeadHtml(F.idee) + kernsatzHtml(F.idee, "↗") + "</section>" +
 
       '<section class="wp-section">' +
       wpHeadHtml(F.rad) +
@@ -620,10 +846,7 @@
       "</div>" +
       "</section>" +
 
-      '<section class="wp-section">' +
-      wpHeadHtml(F.drehrichtung) +
-      drehStripHtml(null, null) +
-      "</section>" +
+      '<section class="wp-section">' + wpHeadHtml(F.drehrichtung) + drehStripHtml(null, null) + "</section>" +
 
       '<section class="wp-section">' +
       wpHeadHtml(F.auftrag) +
@@ -636,8 +859,6 @@
 
     renderShell("framework", html);
 
-    // Das Rad hier rein als Schaubild – ohne Projektbezug, daher durchgehend
-    // in den Farben des White Papers statt nach Bearbeitungsstand.
     var neutral = { stations: {} };
     AVERA_DATA.ELEMENTS.forEach(function (elm) {
       neutral.stations[elm.key] = { status: "showcase" };
@@ -648,114 +869,132 @@
     });
   }
 
-  // ---------- Initiative-Übersicht ----------
+  // ---------- Projekt-Übersicht ----------
 
   function renderOverview(id) {
-    var init = AVERA_STORE.get(id);
-    if (!init) {
+    var v = AVERA_STORE.get(id);
+    if (!v) {
       navigate("#/projekte");
       return;
     }
-    var ep = AVERA_STORE.currentEpisode(init);
-    var adapter = buildWheelAdapter(init, ep);
+    var ep = AVERA_STORE.currentEpisode(v);
+    var adapter = buildWheelAdapter(v, ep);
 
-    var pastEpisodes = init.episodes.filter(function (e) { return e.nr !== ep.nr || e.realized; });
-    var historyHtml = pastEpisodes.length
-      ? pastEpisodes
-          .map(function (e) {
-            return (
-              '<div class="episode-card' + (e.realized ? " realized" : "") + '">' +
-              '<div class="episode-card-head"><strong>Episode ' + e.nr + "</strong>" +
-              (e.realized ? '<span class="episode-card-date">realisiert am ' + new Date(e.realized.at).toLocaleDateString("de-AT") + "</span>" : '<span class="episode-card-date">läuft noch</span>') +
-              "</div>" +
-              (e.realized && e.realized.notiz ? "<p>" + escapeHtml(e.realized.notiz) + "</p>" : "") +
-              '<a class="btn btn-ghost btn-small" href="#/init/' + id + "/episode/" + e.nr + '/observe">Ansehen</a>' +
-              "</div>"
-            );
-          })
-          .join("")
-      : "";
+    var gateListHtml = LOOP_ORDER.map(function (lk, i) {
+      var loop = AVERA_DATA.getLoop(lk);
+      var g = ep.gates[lk];
+      var offen = AVERA_STORE.gateOffen(ep, lk);
+      var erreichbar = AVERA_STORE.loopErreichbar(ep, lk);
+      return (
+        '<div class="gate-row' + (offen ? " offen" : "") + (erreichbar ? "" : " gesperrt") + '">' +
+        '<span class="gate-row-num">' + (i + 1) + "</span>" +
+        "<div><strong>" + escapeHtml(loop.label) + "</strong>" +
+        "<span>" + escapeHtml(AVERA_DATA.PROZESS[lk].gateFrage) + "</span>" +
+        (offen && g.begruendung ? "<em>„" + escapeHtml(g.begruendung) + "“</em>" : "") +
+        "</div>" +
+        '<span class="gate-row-state">' + (offen ? "offen ✓" : erreichbar ? "zu" : "gesperrt") + "</span>" +
+        "</div>"
+      );
+    }).join("");
 
     var ctaHtml;
     if (ep.realized) {
       ctaHtml =
-        '<div class="ok-box">✓ Episode ' + ep.nr + " abgeschlossen am " + new Date(ep.realized.at).toLocaleDateString("de-AT") + ".</div>" +
+        '<div class="ok-box">✓ Episode ' + ep.nr + " in die Welt gebracht am " + new Date(ep.realized.at).toLocaleDateString("de-AT") + ".</div>" +
         '<button id="next-episode-btn" class="btn btn-primary btn-block">Nächste Episode starten</button>';
     } else {
-      var loopKey = firstUnfinishedLoop(ep);
-      if (loopKey) {
-        var loop = AVERA_DATA.getLoop(loopKey);
-        ctaHtml =
-          '<a class="btn btn-primary btn-block" href="#/init/' + id + "/episode/" + ep.nr + "/" + loopKey + '">' +
-          "Weiter in Episode " + ep.nr + ": " + escapeHtml(loop.label) + " →</a>";
-      } else {
-        ctaHtml =
-          '<a class="btn btn-primary btn-block" href="#/init/' + id + "/episode/" + ep.nr + '/realize">Bereit für die Realisierung →</a>';
-      }
+      var loopKey = AVERA_STORE.ersteOffeneSchleife(ep);
+      ctaHtml = loopKey
+        ? '<a class="btn btn-primary btn-block" href="' + loopUrl(id, ep.nr, loopKey) + '">Weiter in Episode ' + ep.nr + ": " + escapeHtml(AVERA_DATA.getLoop(loopKey).label) + " →</a>"
+        : '<a class="btn btn-primary btn-block" href="#/v/' + id + "/ep/" + ep.nr + '/welt">Bereit: in die Welt bringen →</a>';
     }
 
-    var intentionHint = init.intention.statement && init.intention.statement.trim()
-      ? '<blockquote class="intention-statement">„' + escapeHtml(init.intention.statement) + "“</blockquote>"
-      : '<p class="hint-text">Die Intention ist noch nicht verdichtet – das ist die Grundlage, an der sich alle Episoden orientieren.</p>';
+    var intentionHint = v.intention.text && v.intention.text.trim()
+      ? '<blockquote class="intention-statement">„' + escapeHtml(v.intention.text) + "“</blockquote>" +
+        (v.intention.zielgruppe ? "<p class='hint-text'>Zielgruppe: " + escapeHtml(v.intention.zielgruppe) + "</p>" : "")
+      : '<p class="hint-text">Die Intention ist noch nicht formuliert – sie ist die Grundlage, an der sich alle Episoden orientieren.</p>';
+
+    var historyHtml = v.episodes
+      .map(function (e) {
+        var gates = LOOP_ORDER.filter(function (lk) { return AVERA_STORE.gateOffen(e, lk); }).length;
+        return (
+          '<div class="episode-card' + (e.realized ? " realized" : "") + (e.nr === ep.nr ? " aktuell" : "") + '">' +
+          '<div class="episode-card-head"><strong>Episode ' + e.nr + "</strong>" +
+          '<span class="episode-card-date">' +
+          (e.realized ? "in die Welt gebracht am " + new Date(e.realized.at).toLocaleDateString("de-AT") : gates + "/4 Gates offen") +
+          "</span></div>" +
+          "<p class='episode-card-stats'>" +
+          e.beobachtungen.length + " Beobachtungen · " +
+          e.wirkmodell.hypothesen.length + " Hypothesen · " +
+          e.impulse.length + " Impulse · " +
+          e.architektur.gewaehlt.length + " in der Architektur" +
+          "</p>" +
+          (e.realized && e.realized.notiz ? "<p>" + escapeHtml(e.realized.notiz) + "</p>" : "") +
+          '<a class="btn btn-ghost btn-small" href="' + loopUrl(id, e.nr, "observe") + '">Öffnen</a>' +
+          "</div>"
+        );
+      })
+      .join("");
 
     var html =
       '<div class="view view-rad">' +
       '<a href="#/projekte" class="back-link">← Alle Projekte</a>' +
       '<div class="rad-header">' +
-      "<h1>" + escapeHtml(init.name) + "</h1>" +
-      (init.org ? "<p class='rad-org'>" + escapeHtml(init.org) + "</p>" : "") +
+      "<h1>" + escapeHtml(v.name) + "</h1>" +
+      (v.org ? "<p class='rad-org'>" + escapeHtml(v.org) + "</p>" : "") +
       "<button id='edit-initiative-btn' class='btn btn-ghost btn-small'>Titel/Unternehmen bearbeiten</button>" +
       "</div>" +
 
-      '<div class="rad-layout">' +
-      '<div id="wheel-container" class="wheel-container"></div>' +
+      '<div class="overview-top">' +
+      '<section class="panel prozess-panel">' +
+      "<h2>Episode " + ep.nr + " – wo stehen wir?</h2>" +
+      '<div id="prozessrad-container"></div>' +
+      '<div class="gate-list">' + gateListHtml + "</div>" +
+      "</section>" +
       '<aside class="rad-sidebar">' +
       '<div class="intention-box">' +
       '<span class="ziel-tag">Intention</span>' +
       intentionHint +
-      '<a class="btn btn-ghost btn-small" href="#/init/' + id + '/intention">Intention bearbeiten →</a>' +
+      '<a class="btn btn-ghost btn-small" href="#/v/' + id + '/intention">Intention bearbeiten →</a>' +
       "</div>" +
-      "<p class='sphere-legend'>Story–Führung: Business · Entdecken–Methoden: Corporate Learning · Raum &amp; Zeit: beide gemeinsam</p>" +
       ctaHtml +
       '<button id="export-btn" class="btn btn-secondary btn-block">Gestaltungsarchitektur exportieren</button>' +
       "</aside>" +
       "</div>" +
 
-      '<p class="wheel-hint">Klicke auf ein Segment, um direkt in die aktuelle Episode zu springen. Eingefärbt ist, wie weit ein Element in der laufenden Episode bereits bearbeitet ist.</p>' +
-
-      '<section class="wp-section">' +
-      '<span class="section-pill orange">Die richtige Drehrichtung</span>' +
-      '<h2 class="wp-headline">Von innen nach außen. In die Umsetzung.</h2>' +
-      "<p class='wp-sub'>Veränderung beginnt mit Sinn – und wirkt im Alltag.</p>" +
-      drehStripHtml(adapter, function (key) {
-        return "#/init/" + id + "/episode/" + ep.nr + "/observe";
-      }) +
+      '<section class="panel">' +
+      "<h2>Das Veränderungsrad in dieser Episode</h2>" +
+      "<p class='hint-text'>Eingefärbt ist, wie weit ein Gestaltungselement in Episode " + ep.nr + " berührt wurde – aus getaggten Beobachtungen, Hypothesen und Impulsen.</p>" +
+      '<div id="wheel-container" class="wheel-container overview-wheel"></div>' +
+      drehStripHtml(adapter, function () { return loopUrl(id, ep.nr, "observe"); }) +
       '<div class="rainbow-bar"></div>' +
       "</section>" +
 
-      (historyHtml ? '<section class="panel"><h2>Episoden-Historie</h2><div class="episode-history">' + historyHtml + "</div></section>" : "") +
+      '<section class="panel"><h2>Episoden</h2><div class="episode-history">' + historyHtml + "</div></section>" +
       "</div>";
 
     renderShell("projekte", html);
 
+    mountProzessrad(v, ep, AVERA_STORE.ersteOffeneSchleife(ep) || "architect");
+
     AVERA_WHEEL.render(document.getElementById("wheel-container"), adapter, function (key) {
       if (key === "intention") {
-        navigate("#/init/" + id + "/intention");
+        navigate("#/v/" + id + "/intention");
         return;
       }
-      navigate("#/init/" + id + "/episode/" + ep.nr + "/observe");
+      navigate(loopUrl(id, ep.nr, "observe"));
     });
 
     document.getElementById("export-btn").addEventListener("click", function () {
-      navigate("#/init/" + id + "/export");
+      navigate("#/v/" + id + "/export");
     });
 
     document.getElementById("edit-initiative-btn").addEventListener("click", function () {
-      var name = prompt("Titel des Vorhabens", init.name);
+      var name = prompt("Titel des Vorhabens", v.name);
       if (name === null) return;
-      var org = prompt("Unternehmen / Team", init.org || "");
+      var org = prompt("Unternehmen / Team", v.org || "");
       if (org === null) return;
-      AVERA_STORE.rename(init.id, name.trim() || init.name, org.trim());
+      AVERA_STORE.rename(v.id, name.trim() || v.name, org.trim());
       renderOverview(id);
     });
 
@@ -763,94 +1002,114 @@
     if (nextBtn) {
       nextBtn.addEventListener("click", function () {
         var next = AVERA_STORE.startNextEpisode(id);
-        navigate("#/init/" + id + "/episode/" + next.nr + "/observe");
+        navigate(loopUrl(id, next.nr, "observe"));
       });
     }
   }
 
   // ---------- Intention ----------
 
-  function intentionPhaseHtml(id, phaseKey, values) {
+  function intentionPhaseHtml(phaseKey, values) {
     var phase = AVERA_DATA.INTENTION_PHASEN[phaseKey];
     var items = phase.fragen
       .map(function (fr, i) {
-        var val = values[i] || "";
         return (
           '<div class="reflexion-item">' +
           '<label class="reflexion-label"><strong>' + escapeHtml(fr.kategorie) + ":</strong> " + escapeHtml(fr.frage) + "</label>" +
-          '<textarea data-intention-phase="' + phaseKey + '" data-intention-index="' + i + '" rows="2" placeholder="Notiz…">' + escapeHtml(val) + "</textarea>" +
+          '<textarea data-intention-phase="' + phaseKey + '" data-intention-index="' + i + '" rows="2" placeholder="Notiz…">' + escapeHtml(values[i] || "") + "</textarea>" +
           "</div>"
         );
       })
       .join("");
-    return (
-      '<section class="panel">' +
-      "<h2>" + escapeHtml(phase.leitfrage) + "</h2>" +
-      items +
-      "</section>"
-    );
+    return '<section class="panel"><h2>' + escapeHtml(phase.leitfrage) + "</h2>" + items + "</section>";
   }
 
   function renderIntention(id) {
-    var init = AVERA_STORE.get(id);
-    if (!init) {
+    var v = AVERA_STORE.get(id);
+    if (!v) {
       navigate("#/projekte");
       return;
     }
-    var reflexionen = init.intention.reflexionen || [];
+    var ep = AVERA_STORE.currentEpisode(v);
+
+    var reflexionen = v.intention.reflexionen || [];
     var reflexionHtml = reflexionen.length
-      ? '<section class="panel"><h2>Bisherige Reflexionen</h2>' +
+      ? '<section class="panel"><h2>Reflexionen im Verlauf</h2>' +
         reflexionen
           .map(function (r) {
             return (
               '<div class="reflexion-item">' +
               '<label class="reflexion-label">Episode ' + r.episodeNr + " · " + new Date(r.datum).toLocaleDateString("de-AT") + "</label>" +
-              "<p>" + escapeHtml(r.text) + "</p>" +
-              "</div>"
+              "<p>" + escapeHtml(r.text) + "</p></div>"
             );
           })
           .join("") +
         "</section>"
       : "";
 
+    var historie = v.intention.historie || [];
+    var historieHtml = historie.length
+      ? "<details class='reference-details'><summary><strong>Frühere Fassungen der Intention</strong> — " + historie.length + "</summary><div class='details-body'>" +
+        historie
+          .map(function (h) {
+            return '<div class="reflexion-item"><label class="reflexion-label">bis ' + new Date(h.geaendertAm).toLocaleDateString("de-AT") + "</label><p>„" + escapeHtml(h.text) + "“</p></div>";
+          })
+          .join("") +
+        "</div></details>"
+      : "";
+
     var html =
       '<div class="view view-station">' +
-      '<a href="#/init/' + id + '" class="back-link">← Zurück zum Projekt</a>' +
+      '<a href="#/v/' + id + '" class="back-link">← Zurück zum Projekt</a>' +
       "<header class='station-header'>" +
       "<h1>Intention</h1>" +
-      "<p class='station-teaser'>Der Nullpunkt jeder Gestaltung – gibt Richtung, nicht den Weg.</p>" +
+      "<p class='station-teaser'>Der Nullpunkt jeder Gestaltung – gibt Richtung, nicht den Weg. Sie gilt über alle Episoden hinweg.</p>" +
       "</header>" +
 
       '<div class="ziel-box">' +
-      '<span class="ziel-tag">Verdichtete Intention</span>' +
-      '<textarea id="intention-statement" rows="3" placeholder="Ein Satz: welches Verhalten soll für wen, in welchen Situationen, wozu wahrscheinlicher werden?">' + escapeHtml(init.intention.statement || "") + "</textarea>" +
+      '<span class="ziel-tag">Die Intention</span>' +
+      '<textarea id="intention-text" rows="3" placeholder="Ein Satz: welches Verhalten soll für wen, in welchen Situationen, wozu wahrscheinlicher werden?">' + escapeHtml(v.intention.text || "") + "</textarea>" +
+      '<label class="reflexion-label" for="intention-zielgruppe">Zielgruppe</label>' +
+      '<input type="text" id="intention-zielgruppe" class="text-input" placeholder="Für wen gilt das? (z. B. Schichtleitungen in der Produktion)" value="' + escapeHtml(v.intention.zielgruppe || "") + '" />' +
       "</div>" +
+      historieHtml +
 
-      intentionPhaseHtml(id, "erarbeiten", init.intention.erarbeiten) +
-      intentionPhaseHtml(id, "schaerfen", init.intention.schaerfen) +
+      intentionPhaseHtml("erarbeiten", v.intention.erarbeiten) +
+      intentionPhaseHtml("schaerfen", v.intention.schaerfen) +
       reflexionHtml +
+
       '<div class="station-nav">' +
-      "<span></span>" +
-      '<a class="btn btn-primary btn-next" href="#/init/' + id + '">Weiter zur aktuellen Episode →</a>' +
+      '<a class="btn btn-ghost" href="#/v/' + id + '">← Zur Übersicht</a>' +
+      '<a class="btn btn-primary btn-next" href="' + loopUrl(id, ep.nr, "observe") + '">Weiter zu Episode ' + ep.nr + ": Beobachten →</a>" +
       "</div>" +
       "</div>";
 
     renderShell("projekte", html);
 
-    document.getElementById("intention-statement").addEventListener("blur", function (evt) {
-      AVERA_STORE.setIntentionStatement(id, evt.target.value);
+    document.getElementById("intention-text").addEventListener("blur", function (evt) {
+      AVERA_STORE.setIntentionText(id, evt.target.value);
     });
-
+    document.getElementById("intention-zielgruppe").addEventListener("blur", function (evt) {
+      AVERA_STORE.setIntentionZielgruppe(id, evt.target.value);
+    });
     root.querySelectorAll("[data-intention-phase]").forEach(function (ta) {
       ta.addEventListener("blur", function () {
-        var phase = ta.getAttribute("data-intention-phase");
-        var index = parseInt(ta.getAttribute("data-intention-index"), 10);
-        AVERA_STORE.setIntentionField(id, phase, index, ta.value);
+        AVERA_STORE.setIntentionField(id, ta.getAttribute("data-intention-phase"), parseInt(ta.getAttribute("data-intention-index"), 10), ta.value);
       });
     });
   }
 
-  // ---------- Episode-Schleife ----------
+  // ---------- Gemeinsame Bausteine der Schleifen-Screens ----------
+
+  function rollenBoxHtml(loopKey) {
+    var p = AVERA_DATA.PROZESS[loopKey];
+    return (
+      '<div class="rollen-box">' +
+      '<div class="rollen-spalte mensch"><span class="rollen-kopf">Ihr macht</span><p>' + escapeHtml(p.mensch) + "</p></div>" +
+      '<div class="rollen-spalte ki"><span class="rollen-kopf">Die KI schlägt vor</span><p>' + escapeHtml(p.ki) + "</p></div>" +
+      "</div>"
+    );
+  }
 
   function generalSectionHtml(episode, loopKey) {
     var general = AVERA_DATA.LOOP_GENERAL_FRAGEN[loopKey];
@@ -868,21 +1127,15 @@
       .join("");
 
     return (
-      '<section class="panel">' +
-      "<h2>Übergeordnete Reflexion</h2>" +
-      "<p class='hint-text'>Diese Fragen gelten für die ganze Episode, unabhängig vom einzelnen Element.</p>" +
-      itemsHtml +
-      '<div class="gate-box">' +
-      '<label class="gate-check"><input type="checkbox" id="gate-checkbox" ' + (state.gate ? "checked" : "") + " />" +
-      "<span>" + escapeHtml(general.gate) + "</span></label>" +
-      '<textarea id="gate-notiz" rows="1" placeholder="Kurze Begründung (optional)…">' + escapeHtml(state.gateNotiz || "") + "</textarea>" +
-      "</div>" +
-      "</section>"
+      "<details class='reference-details'>" +
+      "<summary><strong>Übergeordnete Reflexion</strong> — gilt für die ganze Schleife, unabhängig vom einzelnen Element</summary>" +
+      "<div class='details-body'>" + itemsHtml + "</div>" +
+      "</details>"
     );
   }
 
   function elementAccordionHtml(episode, loopKey) {
-    return AVERA_DATA.ELEMENTS
+    var items = AVERA_DATA.ELEMENTS
       .map(function (elm) {
         var sphere = AVERA_DATA.SPHERES[elm.sphere];
         var loopInfo = elm.loops[loopKey];
@@ -902,418 +1155,951 @@
         );
       })
       .join("");
+
+    return (
+      "<details class='reference-details denkanstoss-block'>" +
+      "<summary><strong>Denkanstöße je Gestaltungselement</strong> — die Fragen der AVERA-Matrix für diese Schleife</summary>" +
+      "<div class='details-body'>" + items + "</div>" +
+      "</details>"
+    );
   }
 
-  function fakteFilterBarHtml() {
-    var typOpts = AVERA_DATA.FAKTE_TYPEN
-      .map(function (t) {
-        return '<option value="' + t.key + '"' + (t.key === designFilter.typ ? " selected" : "") + ">" + escapeHtml(t.label) + " — " + escapeHtml(t.subtitle) + "</option>";
-      })
-      .join("");
-    var wsOpts = AVERA_DATA.WIRKSTUFEN
-      .map(function (w) {
-        return '<option value="' + w.key + '"' + (w.key === designFilter.wirkstufe ? " selected" : "") + ">" + escapeHtml(w.label) + " — " + escapeHtml(w.subtitle) + "</option>";
-      })
-      .join("");
+  function statusQuoHtml(episode) {
+    if (episode.nr === 1 && !episode.statusQuo) {
+      return "<p class='hint-text'>Episode 1 startet ohne Vorgeschichte – der Status quo entsteht erst aus euren Beobachtungen.</p>";
+    }
     return (
-      '<div class="fakte-filter-bar">' +
-      '<label>Fakt-Typ<select id="fakte-typ-select">' + typOpts + "</select></label>" +
-      '<label>Wirkstufe <span class="hint-inline">(auf welcher Stufe der Aneignung setzt der Impuls an?)</span><select id="fakte-wirkstufe-select">' + wsOpts + "</select></label>" +
+      '<div class="statusquo-box">' +
+      '<span class="ziel-tag">Status quo' + (episode.vorgaengerNr ? " (aus Episode " + episode.vorgaengerNr + ")" : "") + "</span>" +
+      '<textarea id="statusquo-input" rows="2" placeholder="Wo steht das Vorhaben zu Beginn dieser Episode?">' + escapeHtml(episode.statusQuo || "") + "</textarea>" +
       "</div>"
     );
   }
 
-  function fakteCatalogHtml() {
-    var groups = AVERA_DATA.FAKTE[designFilter.typ][designFilter.wirkstufe];
-    return groups
-      .map(function (g) {
-        var chips = g.beispiele
-          .map(function (beispiel) {
-            var active = designDraft.objekte.some(function (o) {
-              return o.typ === designFilter.typ && o.wirkstufe === designFilter.wirkstufe && o.kategorie === g.kategorie && o.beispiel === beispiel;
-            });
-            return (
-              '<button type="button" class="chip fakte-chip' + (active ? " active" : "") + '" data-fakte-beispiel="' + escapeHtml(beispiel) + '" data-fakte-kategorie="' + escapeHtml(g.kategorie) + '">' +
-              escapeHtml(beispiel) +
-              "</button>"
-            );
-          })
-          .join("");
-        return '<div class="objekt-group"><div class="objekt-aspekt">' + escapeHtml(g.kategorie) + '</div><div class="chip-row">' + chips + "</div></div>";
-      })
-      .join("");
-  }
-
-  function draftObjekteHtml() {
-    if (!designDraft.objekte.length) return "<p class='hint-text'>Noch keine Gestaltungsobjekte für diesen Impuls ausgewählt.</p>";
-    return (
-      '<div class="chip-row">' +
-      designDraft.objekte
-        .map(function (o, i) {
-          return '<button type="button" class="chip active" data-draft-remove="' + i + '">' + escapeHtml(o.beispiel) + " ✕</button>";
-        })
-        .join("") +
-      "</div>"
-    );
-  }
-
-  function designSectionHtml(episode) {
-    var impulse = episode.loops.design.impulse;
-    var impulseHtml = impulse.length
-      ? impulse
-          .map(function (imp) {
-            var tags = imp.objekte.map(function (o) { return '<span class="impuls-objekt-tag">' + escapeHtml(o.beispiel) + "</span>"; }).join("");
-            return (
-              '<div class="impuls-card">' +
-              '<div class="impuls-card-head"><strong>' + escapeHtml(imp.name) + "</strong>" +
-              '<span class="impuls-card-actions">' +
-              '<button type="button" class="btn-icon-delete" data-rename-impuls="' + imp.id + '" title="Umbenennen">✎</button>' +
-              '<button type="button" class="btn-icon-delete" data-remove-impuls="' + imp.id + '" title="Löschen">✕</button>' +
-              "</span></div>" +
-              '<div class="impuls-objekte">' + tags + "</div>" +
-              (imp.notiz ? "<p>" + escapeHtml(imp.notiz) + "</p>" : "") +
-              "</div>"
-            );
-          })
-          .join("")
-      : "<p class='hint-text'>Noch keine Gestaltungsimpulse gebaut.</p>";
-
-    return (
-      '<section class="panel">' +
-      "<h2>Gestaltungsobjekte sammeln</h2>" +
-      "<p class='hint-text'>Ein wirksamer Gestaltungsimpuls kombiniert idealerweise alle vier 4Fakte-Ebenen. Filtert nach Typ und Wirkstufe, klickt Beispiele an und bündelt sie zu einem benannten Impuls.</p>" +
-      fakteFilterBarHtml() +
-      '<div id="fakte-catalog">' + fakteCatalogHtml() + "</div>" +
-      "<h3>Ausgewählt für diesen Impuls</h3>" +
-      '<div id="draft-objekte">' + draftObjekteHtml() + "</div>" +
-      '<form id="impuls-form" class="inline-form small">' +
-      '<input type="text" id="impuls-name-input" placeholder="Name des Gestaltungsimpulses…" value="' + escapeHtml(designDraft.name) + '" />' +
-      '<button type="submit" class="btn btn-secondary">Impuls speichern</button>' +
-      "</form>" +
-      "<h3>Gesammelte Impulse dieser Episode</h3>" +
-      impulseHtml +
-      "</section>"
-    );
-  }
-
-  function architectSectionHtml(episode) {
-    var impulse = episode.loops.design.impulse;
-    var selected = episode.loops.architect.ausgewaehlt || [];
-    if (!impulse.length) {
-      return (
-        '<section class="panel">' +
-        "<h2>Architektur komponieren</h2>" +
-        "<p class='hint-text'>In der Design-Schleife wurden noch keine Gestaltungsimpulse gebaut. Geht zurück zu Entwerfen, um Impulse zu sammeln.</p>" +
-        "</section>"
-      );
-    }
-    var itemsHtml = impulse
-      .map(function (imp) {
-        var checked = selected.indexOf(imp.id) !== -1;
-        var tags = imp.objekte.map(function (o) { return '<span class="impuls-objekt-tag">' + escapeHtml(o.beispiel) + "</span>"; }).join("");
-        return (
-          '<label class="impuls-select-row">' +
-          '<input type="checkbox" data-select-impuls="' + imp.id + '" ' + (checked ? "checked" : "") + " />" +
-          '<span><strong>' + escapeHtml(imp.name) + "</strong><br />" + tags + "</span>" +
-          "</label>"
-        );
-      })
-      .join("");
-    return (
-      '<section class="panel">' +
-      "<h2>Architektur komponieren</h2>" +
-      "<p class='hint-text'>So wenig wie möglich, so viel wie nötig: Wählt die Impulse aus, denen ihr unter den gegenwärtigen Bedingungen die größte Wirkwahrscheinlichkeit zuschreibt – und die sich gegenseitig stützen statt widersprechen.</p>" +
-      itemsHtml +
-      "<h3>Begründung</h3>" +
-      '<textarea id="architect-begruendung" rows="3" placeholder="Warum sind genau diese Impulse jetzt hinreichend?">' + escapeHtml(episode.loops.architect.begruendung || "") + "</textarea>" +
-      "</section>"
-    );
-  }
-
-  // Kompaktes Rad, das auf allen Episoden-Seiten mitläuft, damit der
-  // Gesamtüberblick beim Arbeiten in einer Schleife sichtbar bleibt.
-  function miniWheelAsideHtml(id) {
-    return (
-      '<aside class="station-mini-wheel">' +
-      '<div class="mini-wheel-head">Gesamtüberblick</div>' +
-      '<div id="mini-wheel-container" class="wheel-container wheel-container-mini"></div>' +
-      '<a class="btn btn-ghost btn-small" href="#/init/' + id + '">Zur Projekt-Übersicht →</a>' +
-      "</aside>"
-    );
-  }
-
-  function mountMiniWheel(id, init, ep) {
-    var container = document.getElementById("mini-wheel-container");
-    if (!container) return;
-    var adapter = buildWheelAdapter(init, ep);
-    AVERA_WHEEL.render(container, adapter, function (key) {
-      if (key === "intention") {
-        navigate("#/init/" + id + "/intention");
-        return;
-      }
-      navigate("#/init/" + id + "/episode/" + ep.nr + "/observe");
-    });
-  }
-
-  function renderLoop(id, nr, loopKey) {
-    var init = AVERA_STORE.get(id);
-    var ep = init ? AVERA_STORE.getEpisode(init, nr) : null;
-    var loop = AVERA_DATA.getLoop(loopKey);
-    if (!init || !ep || !loop) {
-      navigate("#/init/" + id);
-      return;
-    }
-    var scopeKey = id + ":" + nr;
-    if (designDraft.scopeKey !== scopeKey) resetDesignDraft(scopeKey);
-
+  function loopNavHtml(id, nr, loopKey, episode) {
     var idx = LOOP_ORDER.indexOf(loopKey);
     var prevLoop = idx > 0 ? LOOP_ORDER[idx - 1] : null;
-    var nextLoop = idx < LOOP_ORDER.length - 1 ? LOOP_ORDER[idx + 1] : null;
+    var gateNr = idx + 1;
+    var offen = AVERA_STORE.gateOffen(episode, loopKey);
+    return (
+      '<div class="station-nav">' +
+      (prevLoop
+        ? '<a class="btn btn-ghost" href="' + loopUrl(id, nr, prevLoop) + '">← ' + escapeHtml(AVERA_DATA.getLoop(prevLoop).label) + "</a>"
+        : '<a class="btn btn-ghost" href="#/v/' + id + '">← Zur Übersicht</a>') +
+      '<button type="button" class="btn btn-primary btn-next" id="gate-open-btn">' +
+      (offen ? "Gate " + gateNr + " ansehen ✓" : "Zu Gate " + gateNr + " →") +
+      "</button>" +
+      "</div>"
+    );
+  }
 
-    var mainHtml =
-      '<a href="#/init/' + id + '" class="back-link">← Zurück zum Projekt</a>' +
+  function loopHeaderHtml(id, nr, loopKey, episode) {
+    var loop = AVERA_DATA.getLoop(loopKey);
+    var idx = LOOP_ORDER.indexOf(loopKey);
+    var dots = LOOP_ORDER.map(function (lk, i) {
+      var l = AVERA_DATA.getLoop(lk);
+      var cls = "loop-dot loop-" + lk;
+      if (lk === loopKey) cls += " active";
+      if (AVERA_STORE.gateOffen(episode, lk)) cls += " done";
+      if (!AVERA_STORE.loopErreichbar(episode, lk)) cls += " locked";
+      return (
+        '<a class="' + cls + '" href="' + loopUrl(id, nr, lk) + '" title="' + escapeHtml(l.funktion) + '">' +
+        '<span class="loop-dot-num">' + (i + 1) + "</span>" +
+        '<span class="loop-dot-label">' + escapeHtml(l.label) + "</span></a>"
+      );
+    }).join("");
+
+    return (
+      '<a href="#/v/' + id + '" class="back-link">← Zurück zum Projekt</a>' +
       "<header class='station-header'>" +
-      "<div class='station-tags'><span class='station-num'>Episode " + ep.nr + "</span></div>" +
+      "<div class='station-tags'><span class='station-num'>Episode " + episode.nr + "</span>" +
+      "<span class='station-num schleife'>Schleife " + (idx + 1) + " von 4</span></div>" +
       "<h1>" + escapeHtml(loop.label) + "</h1>" +
       "<p class='station-teaser'>" + escapeHtml(loop.funktion) + " → " + escapeHtml(loop.ergebnis) + "</p>" +
       "</header>" +
+      '<div class="loop-dots">' + dots + "</div>"
+    );
+  }
 
-      loopDotsHtml(id, nr, loopKey, ep) +
+  function gesperrtHtml(id, nr, loopKey) {
+    var idx = LOOP_ORDER.indexOf(loopKey);
+    var vorher = LOOP_ORDER[idx - 1];
+    return (
+      '<section class="panel locked-panel">' +
+      "<span class='icon'>🚧</span>" +
+      "<h2>Diese Schleife ist noch gesperrt</h2>" +
+      "<p>Gate " + idx + " nach <strong>" + escapeHtml(AVERA_DATA.getLoop(vorher).label) + "</strong> ist noch zu. Ein Gate öffnet sich nur mit einer schriftlichen Begründung – das ist die Schwelle, die die Geisterfahrt verhindert.</p>" +
+      '<a class="btn btn-primary" href="' + loopUrl(id, nr, vorher) + '">Zurück zu ' + escapeHtml(AVERA_DATA.getLoop(vorher).label) + "</a>" +
+      "</section>"
+    );
+  }
 
-      generalSectionHtml(ep, loopKey) +
+  // ---------- Schleife 1: Beobachten ----------
+
+  function observeBodyHtml(v, ep) {
+    var gefiltert = ep.beobachtungen.filter(function (b) {
+      return observeFilter === "alle" || b.element === observeFilter || (observeFilter === "ungetaggt" && !b.element);
+    });
+
+    function karteHtml(b) {
+      return (
+        '<article class="beob-karte typ-' + b.typ + '" data-beob-id="' + b.id + '">' +
+        '<p class="beob-text">' + escapeHtml(b.text) + "</p>" +
+        '<div class="beob-foot">' +
+        elementTagHtml(b.element) +
+        '<span class="beob-actions">' +
+        '<button type="button" class="btn-icon-delete" data-beob-typ="' + b.id + '" title="Als ' + (b.typ === "fakt" ? "Vermutung" : "Fakt") + ' markieren">⇄</button>' +
+        '<button type="button" class="btn-icon-delete" data-beob-edit="' + b.id + '" title="Bearbeiten">✎</button>' +
+        '<button type="button" class="btn-icon-delete" data-beob-del="' + b.id + '" title="Löschen">✕</button>' +
+        "</span></div></article>"
+      );
+    }
+
+    var spalten = AVERA_DATA.BEOBACHTUNG_TYPEN.map(function (t) {
+      var karten = gefiltert.filter(function (b) { return b.typ === t.key; });
+      return (
+        '<div class="beob-spalte spalte-' + t.key + '">' +
+        '<div class="beob-spalte-kopf"><strong>' + escapeHtml(t.label) + "</strong><span>" + karten.length + "</span>" +
+        "<em>" + escapeHtml(t.hinweis) + "</em></div>" +
+        (karten.length ? karten.map(karteHtml).join("") : "<p class='hint-text'>Noch keine Karte.</p>") +
+        "</div>"
+      );
+    }).join("");
+
+    var filterChips =
+      '<button type="button" class="chip' + (observeFilter === "alle" ? " active" : "") + '" data-obs-filter="alle">Alle (' + ep.beobachtungen.length + ")</button>" +
+      AVERA_DATA.ELEMENTS.map(function (el) {
+        var n = ep.beobachtungen.filter(function (b) { return b.element === el.key; }).length;
+        return '<button type="button" class="chip' + (observeFilter === el.key ? " active" : "") + '" data-obs-filter="' + el.key + '">' + escapeHtml(el.title) + " (" + n + ")</button>";
+      }).join("") +
+      (function () {
+        var n = ep.beobachtungen.filter(function (b) { return !b.element; }).length;
+        return n ? '<button type="button" class="chip' + (observeFilter === "ungetaggt" ? " active" : "") + '" data-obs-filter="ungetaggt">ungetaggt (' + n + ")</button>" : "";
+      })();
+
+    // Lücken-Hinweis: welche Elemente sind bisher unberührt? Das kann die App
+    // selbst ausrechnen – die KI ergänzt nur die Blickwinkel dazu.
+    var unberuehrt = AVERA_DATA.ELEMENTS.filter(function (el) {
+      return !ep.beobachtungen.some(function (b) { return b.element === el.key; });
+    });
+    var luecken = unberuehrt.length
+      ? '<div class="luecken-box"><strong>Noch unberührt:</strong> ' +
+        unberuehrt.map(function (el) { return elementTagHtml(el.key); }).join(" ") +
+        "</div>"
+      : '<div class="luecken-box ok"><strong>Alle Gestaltungselemente sind berührt.</strong> Das heißt nicht, dass das Bild vollständig ist – aber kein Blickwinkel fehlt ganz.</div>';
+
+    return (
+      statusQuoHtml(ep) +
+      rollenBoxHtml("observe") +
 
       '<section class="panel">' +
-      "<h2>Je Element</h2>" +
-      "<p class='hint-text'>" + escapeHtml(elementLeitfrageHint(loopKey)) + "</p>" +
-      elementAccordionHtml(ep, loopKey) +
+      "<h2>Neue Beobachtung</h2>" +
+      "<p class='hint-text'>Eine Karte = eine Beobachtung. Trennt bewusst, was ihr gesehen habt (Fakt) von dem, was ihr daraus schließt (Vermutung).</p>" +
+      '<form id="beob-form" class="beob-form">' +
+      '<textarea id="beob-text" rows="2" placeholder="Was habt ihr beobachtet?" required></textarea>' +
+      '<div class="beob-form-row">' +
+      '<div class="segmented" id="beob-typ-group">' +
+      AVERA_DATA.BEOBACHTUNG_TYPEN.map(function (t, i) {
+        return '<button type="button" class="seg-btn' + (i === 0 ? " active" : "") + '" data-beob-typ-choice="' + t.key + '">' + escapeHtml(t.label) + "</button>";
+      }).join("") +
+      "</div>" +
+      '<select id="beob-element" class="text-input">' + elementOptionsHtml("", "— Gestaltungselement —") + "</select>" +
+      '<button type="submit" class="btn btn-primary">Karte hinzufügen</button>' +
+      "</div></form>" +
       "</section>" +
 
-      (loopKey === "design" ? designSectionHtml(ep) : "") +
-      (loopKey === "architect" ? architectSectionHtml(ep) : "") +
-      (loopKey === "understand" ? understandIntentionHtml(init, ep) : "") +
+      '<section class="panel">' +
+      "<h2>Beobachtungs-Board</h2>" +
+      luecken +
+      '<div class="chip-row obs-filter">' + filterChips + "</div>" +
+      '<div class="beob-board">' + spalten + "</div>" +
+      "</section>" +
 
-      '<div class="station-nav">' +
-      (prevLoop
-        ? '<a class="btn btn-ghost" href="#/init/' + id + "/episode/" + nr + "/" + prevLoop + '">← ' + escapeHtml(AVERA_DATA.getLoop(prevLoop).label) + "</a>"
-        : '<a class="btn btn-ghost" href="#/init/' + id + '">← Zur Übersicht</a>') +
-      (nextLoop
-        ? '<a class="btn btn-primary btn-next" href="#/init/' + id + "/episode/" + nr + "/" + nextLoop + '">Weiter zu ' + escapeHtml(AVERA_DATA.getLoop(nextLoop).label) + " →</a>"
-        : '<a class="btn btn-primary btn-next" href="#/init/' + id + "/episode/" + nr + '/realize">Weiter zur Realisierung →</a>') +
-      "</div>";
+      kiPanelHtml("observe") +
+      elementAccordionHtml(ep, "observe") +
+      generalSectionHtml(ep, "observe")
+    );
+  }
+
+  function wireObserve(id, nr, ep) {
+    var typWahl = "fakt";
+    root.querySelectorAll("[data-beob-typ-choice]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        typWahl = btn.getAttribute("data-beob-typ-choice");
+        root.querySelectorAll("[data-beob-typ-choice]").forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+      });
+    });
+
+    document.getElementById("beob-form").addEventListener("submit", function (evt) {
+      evt.preventDefault();
+      var text = document.getElementById("beob-text").value.trim();
+      if (!text) return;
+      AVERA_STORE.addBeobachtung(id, nr, {
+        text: text,
+        typ: typWahl,
+        element: document.getElementById("beob-element").value
+      });
+      renderLoop(id, nr, "observe");
+    });
+
+    root.querySelectorAll("[data-obs-filter]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        observeFilter = btn.getAttribute("data-obs-filter");
+        renderLoop(id, nr, "observe");
+      });
+    });
+
+    root.querySelectorAll("[data-beob-del]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        AVERA_STORE.removeBeobachtung(id, nr, btn.getAttribute("data-beob-del"));
+        renderLoop(id, nr, "observe");
+      });
+    });
+
+    root.querySelectorAll("[data-beob-typ]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var beobId = btn.getAttribute("data-beob-typ");
+        var b = ep.beobachtungen.find(function (x) { return x.id === beobId; });
+        if (!b) return;
+        AVERA_STORE.updateBeobachtung(id, nr, beobId, { typ: b.typ === "fakt" ? "vermutung" : "fakt" });
+        renderLoop(id, nr, "observe");
+      });
+    });
+
+    root.querySelectorAll("[data-beob-edit]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var beobId = btn.getAttribute("data-beob-edit");
+        var b = ep.beobachtungen.find(function (x) { return x.id === beobId; });
+        if (!b) return;
+        var html =
+          '<div class="gate-overlay-head"><span class="gate-badge">Beobachtung</span>' +
+          '<button type="button" class="overlay-close" data-overlay-close aria-label="Schließen">✕</button></div>' +
+          '<label class="reflexion-label" for="edit-beob-text">Text</label>' +
+          '<textarea id="edit-beob-text" rows="3">' + escapeHtml(b.text) + "</textarea>" +
+          '<label class="reflexion-label" for="edit-beob-element">Gestaltungselement</label>' +
+          '<select id="edit-beob-element" class="text-input">' + elementOptionsHtml(b.element, "— ungetaggt —") + "</select>" +
+          '<div class="gate-actions"><button type="button" class="btn btn-ghost" data-overlay-close>Abbrechen</button>' +
+          '<button type="button" class="btn btn-primary" id="edit-beob-save">Speichern</button></div>';
+        showOverlay("edit-overlay", html, function () {
+          document.getElementById("edit-beob-save").addEventListener("click", function () {
+            AVERA_STORE.updateBeobachtung(id, nr, beobId, {
+              text: document.getElementById("edit-beob-text").value.trim(),
+              element: document.getElementById("edit-beob-element").value
+            });
+            closeOverlay();
+            renderLoop(id, nr, "observe");
+          });
+        });
+      });
+    });
+  }
+
+  // ---------- Schleife 2: Verstehen ----------
+
+  function understandBodyHtml(v, ep) {
+    var befundeHtml = ep.beobachtungen.length
+      ? AVERA_DATA.ELEMENTS.map(function (el) {
+          var karten = ep.beobachtungen.filter(function (b) { return b.element === el.key; });
+          if (!karten.length) return "";
+          return (
+            '<div class="befund-gruppe">' + elementTagHtml(el.key) +
+            "<ul>" + karten.map(function (b) {
+              return '<li><span class="befund-typ ' + b.typ + '">' + (b.typ === "fakt" ? "Fakt" : "Vermutung") + "</span> " + escapeHtml(b.text) + "</li>";
+            }).join("") + "</ul></div>"
+          );
+        }).join("") +
+        (function () {
+          var ohne = ep.beobachtungen.filter(function (b) { return !b.element; });
+          return ohne.length
+            ? '<div class="befund-gruppe">' + elementTagHtml("") + "<ul>" + ohne.map(function (b) {
+                return '<li><span class="befund-typ ' + b.typ + '">' + (b.typ === "fakt" ? "Fakt" : "Vermutung") + "</span> " + escapeHtml(b.text) + "</li>";
+              }).join("") + "</ul></div>"
+            : "";
+        })()
+      : "<p class='hint-text'>In der Beobachten-Schleife wurden noch keine Karten erfasst.</p>";
+
+    var hebelHtml = ep.wirkmodell.hebel.length
+      ? ep.wirkmodell.hebel.map(function (h) {
+          return (
+            '<div class="hebel-zeile">' +
+            '<textarea data-hebel-id="' + h.id + '" rows="1">' + escapeHtml(h.text) + "</textarea>" +
+            '<button type="button" class="btn-icon-delete" data-hebel-del="' + h.id + '" title="Löschen">✕</button>' +
+            "</div>"
+          );
+        }).join("")
+      : "<p class='hint-text'>Noch keine Hebel benannt.</p>";
+
+    var hypothesenHtml = ep.wirkmodell.hypothesen.length
+      ? ep.wirkmodell.hypothesen.map(function (h) {
+          var fehlt = !h.gegenhypothese || !h.gegenhypothese.trim();
+          return (
+            '<article class="hyp-karte' + (fehlt ? " unvollstaendig" : "") + '">' +
+            '<div class="hyp-kopf">' + elementTagHtml(h.element) +
+            '<button type="button" class="btn-icon-delete" data-hyp-del="' + h.id + '" title="Löschen">✕</button></div>' +
+            '<div class="hyp-paar">' +
+            '<div class="hyp-seite these"><span class="hyp-label">Hypothese</span>' +
+            '<textarea data-hyp-text="' + h.id + '" rows="2">' + escapeHtml(h.text) + "</textarea></div>" +
+            '<div class="hyp-seite gegen"><span class="hyp-label">Gegenhypothese</span>' +
+            '<textarea data-hyp-gegen="' + h.id + '" rows="2" placeholder="Was wäre genauso plausibel?">' + escapeHtml(h.gegenhypothese || "") + "</textarea></div>" +
+            "</div>" +
+            (fehlt ? '<p class="hyp-warnung">Ohne Gegenhypothese ist die Hypothese unvollständig – dann ist es ein Befund, der keiner ist.</p>' : "") +
+            "</article>"
+          );
+        }).join("")
+      : "<p class='hint-text'>Noch keine Gestaltungshypothese formuliert.</p>";
+
+    return (
+      rollenBoxHtml("understand") +
+
+      "<details class='reference-details' open><summary><strong>Befunde aus Beobachten</strong> — " + ep.beobachtungen.length + " Karten</summary>" +
+      "<div class='details-body befund-liste'>" + befundeHtml + "</div></details>" +
+
+      '<section class="panel">' +
+      "<h2>Hebel</h2>" +
+      "<p class='hint-text'>Wo im Wirkgefüge könnte Gestaltung überhaupt ansetzen?</p>" +
+      '<div id="hebel-liste">' + hebelHtml + "</div>" +
+      '<form id="hebel-form" class="inline-form small">' +
+      '<input type="text" id="hebel-input" class="text-input" placeholder="Neuer Hebel…" />' +
+      '<button type="submit" class="btn btn-secondary">Hebel hinzufügen</button></form>' +
+      "</section>" +
+
+      '<section class="panel">' +
+      "<h2>Gestaltungshypothesen</h2>" +
+      "<p class='hint-text'>Jede Hypothese ist eine Lesart, kein Befund. Zu jeder gehört eine Gegenhypothese, die genauso plausibel wäre.</p>" +
+      hypothesenHtml +
+      '<form id="hyp-form" class="hyp-form">' +
+      '<div class="hyp-paar">' +
+      '<div class="hyp-seite these"><span class="hyp-label">Neue Hypothese</span>' +
+      '<textarea id="hyp-text" rows="2" placeholder="Was könnte erklären, warum sich das Verhalten so zeigt?" required></textarea></div>' +
+      '<div class="hyp-seite gegen"><span class="hyp-label">Gegenhypothese (Pflicht)</span>' +
+      '<textarea id="hyp-gegen" rows="2" placeholder="Welche andere Erklärung wäre genauso plausibel?" required></textarea></div>' +
+      "</div>" +
+      '<div class="beob-form-row">' +
+      '<select id="hyp-element" class="text-input">' + elementOptionsHtml("", "— Gestaltungselement —") + "</select>" +
+      '<button type="submit" class="btn btn-primary">Hypothese anlegen</button></div>' +
+      "</form>" +
+      "</section>" +
+
+      kiPanelHtml("understand") +
+
+      "<details class='reference-details'><summary><strong>Intention kurz reflektieren</strong> — " + escapeHtml(AVERA_DATA.INTENTION_PHASEN.reflektieren.leitfrage) + "</summary>" +
+      "<div class='details-body'>" +
+      "<ul class='fragen-liste'>" + AVERA_DATA.INTENTION_PHASEN.reflektieren.fragen.map(function (f) { return "<li>" + escapeHtml(f.frage) + "</li>"; }).join("") + "</ul>" +
+      '<textarea id="intention-reflexion-input" rows="3" placeholder="Was bedeutet das für unsere Intention?"></textarea>' +
+      '<button type="button" id="save-intention-reflexion-btn" class="btn btn-secondary btn-small">Reflexion speichern</button>' +
+      "</div></details>" +
+
+      elementAccordionHtml(ep, "understand") +
+      generalSectionHtml(ep, "understand")
+    );
+  }
+
+  function wireUnderstand(id, nr) {
+    document.getElementById("hebel-form").addEventListener("submit", function (evt) {
+      evt.preventDefault();
+      var input = document.getElementById("hebel-input");
+      if (!input.value.trim()) return;
+      AVERA_STORE.addHebel(id, nr, input.value.trim());
+      renderLoop(id, nr, "understand");
+    });
+    root.querySelectorAll("[data-hebel-id]").forEach(function (ta) {
+      ta.addEventListener("blur", function () {
+        AVERA_STORE.updateHebel(id, nr, ta.getAttribute("data-hebel-id"), ta.value);
+      });
+    });
+    root.querySelectorAll("[data-hebel-del]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        AVERA_STORE.removeHebel(id, nr, btn.getAttribute("data-hebel-del"));
+        renderLoop(id, nr, "understand");
+      });
+    });
+
+    document.getElementById("hyp-form").addEventListener("submit", function (evt) {
+      evt.preventDefault();
+      var text = document.getElementById("hyp-text").value.trim();
+      var gegen = document.getElementById("hyp-gegen").value.trim();
+      if (!text || !gegen) return;
+      AVERA_STORE.addHypothese(id, nr, { text: text, gegenhypothese: gegen, element: document.getElementById("hyp-element").value });
+      renderLoop(id, nr, "understand");
+    });
+    root.querySelectorAll("[data-hyp-text]").forEach(function (ta) {
+      ta.addEventListener("blur", function () {
+        AVERA_STORE.updateHypothese(id, nr, ta.getAttribute("data-hyp-text"), { text: ta.value });
+      });
+    });
+    root.querySelectorAll("[data-hyp-gegen]").forEach(function (ta) {
+      ta.addEventListener("blur", function () {
+        AVERA_STORE.updateHypothese(id, nr, ta.getAttribute("data-hyp-gegen"), { gegenhypothese: ta.value });
+      });
+    });
+    root.querySelectorAll("[data-hyp-del]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        AVERA_STORE.removeHypothese(id, nr, btn.getAttribute("data-hyp-del"));
+        renderLoop(id, nr, "understand");
+      });
+    });
+
+    document.getElementById("save-intention-reflexion-btn").addEventListener("click", function () {
+      var ta = document.getElementById("intention-reflexion-input");
+      if (!ta.value.trim()) return;
+      AVERA_STORE.addIntentionReflexion(id, nr, ta.value.trim());
+      ta.value = "";
+      alert("Reflexion gespeichert. Ihr findet sie auf der Intention-Seite wieder.");
+    });
+  }
+
+  // ---------- Schleife 3: Entwerfen ----------
+
+  function fakteRasterHtml() {
+    var wsOpts = AVERA_DATA.WIRKSTUFEN.map(function (w) {
+      return '<option value="' + w.key + '"' + (w.key === designWirkstufe ? " selected" : "") + ">" + escapeHtml(w.label) + " — " + escapeHtml(w.subtitle) + "</option>";
+    }).join("");
+
+    var spalten = AVERA_DATA.FAKTE_TYPEN.map(function (t) {
+      var gruppen = AVERA_DATA.FAKTE[t.key][designWirkstufe];
+      var inhalt = gruppen.map(function (g) {
+        var chips = g.beispiele.map(function (beispiel) {
+          var aktiv = designDraft.objekte.some(function (o) {
+            return o.typ === t.key && o.wirkstufe === designWirkstufe && o.kategorie === g.kategorie && o.beispiel === beispiel;
+          });
+          return (
+            '<button type="button" class="chip fakte-chip' + (aktiv ? " active" : "") + '"' +
+            ' data-fakte-typ="' + t.key + '" data-fakte-kategorie="' + escapeHtml(g.kategorie) + '" data-fakte-beispiel="' + escapeHtml(beispiel) + '">' +
+            escapeHtml(beispiel) + "</button>"
+          );
+        }).join("");
+        return '<div class="raster-gruppe"><div class="objekt-aspekt">' + escapeHtml(g.kategorie) + '</div><div class="chip-row">' + chips + "</div></div>";
+      }).join("");
+      return (
+        '<div class="raster-spalte fakt-' + t.key + '">' +
+        '<div class="raster-spalte-kopf"><strong>' + escapeHtml(t.label) + "</strong><span>" + escapeHtml(t.subtitle) + "</span></div>" +
+        inhalt + "</div>"
+      );
+    }).join("");
+
+    return (
+      '<div class="fakte-filter-bar">' +
+      '<label>Wirkstufe <span class="hint-inline">(auf welcher Stufe der Aneignung setzt der Impuls an?)</span>' +
+      '<select id="fakte-wirkstufe-select">' + wsOpts + "</select></label>" +
+      "</div>" +
+      '<div class="fakte-raster">' + spalten + "</div>"
+    );
+  }
+
+  function designBodyHtml(v, ep) {
+    if (!ep.wirkmodell.hypothesen.length) {
+      return (
+        rollenBoxHtml("design") +
+        '<section class="panel locked-panel">' +
+        "<span class='icon'>💭</span><h2>Noch keine Gestaltungshypothese</h2>" +
+        "<p>Das 4Fakte-Raster arbeitet je Hypothese. Formuliert in der Verstehen-Schleife mindestens eine Hypothese – sonst entwerft ihr ins Blaue.</p>" +
+        '<a class="btn btn-primary" href="' + loopUrl(v.id, ep.nr, "understand") + '">Zurück zu Verstehen</a>' +
+        "</section>"
+      );
+    }
+
+    var hypOpts = ep.wirkmodell.hypothesen.map(function (h) {
+      var label = h.text.length > 70 ? h.text.slice(0, 69) + "…" : h.text;
+      return '<option value="' + h.id + '"' + (h.id === designDraft.hypotheseId ? " selected" : "") + ">" + escapeHtml(label) + "</option>";
+    }).join("");
+
+    var aktuelleHyp = ep.wirkmodell.hypothesen.find(function (h) { return h.id === designDraft.hypotheseId; });
+
+    var draftHtml = designDraft.objekte.length
+      ? '<div class="chip-row">' + designDraft.objekte.map(function (o, i) {
+          return '<button type="button" class="chip active" data-draft-remove="' + i + '">' + escapeHtml(o.beispiel) + " ✕</button>";
+        }).join("") + "</div>"
+      : "<p class='hint-text'>Noch keine Gestaltungsobjekte ausgewählt. Klickt im Raster oben Beispiele an.</p>";
+
+    var impulseHtml = ep.wirkmodell.hypothesen.map(function (h) {
+      var impulse = ep.impulse.filter(function (imp) { return imp.hypotheseId === h.id; });
+      return (
+        '<div class="impuls-gruppe">' +
+        '<div class="impuls-gruppe-kopf">' + elementTagHtml(h.element) + "<p>" + escapeHtml(h.text) + "</p></div>" +
+        (impulse.length
+          ? impulse.map(impulsKarteHtml).join("")
+          : "<p class='hint-text'>Für diese Hypothese liegt noch kein Impuls vor.</p>") +
+        "</div>"
+      );
+    }).join("");
+
+    var ohneHyp = ep.impulse.filter(function (imp) { return !imp.hypotheseId; });
+    if (ohneHyp.length) {
+      impulseHtml +=
+        '<div class="impuls-gruppe"><div class="impuls-gruppe-kopf">' + elementTagHtml("") +
+        "<p>Ohne Hypothese – aus einer früheren Fassung übernommen</p></div>" +
+        ohneHyp.map(impulsKarteHtml).join("") + "</div>";
+    }
+
+    return (
+      rollenBoxHtml("design") +
+
+      '<section class="panel">' +
+      "<h2>Wofür entwerft ihr gerade?</h2>" +
+      '<select id="design-hyp-select" class="text-input">' + hypOpts + "</select>" +
+      (aktuelleHyp
+        ? '<div class="hyp-kontext"><p><strong>Hypothese:</strong> ' + escapeHtml(aktuelleHyp.text) + "</p>" +
+          (aktuelleHyp.gegenhypothese ? "<p><strong>Gegenhypothese:</strong> " + escapeHtml(aktuelleHyp.gegenhypothese) + "</p>" : "") + "</div>"
+        : "") +
+      "</section>" +
+
+      '<section class="panel">' +
+      "<h2>4Fakte-Raster</h2>" +
+      "<p class='hint-text'>Ein wirksamer Impuls greift auf mehreren Ebenen zugleich an. Klickt Beispiele an, um sie in den Impuls zu übernehmen.</p>" +
+      fakteRasterHtml() +
+      "<h3>Ausgewählt für diesen Impuls</h3>" +
+      draftHtml +
+      '<form id="impuls-form" class="inline-form small">' +
+      '<input type="text" id="impuls-titel" class="text-input" placeholder="Titel des Gestaltungsimpulses…" value="' + escapeHtml(designDraft.titel) + '" />' +
+      '<button type="submit" class="btn btn-primary">Impuls anlegen</button></form>' +
+      "</section>" +
+
+      '<section class="panel">' +
+      "<h2>Impulse dieser Episode</h2>" +
+      impulseHtml +
+      "</section>" +
+
+      kiPanelHtml("design") +
+      elementAccordionHtml(ep, "design") +
+      generalSectionHtml(ep, "design")
+    );
+  }
+
+  function impulsKarteHtml(imp) {
+    var proTyp = AVERA_DATA.FAKTE_TYPEN.map(function (t) {
+      var objekte = imp.objekte.filter(function (o) { return o.typ === t.key; });
+      if (!objekte.length) return "";
+      return (
+        '<div class="impuls-typ-zeile fakt-' + t.key + '"><span class="impuls-typ-label">' + escapeHtml(t.label) + "</span>" +
+        objekte.map(function (o) { return '<span class="impuls-objekt-tag">' + escapeHtml(o.beispiel) + "</span>"; }).join("") +
+        "</div>"
+      );
+    }).join("");
+    var abdeckung = AVERA_DATA.FAKTE_TYPEN.filter(function (t) {
+      return imp.objekte.some(function (o) { return o.typ === t.key; });
+    }).length;
+
+    return (
+      '<div class="impuls-card">' +
+      '<div class="impuls-card-head"><strong>' + escapeHtml(imp.titel) + "</strong>" +
+      '<span class="impuls-card-actions">' +
+      '<span class="abdeckung" title="Abgedeckte 4Fakte-Ebenen">' + abdeckung + "/4</span>" +
+      '<button type="button" class="btn-icon-delete" data-rename-impuls="' + imp.id + '" title="Umbenennen">✎</button>' +
+      '<button type="button" class="btn-icon-delete" data-remove-impuls="' + imp.id + '" title="Löschen">✕</button>' +
+      "</span></div>" +
+      (proTyp || "<p class='hint-text'>Keine Objekte hinterlegt.</p>") +
+      "</div>"
+    );
+  }
+
+  function wireDesign(id, nr, ep) {
+    document.getElementById("fakte-wirkstufe-select").addEventListener("change", function (evt) {
+      designWirkstufe = evt.target.value;
+      renderLoop(id, nr, "design");
+    });
+
+    document.getElementById("design-hyp-select").addEventListener("change", function (evt) {
+      designDraft.hypotheseId = evt.target.value;
+      renderLoop(id, nr, "design");
+    });
+
+    root.querySelectorAll("[data-fakte-beispiel]").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        var eintrag = {
+          typ: chip.getAttribute("data-fakte-typ"),
+          wirkstufe: designWirkstufe,
+          kategorie: chip.getAttribute("data-fakte-kategorie"),
+          beispiel: chip.getAttribute("data-fakte-beispiel")
+        };
+        var idx = designDraft.objekte.findIndex(function (o) {
+          return o.typ === eintrag.typ && o.wirkstufe === eintrag.wirkstufe && o.kategorie === eintrag.kategorie && o.beispiel === eintrag.beispiel;
+        });
+        if (idx === -1) designDraft.objekte.push(eintrag);
+        else designDraft.objekte.splice(idx, 1);
+        designDraft.titel = document.getElementById("impuls-titel").value;
+        renderLoop(id, nr, "design");
+      });
+    });
+
+    root.querySelectorAll("[data-draft-remove]").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        designDraft.objekte.splice(parseInt(chip.getAttribute("data-draft-remove"), 10), 1);
+        designDraft.titel = document.getElementById("impuls-titel").value;
+        renderLoop(id, nr, "design");
+      });
+    });
+
+    document.getElementById("impuls-form").addEventListener("submit", function (evt) {
+      evt.preventDefault();
+      var titel = document.getElementById("impuls-titel").value.trim();
+      if (!titel || !designDraft.objekte.length) {
+        alert("Ein Impuls braucht einen Titel und mindestens ein Gestaltungsobjekt.");
+        return;
+      }
+      AVERA_STORE.addImpuls(id, nr, {
+        titel: titel,
+        hypotheseId: designDraft.hypotheseId,
+        objekte: designDraft.objekte.slice()
+      });
+      resetDesignDraft(id + ":" + nr, designDraft.hypotheseId);
+      renderLoop(id, nr, "design");
+    });
+
+    root.querySelectorAll("[data-remove-impuls]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        AVERA_STORE.removeImpuls(id, nr, btn.getAttribute("data-remove-impuls"));
+        renderLoop(id, nr, "design");
+      });
+    });
+
+    root.querySelectorAll("[data-rename-impuls]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var impulsId = btn.getAttribute("data-rename-impuls");
+        var imp = ep.impulse.find(function (x) { return x.id === impulsId; });
+        var titel = prompt("Titel des Gestaltungsimpulses", imp ? imp.titel : "");
+        if (titel === null || !titel.trim()) return;
+        AVERA_STORE.updateImpuls(id, nr, impulsId, { titel: titel.trim() });
+        renderLoop(id, nr, "design");
+      });
+    });
+  }
+
+  // ---------- Schleife 4: Komponieren ----------
+
+  // Lokale Kohärenz-Prüfung: was die App selbst sehen kann, ohne Modell.
+  function kohaerenzWarnungen(ep) {
+    var warn = [];
+    var gewaehlt = ep.architektur.gewaehlt || [];
+    var gewaehlteImpulse = ep.impulse.filter(function (i) { return gewaehlt.indexOf(i.id) !== -1; });
+
+    var proHyp = {};
+    gewaehlteImpulse.forEach(function (imp) {
+      var k = imp.hypotheseId || "_ohne";
+      proHyp[k] = (proHyp[k] || 0) + 1;
+    });
+    Object.keys(proHyp).forEach(function (hypId) {
+      if (hypId !== "_ohne" && proHyp[hypId] > 1) {
+        var h = ep.wirkmodell.hypothesen.find(function (x) { return x.id === hypId; });
+        warn.push({ art: "doppelung", text: proHyp[hypId] + " Impulse zielen auf dieselbe Hypothese" + (h ? ": „" + h.text + "“" : "") + ". Braucht es beide?" });
+      }
+    });
+    if (proHyp._ohne) {
+      warn.push({ art: "ungebunden", text: proHyp._ohne + " gewählte(r) Impuls(e) hängen an keiner Hypothese – damit ist nicht begründbar, warum sie wirken sollten." });
+    }
+
+    ep.wirkmodell.hypothesen.forEach(function (h) {
+      var hat = gewaehlteImpulse.some(function (imp) { return imp.hypotheseId === h.id; });
+      if (!hat) warn.push({ art: "luecke", text: "Für die Hypothese „" + h.text + "“ ist kein Impuls in der Architektur. Bewusst weggelassen?" });
+    });
+
+    gewaehlteImpulse.forEach(function (imp) {
+      var abdeckung = AVERA_DATA.FAKTE_TYPEN.filter(function (t) {
+        return imp.objekte.some(function (o) { return o.typ === t.key; });
+      }).length;
+      if (abdeckung <= 1) {
+        warn.push({ art: "flach", text: "„" + imp.titel + "“ greift nur auf einer 4Fakte-Ebene an – erfahrungsgemäß verpufft das schnell." });
+      }
+    });
+
+    if (gewaehlteImpulse.length > 5) {
+      warn.push({ art: "minimalismus", text: gewaehlteImpulse.length + " Impulse sind viel. So wenig wie möglich, so viel wie nötig – was kann weg?" });
+    }
+    return warn;
+  }
+
+  function architectBodyHtml(v, ep) {
+    if (!ep.impulse.length) {
+      return (
+        rollenBoxHtml("architect") +
+        '<section class="panel locked-panel">' +
+        "<span class='icon'>🧩</span><h2>Noch keine Impulse zum Komponieren</h2>" +
+        "<p>In der Entwerfen-Schleife wurden noch keine Gestaltungsimpulse gebaut.</p>" +
+        '<a class="btn btn-primary" href="' + loopUrl(v.id, ep.nr, "design") + '">Zurück zu Entwerfen</a>' +
+        "</section>"
+      );
+    }
+
+    var gewaehlt = ep.architektur.gewaehlt || [];
+    var auswahlHtml = ep.impulse.map(function (imp) {
+      var checked = gewaehlt.indexOf(imp.id) !== -1;
+      var hyp = ep.wirkmodell.hypothesen.find(function (h) { return h.id === imp.hypotheseId; });
+      return (
+        '<div class="arch-zeile' + (checked ? " gewaehlt" : "") + '">' +
+        '<label class="impuls-select-row">' +
+        '<input type="checkbox" data-select-impuls="' + imp.id + '"' + (checked ? " checked" : "") + " />" +
+        "<span><strong>" + escapeHtml(imp.titel) + "</strong>" +
+        (hyp ? '<span class="arch-hyp">zu: ' + escapeHtml(hyp.text) + "</span>" : '<span class="arch-hyp warn">keiner Hypothese zugeordnet</span>') +
+        '<span class="impuls-objekte">' + imp.objekte.map(function (o) { return '<span class="impuls-objekt-tag">' + escapeHtml(o.beispiel) + "</span>"; }).join("") + "</span>" +
+        "</span></label>" +
+        (checked
+          ? '<div class="weglass-box"><label class="reflexion-label">Was passiert, wenn dieser Impuls entfällt?</label>' +
+            '<textarea data-weglass="' + imp.id + '" rows="2" placeholder="Ein Satz genügt – aber er muss stehen.">' + escapeHtml(ep.architektur.weglassen[imp.id] || "") + "</textarea></div>"
+          : "") +
+        "</div>"
+      );
+    }).join("");
+
+    var warnungen = kohaerenzWarnungen(ep);
+    var warnHtml = gewaehlt.length
+      ? warnungen.length
+        ? '<ul class="kohaerenz-liste">' + warnungen.map(function (w) {
+            return '<li class="warn-' + w.art + '">' + escapeHtml(w.text) + "</li>";
+          }).join("") + "</ul>"
+        : '<div class="luecken-box ok"><strong>Keine Auffälligkeiten.</strong> Jede Hypothese ist abgedeckt, keine Doppelung, jeder Impuls greift mehrschichtig an.</div>'
+      : "<p class='hint-text'>Wählt oben Impulse aus, dann prüft die App auf Doppelungen, Lücken und flache Impulse.</p>";
+
+    return (
+      rollenBoxHtml("architect") +
+
+      '<section class="panel">' +
+      "<h2>Architektur zusammenstellen</h2>" +
+      "<p class='hint-text'>So wenig wie möglich, so viel wie nötig: Wählt die Impulse, denen ihr unter den gegenwärtigen Bedingungen die größte Wirkwahrscheinlichkeit zuschreibt – und die sich gegenseitig stützen statt widersprechen.</p>" +
+      auswahlHtml +
+      "</section>" +
+
+      '<section class="panel">' +
+      "<h2>Kohärenz- und Minimalismus-Check</h2>" +
+      warnHtml +
+      '<label class="reflexion-label" for="kohaerenz-notiz">Kohärenz-Notiz – warum genau diese Zusammenstellung?</label>' +
+      '<textarea id="kohaerenz-notiz" rows="3" placeholder="Wie stützen die gewählten Impulse einander?">' + escapeHtml(ep.architektur.kohaerenzNotiz || "") + "</textarea>" +
+      "</section>" +
+
+      kiPanelHtml("architect") +
+      elementAccordionHtml(ep, "architect") +
+      generalSectionHtml(ep, "architect")
+    );
+  }
+
+  function wireArchitect(id, nr) {
+    root.querySelectorAll("[data-select-impuls]").forEach(function (box) {
+      box.addEventListener("change", function () {
+        var v = AVERA_STORE.get(id);
+        var ep = AVERA_STORE.getEpisode(v, nr);
+        var current = (ep.architektur.gewaehlt || []).slice();
+        var impId = box.getAttribute("data-select-impuls");
+        var idx = current.indexOf(impId);
+        if (box.checked && idx === -1) current.push(impId);
+        if (!box.checked && idx !== -1) current.splice(idx, 1);
+        AVERA_STORE.setArchitekturAuswahl(id, nr, current);
+        renderLoop(id, nr, "architect");
+      });
+    });
+
+    root.querySelectorAll("[data-weglass]").forEach(function (ta) {
+      ta.addEventListener("blur", function () {
+        AVERA_STORE.setWeglassNotiz(id, nr, ta.getAttribute("data-weglass"), ta.value);
+      });
+    });
+
+    var kn = document.getElementById("kohaerenz-notiz");
+    if (kn) {
+      kn.addEventListener("blur", function () {
+        AVERA_STORE.setKohaerenzNotiz(id, nr, kn.value);
+      });
+    }
+  }
+
+  // ---------- Schleifen-Screen ----------
+
+  function renderLoop(id, nr, loopKey) {
+    var v = AVERA_STORE.get(id);
+    var ep = v ? AVERA_STORE.getEpisode(v, nr) : null;
+    var loop = AVERA_DATA.getLoop(loopKey);
+    if (!v || !ep || !loop) {
+      navigate("#/v/" + id);
+      return;
+    }
+
+    var scope = id + ":" + nr;
+    if (designDraft.scope !== scope) {
+      resetDesignDraft(scope, ep.wirkmodell.hypothesen.length ? ep.wirkmodell.hypothesen[0].id : null);
+    }
+    if (loopKey === "design" && ep.wirkmodell.hypothesen.length &&
+        !ep.wirkmodell.hypothesen.some(function (h) { return h.id === designDraft.hypotheseId; })) {
+      designDraft.hypotheseId = ep.wirkmodell.hypothesen[0].id;
+    }
+
+    var erreichbar = AVERA_STORE.loopErreichbar(ep, loopKey);
+    var bodyHtml;
+    if (!erreichbar) {
+      bodyHtml = gesperrtHtml(id, nr, loopKey);
+    } else if (loopKey === "observe") {
+      bodyHtml = observeBodyHtml(v, ep);
+    } else if (loopKey === "understand") {
+      bodyHtml = understandBodyHtml(v, ep);
+    } else if (loopKey === "design") {
+      bodyHtml = designBodyHtml(v, ep);
+    } else {
+      bodyHtml = architectBodyHtml(v, ep);
+    }
+
+    var mainHtml =
+      loopHeaderHtml(id, nr, loopKey, ep) +
+      bodyHtml +
+      (erreichbar ? loopNavHtml(id, nr, loopKey, ep) : "");
 
     var html =
       '<div class="view view-station">' +
       '<div class="station-layout">' +
       '<div class="station-main">' + mainHtml + "</div>" +
-      miniWheelAsideHtml(id) +
-      "</div>" +
-      "</div>";
+      prozessradAsideHtml(v) +
+      "</div></div>";
 
     renderShell("projekte", html);
-    mountMiniWheel(id, init, ep);
-    wireLoopEvents(id, nr, loopKey, ep, init);
-  }
+    mountProzessrad(v, ep, loopKey);
 
-  function elementLeitfrageHint(loopKey) {
-    if (loopKey === "observe") return "Was beobachten wir je Element mit Blick auf unsere Intention?";
-    if (loopKey === "understand") return "Warum zeigt sich das beobachtete Verhalten heute so, je Element?";
-    if (loopKey === "design") return "Welche Gestaltungsoptionen könnten je Element die Intention unterstützen?";
-    return "Wie spielen die Gestaltungsoptionen je Element zusammen oder widersprechen sich?";
-  }
+    if (!erreichbar) return;
 
-  function understandIntentionHtml(init, episode) {
-    var phase = AVERA_DATA.INTENTION_PHASEN.reflektieren;
-    var fragenHtml = phase.fragen.map(function (f) { return "<li>" + escapeHtml(f.frage) + "</li>"; }).join("");
-    return (
-      "<details class='reference-details'>" +
-      "<summary><strong>Intention kurz reflektieren</strong> — " + escapeHtml(phase.leitfrage) + "</summary>" +
-      "<div class='details-body'>" +
-      "<ul class='fragen-liste'>" + fragenHtml + "</ul>" +
-      '<textarea id="intention-reflexion-input" rows="3" placeholder="Was bedeutet das für unsere Intention?"></textarea>' +
-      '<button type="button" id="save-intention-reflexion-btn" class="btn btn-secondary btn-small">Reflexion speichern</button>' +
-      "</div>" +
-      "</details>"
-    );
-  }
+    document.getElementById("gate-open-btn").addEventListener("click", function () {
+      openGate(id, nr, loopKey);
+    });
 
-  function wireLoopEvents(id, nr, loopKey, ep, init) {
+    var sq = document.getElementById("statusquo-input");
+    if (sq) {
+      sq.addEventListener("blur", function () {
+        AVERA_STORE.setStatusQuo(id, nr, sq.value);
+      });
+    }
+
     root.querySelectorAll("[data-general-field]").forEach(function (ta) {
       ta.addEventListener("blur", function () {
         AVERA_STORE.setLoopGeneralNote(id, nr, loopKey, ta.getAttribute("data-general-field"), ta.value);
       });
     });
-
-    var gateBox = document.getElementById("gate-checkbox");
-    var gateNotiz = document.getElementById("gate-notiz");
-    function saveGate() {
-      AVERA_STORE.setLoopGate(id, nr, loopKey, gateBox.checked, gateNotiz.value);
-    }
-    gateBox.addEventListener("change", saveGate);
-    gateNotiz.addEventListener("blur", saveGate);
-
     root.querySelectorAll("[data-element-note]").forEach(function (ta) {
       ta.addEventListener("blur", function () {
         AVERA_STORE.setLoopElementNote(id, nr, loopKey, ta.getAttribute("data-element-note"), ta.value);
       });
     });
 
-    if (loopKey === "design") {
-      document.getElementById("fakte-typ-select").addEventListener("change", function (evt) {
-        designFilter.typ = evt.target.value;
-        renderLoop(id, nr, loopKey);
-      });
-      document.getElementById("fakte-wirkstufe-select").addEventListener("change", function (evt) {
-        designFilter.wirkstufe = evt.target.value;
-        renderLoop(id, nr, loopKey);
-      });
-      root.querySelectorAll("[data-fakte-beispiel]").forEach(function (chip) {
-        chip.addEventListener("click", function () {
-          var beispiel = chip.getAttribute("data-fakte-beispiel");
-          var kategorie = chip.getAttribute("data-fakte-kategorie");
-          var idx = designDraft.objekte.findIndex(function (o) {
-            return o.typ === designFilter.typ && o.wirkstufe === designFilter.wirkstufe && o.kategorie === kategorie && o.beispiel === beispiel;
-          });
-          if (idx === -1) {
-            designDraft.objekte.push({ typ: designFilter.typ, wirkstufe: designFilter.wirkstufe, kategorie: kategorie, beispiel: beispiel });
-          } else {
-            designDraft.objekte.splice(idx, 1);
-          }
-          renderLoop(id, nr, loopKey);
-        });
-      });
-      root.querySelectorAll("[data-draft-remove]").forEach(function (chip) {
-        chip.addEventListener("click", function () {
-          designDraft.objekte.splice(parseInt(chip.getAttribute("data-draft-remove"), 10), 1);
-          renderLoop(id, nr, loopKey);
-        });
-      });
-      document.getElementById("impuls-form").addEventListener("submit", function (evt) {
-        evt.preventDefault();
-        var input = document.getElementById("impuls-name-input");
-        var name = input.value.trim();
-        if (!name || !designDraft.objekte.length) return;
-        AVERA_STORE.addImpuls(id, nr, { name: name, objekte: designDraft.objekte.slice(), notiz: "" });
-        resetDesignDraft(id + ":" + nr);
-        renderLoop(id, nr, loopKey);
-      });
-      root.querySelectorAll("[data-remove-impuls]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          AVERA_STORE.removeImpuls(id, nr, btn.getAttribute("data-remove-impuls"));
-          renderLoop(id, nr, loopKey);
-        });
-      });
-      root.querySelectorAll("[data-rename-impuls]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          var impulsId = btn.getAttribute("data-rename-impuls");
-          var current = ep.loops.design.impulse.find(function (i) { return i.id === impulsId; });
-          var name = prompt("Name des Gestaltungsimpulses", current ? current.name : "");
-          if (name === null || !name.trim()) return;
-          AVERA_STORE.renameImpuls(id, nr, impulsId, name.trim());
-          renderLoop(id, nr, loopKey);
-        });
-      });
-    }
+    if (loopKey === "observe") wireObserve(id, nr, ep);
+    if (loopKey === "understand") wireUnderstand(id, nr);
+    if (loopKey === "design" && ep.wirkmodell.hypothesen.length) wireDesign(id, nr, ep);
+    if (loopKey === "architect" && ep.impulse.length) wireArchitect(id, nr);
 
-    if (loopKey === "architect") {
-      root.querySelectorAll("[data-select-impuls]").forEach(function (box) {
-        box.addEventListener("change", function () {
-          var current = (AVERA_STORE.getEpisode(AVERA_STORE.get(id), nr).loops.architect.ausgewaehlt || []).slice();
-          var impId = box.getAttribute("data-select-impuls");
-          var idx = current.indexOf(impId);
-          if (box.checked && idx === -1) current.push(impId);
-          if (!box.checked && idx !== -1) current.splice(idx, 1);
-          AVERA_STORE.setArchitectSelection(id, nr, current);
-        });
-      });
-      var begruendungTa = document.getElementById("architect-begruendung");
-      if (begruendungTa) {
-        begruendungTa.addEventListener("blur", function (evt) {
-          AVERA_STORE.setArchitectBegruendung(id, nr, evt.target.value);
-        });
-      }
-    }
-
-    if (loopKey === "understand") {
-      document.getElementById("save-intention-reflexion-btn").addEventListener("click", function () {
-        var ta = document.getElementById("intention-reflexion-input");
-        var text = ta.value.trim();
-        if (!text) return;
-        AVERA_STORE.addIntentionReflexion(id, nr, text);
-        ta.value = "";
-        alert("Reflexion gespeichert. Ihr findet sie auf der Intention-Seite wieder.");
-      });
-    }
+    wireKiPanel(loopKey, v, ep);
   }
 
-  // ---------- Realisierung ----------
+  // ---------- In die Welt bringen ----------
 
-  function renderRealize(id, nr) {
-    var init = AVERA_STORE.get(id);
-    var ep = init ? AVERA_STORE.getEpisode(init, nr) : null;
-    if (!init || !ep) {
-      navigate("#/init/" + id);
+  function renderWelt(id, nr) {
+    var v = AVERA_STORE.get(id);
+    var ep = v ? AVERA_STORE.getEpisode(v, nr) : null;
+    if (!v || !ep) {
+      navigate("#/v/" + id);
       return;
     }
-    var impulse = ep.loops.design.impulse;
-    var selected = ep.loops.architect.ausgewaehlt || [];
-    var chosenImpulse = impulse.filter(function (imp) { return selected.indexOf(imp.id) !== -1; });
-    var isLatest = init.episodes[init.episodes.length - 1].nr === ep.nr;
 
-    var architekturHtml = chosenImpulse.length
-      ? chosenImpulse
-          .map(function (imp) {
-            var tags = imp.objekte.map(function (o) { return '<span class="impuls-objekt-tag">' + escapeHtml(o.beispiel) + "</span>"; }).join("");
-            return '<div class="impuls-card"><strong>' + escapeHtml(imp.name) + "</strong><div class='impuls-objekte'>" + tags + "</div></div>";
-          })
-          .join("")
-      : "<p class='hint-text'>Noch keine Impulse für die Architektur ausgewählt (siehe Komponieren-Schleife).</p>";
+    var gewaehlt = ep.architektur.gewaehlt || [];
+    var chosen = ep.impulse.filter(function (imp) { return gewaehlt.indexOf(imp.id) !== -1; });
+    var isLatest = v.episodes[v.episodes.length - 1].nr === ep.nr;
+
+    var architekturHtml = chosen.length
+      ? chosen.map(function (imp) {
+          var hyp = ep.wirkmodell.hypothesen.find(function (h) { return h.id === imp.hypotheseId; });
+          return (
+            '<div class="impuls-card"><strong>' + escapeHtml(imp.titel) + "</strong>" +
+            (hyp ? '<span class="arch-hyp">zu: ' + escapeHtml(hyp.text) + "</span>" : "") +
+            "<div class='impuls-objekte'>" + imp.objekte.map(function (o) { return '<span class="impuls-objekt-tag">' + escapeHtml(o.beispiel) + "</span>"; }).join("") + "</div></div>"
+          );
+        }).join("")
+      : "<p class='hint-text'>Für die Architektur wurden keine Impulse ausgewählt.</p>";
+
+    var massnahmen = ep.massnahmen || [];
+    var massnahmenHtml = massnahmen.length
+      ? massnahmen.map(function (m) {
+          return (
+            '<label class="massnahme-zeile' + (m.status === "erledigt" ? " erledigt" : "") + '">' +
+            '<input type="checkbox" data-mn-toggle="' + m.id + '"' + (m.status === "erledigt" ? " checked" : "") + " />" +
+            "<span>" + escapeHtml(m.text) + "</span>" +
+            '<button type="button" class="btn-icon-delete" data-mn-del="' + m.id + '" title="Löschen">✕</button>' +
+            "</label>"
+          );
+        }).join("")
+      : "<p class='hint-text'>Noch keine Maßnahme erfasst.</p>";
 
     var bodyHtml;
     if (ep.realized) {
       bodyHtml =
-        '<div class="ok-box">✓ Realisiert am ' + new Date(ep.realized.at).toLocaleDateString("de-AT") + "</div>" +
+        '<div class="ok-box">✓ In die Welt gebracht am ' + new Date(ep.realized.at).toLocaleDateString("de-AT") + "</div>" +
         (ep.realized.notiz ? "<p>" + escapeHtml(ep.realized.notiz) + "</p>" : "") +
-        (isLatest ? '<button id="next-episode-btn" class="btn btn-primary btn-block">Nächste Episode starten</button>' : "");
+        (isLatest
+          ? '<button id="next-episode-btn" class="btn btn-primary btn-block">Nächste Episode starten – erneut beobachten</button>' +
+            "<p class='hint-text'>Die neue Episode übernimmt diese Notiz als Status quo. Dort setzt das erneute Beobachten an.</p>"
+          : "");
     } else {
       bodyHtml =
-        '<textarea id="realize-notiz" rows="4" placeholder="Wie kommt die Architektur in der Wirklichkeit an? Welche Bewegung entsteht, was bleibt stabil, was überrascht?"></textarea>' +
-        '<button id="realize-btn" class="btn btn-primary btn-block">In die Welt gebracht — Episode abschließen</button>';
+        '<textarea id="welt-notiz" rows="4" placeholder="Wie kommt die Architektur in der Wirklichkeit an? Welche Bewegung entsteht, was bleibt stabil, was überrascht?"></textarea>' +
+        '<button id="welt-btn" class="btn btn-primary btn-block">Episode abschließen</button>';
     }
 
     var mainHtml =
-      '<a href="#/init/' + id + "/episode/" + nr + '/architect" class="back-link">← Zurück zu Komponieren</a>' +
+      '<a href="' + loopUrl(id, nr, "architect") + '" class="back-link">← Zurück zu Komponieren</a>' +
       "<header class='station-header'>" +
       "<div class='station-tags'><span class='station-num'>Episode " + ep.nr + "</span></div>" +
       "<h1>In die Welt bringen</h1>" +
-      "<p class='station-teaser'>Die konzeptionelle Arbeit endet hier – jetzt trifft die Gestaltung auf die organisationale Wirklichkeit.</p>" +
+      "<p class='station-teaser'>Die konzeptionelle Arbeit endet hier – jetzt trifft die Gestaltung auf die organisationale Wirklichkeit. KI-Unterstützung ist hier sekundär; es geht um Umsetzung und Nachverfolgung.</p>" +
       "</header>" +
-      '<section class="panel"><h2>Ausgewählte Architektur</h2>' + architekturHtml + "</section>" +
+
+      '<section class="panel"><h2>Gewählte Architektur</h2>' + architekturHtml +
+      (ep.architektur.kohaerenzNotiz ? "<p class='hint-text'>" + escapeHtml(ep.architektur.kohaerenzNotiz) + "</p>" : "") +
+      "</section>" +
+
+      '<section class="panel">' +
+      "<h2>Maßnahmen-Tracking</h2>" +
+      "<p class='hint-text'>Was muss konkret passieren, damit die Architektur in der Organisation ankommt?</p>" +
+      '<div class="massnahmen-liste">' + massnahmenHtml + "</div>" +
+      '<form id="mn-form" class="inline-form small">' +
+      '<input type="text" id="mn-input" class="text-input" placeholder="Neue Maßnahme…" />' +
+      '<button type="submit" class="btn btn-secondary">Hinzufügen</button></form>' +
+      "</section>" +
+
       '<section class="panel">' + bodyHtml + "</section>";
 
     var html =
       '<div class="view view-station">' +
       '<div class="station-layout">' +
       '<div class="station-main">' + mainHtml + "</div>" +
-      miniWheelAsideHtml(id) +
-      "</div>" +
-      "</div>";
+      prozessradAsideHtml(v) +
+      "</div></div>";
 
     renderShell("projekte", html);
-    mountMiniWheel(id, init, ep);
+    mountProzessrad(v, ep, "architect");
 
-    var realizeBtn = document.getElementById("realize-btn");
-    if (realizeBtn) {
-      realizeBtn.addEventListener("click", function () {
-        var text = document.getElementById("realize-notiz").value.trim();
-        AVERA_STORE.realizeEpisode(id, nr, text);
-        renderRealize(id, nr);
+    document.getElementById("mn-form").addEventListener("submit", function (evt) {
+      evt.preventDefault();
+      var input = document.getElementById("mn-input");
+      if (!input.value.trim()) return;
+      AVERA_STORE.addMassnahme(id, nr, input.value.trim());
+      renderWelt(id, nr);
+    });
+    root.querySelectorAll("[data-mn-toggle]").forEach(function (box) {
+      box.addEventListener("change", function () {
+        AVERA_STORE.toggleMassnahme(id, nr, box.getAttribute("data-mn-toggle"));
+        renderWelt(id, nr);
+      });
+    });
+    root.querySelectorAll("[data-mn-del]").forEach(function (btn) {
+      btn.addEventListener("click", function (evt) {
+        evt.preventDefault();
+        AVERA_STORE.removeMassnahme(id, nr, btn.getAttribute("data-mn-del"));
+        renderWelt(id, nr);
+      });
+    });
+
+    var weltBtn = document.getElementById("welt-btn");
+    if (weltBtn) {
+      weltBtn.addEventListener("click", function () {
+        AVERA_STORE.realizeEpisode(id, nr, document.getElementById("welt-notiz").value.trim());
+        renderWelt(id, nr);
       });
     }
     var nextBtn = document.getElementById("next-episode-btn");
     if (nextBtn) {
       nextBtn.addEventListener("click", function () {
         var next = AVERA_STORE.startNextEpisode(id);
-        navigate("#/init/" + id + "/episode/" + next.nr + "/observe");
+        navigate(loopUrl(id, next.nr, "observe"));
       });
     }
   }
@@ -1321,17 +2107,17 @@
   // ---------- Export ----------
 
   function renderExport(id) {
-    var init = AVERA_STORE.get(id);
-    if (!init) {
+    var v = AVERA_STORE.get(id);
+    if (!v) {
       navigate("#/projekte");
       return;
     }
-    var md = AVERA_EXPORT.toMarkdown(init);
+    var md = AVERA_EXPORT.toMarkdown(v);
 
     var html =
       '<div class="view view-export">' +
-      '<a href="#/init/' + id + '" class="back-link">← Zurück zum Projekt</a>' +
-      "<h1>Gestaltungsarchitektur: " + escapeHtml(init.name) + "</h1>" +
+      '<a href="#/v/' + id + '" class="back-link">← Zurück zum Projekt</a>' +
+      "<h1>Gestaltungsarchitektur: " + escapeHtml(v.name) + "</h1>" +
       '<div class="export-actions">' +
       '<button id="download-md-btn" class="btn btn-primary">Als Markdown herunterladen</button>' +
       '<button id="print-btn" class="btn btn-secondary">Drucken / als PDF speichern</button>' +
@@ -1343,7 +2129,7 @@
 
     document.getElementById("export-doc").textContent = md;
     document.getElementById("download-md-btn").addEventListener("click", function () {
-      AVERA_EXPORT.downloadMarkdown(init);
+      AVERA_EXPORT.downloadMarkdown(v);
     });
     document.getElementById("print-btn").addEventListener("click", function () {
       window.print();
@@ -1357,15 +2143,14 @@
     // Beim Seitenwechsel oben beginnen – ohne das landet man nach einem Klick
     // weit unten auf einer Seite mitten in der nächsten Ansicht.
     window.scrollTo(0, 0);
-    if (r.view === "dashboard") renderDashboard();
-    else if (r.view === "projekte") renderProjekte();
-    else if (r.view === "soon") renderSoon(r.key);
+    if (r.view === "projekte") renderProjekte();
     else if (r.view === "framework") renderFramework();
+    else if (r.view === "soon") renderSoon(r.key);
     else if (r.view === "hilfe") renderHilfe();
     else if (r.view === "overview") renderOverview(r.id);
     else if (r.view === "intention") renderIntention(r.id);
     else if (r.view === "loop") renderLoop(r.id, r.nr, r.loop);
-    else if (r.view === "realize") renderRealize(r.id, r.nr);
+    else if (r.view === "welt") renderWelt(r.id, r.nr);
     else if (r.view === "export") renderExport(r.id);
     else renderDashboard();
   }
