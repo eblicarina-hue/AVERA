@@ -1245,6 +1245,142 @@
   }
 ];
 
+
+  // ---------------------------------------------------------------------------
+  // Inhalte aus dem AVERA White Paper 2.0 (Seiten 4-9): Einleitung, Idee,
+  // Gestaltungsframework, drei Dimensionen, Drehrichtung, Gestaltungsauftrag.
+  // Texte wörtlich aus dem White Paper übernommen.
+  // ---------------------------------------------------------------------------
+  var FRAMEWORK = {
+    scheitern: {
+      label: "Einleitung",
+      pill: "purple",
+      headline: "Warum Veränderung oft scheitert",
+      sub: "Gute Absichten reichen nicht. Es braucht ein neues Verständnis.",
+      text:
+        "Viele Veränderungsvorhaben scheitern – nicht an Strategien oder Expertenwissen, sondern daran, " +
+        "dass der Mensch im Mittelpunkt zu wenig berücksichtigt wird. Veränderung ist kein rein rationaler " +
+        "Prozess, sondern ein komplexes Zusammenspiel aus Emotionen, Beziehungen und Kontext.",
+      stolpersteine: [
+        { icon: "🎯", text: "Zu stark auf Steuerung statt Gestaltung" },
+        { icon: "👥", text: "Menschen werden zu spät einbezogen" },
+        { icon: "⚡", text: "Sinn und Nutzen bleiben unklar" },
+        { icon: "⊗", text: "Der Alltag holt die Initiative ein" }
+      ],
+      zitat: "Veränderung scheitert selten an der Idee, sondern an ihrer Umsetzung im realen Leben."
+    },
+    idee: {
+      label: "Die Idee hinter AVERA",
+      pill: "pink",
+      headline: "Gestaltung statt Steuerung",
+      sub: "Ein neues Verständnis für wirksame Veränderung.",
+      text:
+        "AVERA steht für einen Perspektivenwechsel: Weg von der reinen Steuerung – hin zu einem " +
+        "ganzheitlichen, menschenzentrierten Gestaltungsansatz. Das Admonter Veränderungsrad bietet " +
+        "einen klaren Orientierungsrahmen, um Lernen und Veränderung wirksam, nachhaltig und gemeinsam zu gestalten.",
+      kernsatz: "Menschen befähigen. Zukunft gestalten.",
+      kernsatzText:
+        "AVERA verbindet Strategie, Kultur und Kompetenz – und macht Veränderung zu einem gemeinsamen " +
+        "Lernweg, der im Alltag wirkt und nachhaltig Bestand hat."
+    },
+    rad: {
+      label: "Das Gestaltungsframework",
+      pill: "blue",
+      headline: "Das Admonter Veränderungsrad",
+      sub: "Sechs Elemente. Eine gemeinsame Intention.",
+      text:
+        "Das Veränderungsrad zeigt sechs zentrale Gestaltungselemente, die gemeinsam wirksame Veränderung " +
+        "ermöglichen. Sie greifen ineinander, verstärken sich gegenseitig und entfalten ihre Wirkung in der " +
+        "richtigen Reihenfolge – im Uhrzeigersinn entlang einer gemeinsamen Intention.",
+      kernsatz: "Eine klare Intention gibt die Richtung vor.",
+      kernsatzText:
+        "Alle Elemente sind auf eine gemeinsame Intention ausgerichtet: Lernen ermöglichen. " +
+        "Menschen stärken. Nachhaltige Wirkung erzielen."
+    },
+    dimensionen: {
+      label: "Drei Dimensionen",
+      pill: "green",
+      headline: "Wollen. Dürfen. Können.",
+      sub: "Die Grundlage für nachhaltige Veränderung.",
+      text:
+        "Wirksame Veränderung entsteht, wenn Menschen einen inneren Sinn spüren (Wollen), wenn die " +
+        "Rahmenbedingungen es ermöglichen (Dürfen) und wenn die nötigen Kompetenzen vorhanden sind (Können). " +
+        "Erst das Zusammenspiel dieser drei Dimensionen schafft echte Handlungsfähigkeit – sowohl individuell " +
+        "als auch organisational.",
+      mitte: "Wirksam verändern",
+      items: [
+        {
+          key: "wollen",
+          icon: "♥",
+          label: "Wollen",
+          sub: "Sinn & Motivation",
+          punkte: ["Sinn stiften", "Begeisterung wecken", "Richtung geben"]
+        },
+        {
+          key: "duerfen",
+          icon: "👥",
+          label: "Dürfen",
+          sub: "Kultur & Rahmen",
+          punkte: ["Rahmen schaffen", "Vertrauen ermöglichen", "Kultur leben"]
+        },
+        {
+          key: "koennen",
+          icon: "⚙",
+          label: "Können",
+          sub: "Kompetenz & Ressourcen",
+          punkte: ["Kompetenzen stärken", "Lernen ermöglichen", "Ressourcen bereitstellen"]
+        }
+      ]
+    },
+    drehrichtung: {
+      label: "Die richtige Drehrichtung",
+      pill: "orange",
+      headline: "Von innen nach außen. In die Umsetzung.",
+      sub: "Veränderung beginnt mit Sinn – und wirkt im Alltag.",
+      text:
+        "Die sechs Elemente des Veränderungsrads entfalten ihre Wirkung in einer klaren Reihenfolge. " +
+        "Sie beginnt mit Story & Narrativ und verläuft im Uhrzeigersinn bis zu Methoden & Formate. " +
+        "So entsteht ein natürlicher Prozess – von der inneren Ausrichtung bis zur sichtbaren Umsetzung im Alltag."
+    },
+    auftrag: {
+      label: "Gestaltungsauftrag",
+      pill: "purple",
+      headline: "Unsere gemeinsame Intention.",
+      sub: "Lernen ermöglichen. Menschen stärken. Nachhaltige Wirkung erzielen.",
+      text:
+        "Der Gestaltungsauftrag von AVERA ist eine Einladung an alle, die Veränderung in Organisationen " +
+        "gestalten wollen. Er verbindet fachliche Exzellenz mit menschlicher Entwicklung – und schafft damit " +
+        "die Basis für eine zukunftsfähige Arbeitswelt.",
+      kernsatz: "Gemeinsam Zukunft möglich machen.",
+      kernsatzText:
+        "AVERA ist ein offener Orientierungsrahmen für alle, die Lernen und Veränderung wirksam, " +
+        "verantwortungsvoll und menschenzentriert gestalten wollen – in Organisationen, Teams und für sich selbst."
+    },
+    hub: {
+      titel: "Raum & Zeit",
+      sub: "Für Reflexion, Austausch und nachhaltige Wirkung"
+    }
+  };
+
+  // Kurzwirkung je Element aus der Drehrichtungs-Grafik des White Papers
+  // ("Sinn stiften" … "Lernen gestalten") plus die dort verwendeten Symbole.
+  var ELEMENT_EXTRA = {
+    story: { wirkung: "Sinn stiften", dimension: "wollen" },
+    orgkultur: { wirkung: "Vertrauen ermöglichen", dimension: "duerfen" },
+    fuehrung: { wirkung: "Orientierung geben", dimension: "duerfen" },
+    entdecken: { wirkung: "Wissen nutzen", dimension: "koennen" },
+    peers: { wirkung: "Gemeinsam wachsen", dimension: "koennen" },
+    methoden: { wirkung: "Lernen gestalten", dimension: "koennen" },
+    raumzeit: { wirkung: "Wirkung ermöglichen", dimension: "duerfen" }
+  };
+
+  ELEMENTS.forEach(function (el) {
+    var extra = ELEMENT_EXTRA[el.key];
+    if (!extra) return;
+    el.wirkung = extra.wirkung;
+    el.dimension = extra.dimension;
+  });
+
   function getElement(key) {
     for (var i = 0; i < ELEMENTS.length; i++) {
       if (ELEMENTS[i].key === key) return ELEMENTS[i];
@@ -1268,6 +1404,7 @@
     WIRKSTUFEN: WIRKSTUFEN,
     FAKTE: FAKTE,
     INTENTION_PHASEN: INTENTION_PHASEN,
+    FRAMEWORK: FRAMEWORK,
     ELEMENTS: ELEMENTS,
     getElement: getElement,
     getLoop: getLoop

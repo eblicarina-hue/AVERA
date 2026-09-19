@@ -13,6 +13,7 @@
   var SIDEBAR_ITEMS = [
     { key: "dashboard", label: "Dashboard", icon: "📊", href: "#/" },
     { key: "projekte", label: "Projekte", icon: "📁", href: "#/projekte" },
+    { key: "framework", label: "Das Rad", icon: "🎡", href: "#/framework" },
     { key: "massnahmen", label: "Maßnahmen", icon: "✅", href: "#/soon/massnahmen", soon: true },
     { key: "people", label: "People & Kultur", icon: "👥", href: "#/soon/people", soon: true },
     { key: "wissen", label: "Wissen", icon: "📚", href: "#/soon/wissen", soon: true },
@@ -62,6 +63,7 @@
     if (!hash) return { view: "dashboard" };
     var parts = hash.split("/");
     if (parts[0] === "projekte") return { view: "projekte" };
+    if (parts[0] === "framework") return { view: "framework" };
     if (parts[0] === "hilfe") return { view: "hilfe" };
     if (parts[0] === "soon" && parts[1]) return { view: "soon", key: parts[1] };
     if (parts[0] === "init" && parts[1]) {
@@ -276,6 +278,7 @@
   // ---------- Dashboard ----------
 
   function renderFirstVisitDashboard() {
+    var F = AVERA_DATA.FRAMEWORK;
     var html =
       '<div class="view view-dashboard">' +
       "<h1>Willkommen bei AVERA</h1>" +
@@ -284,10 +287,24 @@
       "<blockquote class='dash-hero-quote'>Legt euer erstes Veränderungsprojekt an und startet mit der Intention – dem Nullpunkt jeder Gestaltung.</blockquote>" +
       '<a class="btn btn-primary" href="#/projekte">Erstes Projekt anlegen →</a>' +
       "</div>" +
-      '<section class="panel about-panel">' +
-      "<h2>Worauf AVERA hinweist</h2>" +
-      '<p><strong>Die Geisterfahrt:</strong> Viele Change-Vorhaben scheitern, weil vorschnell von einer Beobachtung zu einer vertrauten Maßnahme gesprungen wird – ohne Verstehen und Entwerfen dazwischen.</p>' +
-      '<p><strong>Hinreichend statt vollständig:</strong> Ihr müsst nicht jedes Element in jeder Episode bearbeiten – eine für den Moment tragfähige Grundlage reicht für den nächsten Schritt.</p>' +
+
+      '<section class="wp-section">' +
+      wpHeadHtml(F.scheitern) +
+      '<div class="stolperstein-grid">' +
+      F.scheitern.stolpersteine
+        .map(function (st) {
+          return '<div class="stolperstein"><span class="icon">' + st.icon + "</span>" + escapeHtml(st.text) + "</div>";
+        })
+        .join("") +
+      "</div>" +
+      '<div class="wp-quote"><span class="mark">„</span><p>' + escapeHtml(F.scheitern.zitat) + "“</p></div>" +
+      "</section>" +
+
+      '<section class="wp-section">' +
+      wpHeadHtml(F.idee) +
+      kernsatzHtml(F.idee, "↗") +
+      '<a class="btn btn-ghost btn-small" href="#/framework">Das ganze Framework ansehen →</a>' +
+      '<div class="rainbow-bar"></div>' +
       "</section>" +
       "</div>";
     renderShell("dashboard", html);
@@ -477,10 +494,158 @@
       "<p>Jedes <strong>Projekt</strong> durchläuft <strong>Episoden</strong> – eine Episode ist eine volle Drehung im Rad: <strong>Beobachten → Verstehen → Entwerfen → Komponieren</strong>, gefolgt von der Realisierung.</p>" +
       "<p>In <strong>Beobachten</strong> und <strong>Verstehen</strong> erfasst ihr den Status quo je Gestaltungselement, ohne schon zu gestalten. In <strong>Entwerfen</strong> baut ihr aus dem 4Fakte-Katalog (Artefakte, Soziofakte, Mentefakte, Ethofakte) Gestaltungsimpulse. In <strong>Komponieren</strong> wählt ihr daraus die minimal hinreichende Architektur.</p>" +
       "<p>Die <strong>Intention</strong> bleibt über alle Episoden hinweg stabil und wird nach jedem Verstehen-Schritt kurz reflektiert.</p>" +
-      "<p>Über <strong>Projekte</strong> in der Seitenleiste legt ihr neue Projekte an und seht laufende. Das <strong>Dashboard</strong> gibt einen Überblick über alle Projekte.</p>" +
+      "<p>Über <strong>Projekte</strong> in der Seitenleiste legt ihr neue Projekte an und seht laufende. Das <strong>Dashboard</strong> gibt einen Überblick über alle Projekte. Unter <strong>Das Rad</strong> stehen die Grundlagen aus dem AVERA White Paper 2.0: warum Veränderung oft scheitert, die sechs Gestaltungselemente, die drei Dimensionen Wollen/Dürfen/Können und die Drehrichtung.</p>" +
       "</section>" +
       "</div>";
     renderShell("hilfe", html);
+  }
+
+  // ---------- Das Veränderungsrad (White-Paper-Inhalte) ----------
+
+  // Abschnittskopf im Layout der White-Paper-Seiten: farbiges Pill-Label,
+  // große Headline, Unterzeile, Fließtext.
+  function wpHeadHtml(sec) {
+    return (
+      '<span class="section-pill ' + (sec.pill || "blue") + '">' + escapeHtml(sec.label) + "</span>" +
+      '<h2 class="wp-headline">' + escapeHtml(sec.headline) + "</h2>" +
+      '<p class="wp-sub">' + escapeHtml(sec.sub) + "</p>" +
+      '<p class="wp-text">' + escapeHtml(sec.text) + "</p>"
+    );
+  }
+
+  function kernsatzHtml(sec, icon) {
+    if (!sec.kernsatz) return "";
+    return (
+      '<div class="kernsatz-box">' +
+      '<span class="kernsatz-icon">' + icon + "</span>" +
+      "<div><strong>" + escapeHtml(sec.kernsatz) + "</strong>" +
+      "<p>" + escapeHtml(sec.kernsatzText) + "</p></div>" +
+      "</div>"
+    );
+  }
+
+  // Venn-Diagramm Wollen / Dürfen / Können, wie auf Seite 5 und 7.
+  function vennHtml() {
+    var circle = function (cx, cy, token) {
+      return '<circle cx="' + cx + '" cy="' + cy + '" r="62" fill="var(--el-' + token + ')" opacity="0.32" />';
+    };
+    return (
+      '<svg class="dim-venn" viewBox="0 0 260 220" role="img" aria-label="Wollen, Dürfen und Können überschneiden sich in wirksamer Veränderung">' +
+      circle(130, 78, "story") +
+      circle(86, 140, "orgkultur") +
+      circle(174, 140, "fuehrung") +
+      '<circle cx="130" cy="119" r="36" fill="var(--panel-bg)" />' +
+      '<text x="130" y="42" text-anchor="middle" class="venn-label" fill="var(--el-story)">Wollen</text>' +
+      '<text x="62" y="182" text-anchor="middle" class="venn-label" fill="var(--el-orgkultur)">Dürfen</text>' +
+      '<text x="198" y="182" text-anchor="middle" class="venn-label" fill="var(--el-fuehrung)">Können</text>' +
+      '<text x="130" y="115" text-anchor="middle" class="venn-center" fill="var(--heading)">Wirksam</text>' +
+      '<text x="130" y="130" text-anchor="middle" class="venn-center" fill="var(--heading)">verändern</text>' +
+      "</svg>"
+    );
+  }
+
+  // Die sechs Elemente in ihrer Drehrichtung – optional als Links in eine Episode
+  // und eingefärbt nach Bearbeitungsstand.
+  function drehStripHtml(adapter, hrefFor) {
+    return (
+      '<div class="dreh-strip">' +
+      AVERA_DATA.SEQUENCE.map(function (key) {
+        var elm = AVERA_DATA.getElement(key);
+        var status = adapter && adapter.stations[key] ? adapter.stations[key].status : null;
+        var num =
+          '<span class="dreh-num" style="background: var(--el-' + key + ')">' +
+          escapeHtml(String(parseInt(elm.num, 10) || elm.num)) +
+          "</span>";
+        var inner =
+          num +
+          "<strong>" + escapeHtml(elm.title) + "</strong>" +
+          "<span>" + escapeHtml(elm.wirkung || elm.subtitle) + "</span>" +
+          (status && status !== "offen"
+            ? '<span class="dreh-status ' + status + '">' + (status === "etabliert" ? "✓ bearbeitet" : "in Arbeit") + "</span>"
+            : "");
+        return hrefFor
+          ? '<a class="dreh-item" href="' + hrefFor(key) + '">' + inner + "</a>"
+          : '<div class="dreh-item">' + inner + "</div>";
+      }).join("") +
+      "</div>"
+    );
+  }
+
+  function renderFramework() {
+    var F = AVERA_DATA.FRAMEWORK;
+
+    var html =
+      '<div class="view view-framework">' +
+      "<h1>Das Admonter Veränderungsrad</h1>" +
+      "<p class='hint-text'>Der Orientierungsrahmen hinter dieser App – die Grundlagen aus dem AVERA White Paper 2.0.</p>" +
+
+      '<section class="wp-section">' +
+      wpHeadHtml(F.scheitern) +
+      '<div class="stolperstein-grid">' +
+      F.scheitern.stolpersteine
+        .map(function (st) {
+          return '<div class="stolperstein"><span class="icon">' + st.icon + "</span>" + escapeHtml(st.text) + "</div>";
+        })
+        .join("") +
+      "</div>" +
+      '<div class="wp-quote"><span class="mark">„</span><p>' + escapeHtml(F.scheitern.zitat) + "“</p></div>" +
+      "</section>" +
+
+      '<section class="wp-section">' +
+      wpHeadHtml(F.idee) +
+      kernsatzHtml(F.idee, "↗") +
+      "</section>" +
+
+      '<section class="wp-section">' +
+      wpHeadHtml(F.rad) +
+      '<div id="framework-wheel" class="wheel-container framework-wheel"></div>' +
+      kernsatzHtml(F.rad, "🎯") +
+      "</section>" +
+
+      '<section class="wp-section">' +
+      wpHeadHtml(F.dimensionen) +
+      vennHtml() +
+      '<div class="dim-grid">' +
+      F.dimensionen.items
+        .map(function (d) {
+          return (
+            '<div class="dim-card ' + d.key + '">' +
+            '<div class="dim-card-head"><span class="icon">' + d.icon + "</span>" +
+            "<div><strong>" + escapeHtml(d.label) + "</strong><span>" + escapeHtml(d.sub) + "</span></div></div>" +
+            "<ul>" + d.punkte.map(function (pt) { return "<li>" + escapeHtml(pt) + "</li>"; }).join("") + "</ul>" +
+            "</div>"
+          );
+        })
+        .join("") +
+      "</div>" +
+      "</section>" +
+
+      '<section class="wp-section">' +
+      wpHeadHtml(F.drehrichtung) +
+      drehStripHtml(null, null) +
+      "</section>" +
+
+      '<section class="wp-section">' +
+      wpHeadHtml(F.auftrag) +
+      kernsatzHtml(F.auftrag, "✹") +
+      '<div class="rainbow-bar"></div>' +
+      "</section>" +
+
+      "<p class='source-note'>Grundlage: AVERA White Paper 2.0 und die Fragen-/4Fakte-Matrix, Corporate Learning Community Österreich (#CLCA), CC BY-SA 4.0.</p>" +
+      "</div>";
+
+    renderShell("framework", html);
+
+    // Das Rad hier rein als Schaubild – ohne Projektbezug, daher durchgehend
+    // in den Farben des White Papers statt nach Bearbeitungsstand.
+    var neutral = { stations: {} };
+    AVERA_DATA.ELEMENTS.forEach(function (elm) {
+      neutral.stations[elm.key] = { status: "showcase" };
+    });
+    neutral.stations.intention = { status: "showcase" };
+    AVERA_WHEEL.render(document.getElementById("framework-wheel"), neutral, function () {
+      navigate("#/projekte");
+    });
   }
 
   // ---------- Initiative-Übersicht ----------
@@ -557,6 +722,16 @@
       "</div>" +
 
       '<p class="wheel-hint">Klicke auf ein Segment, um direkt in die aktuelle Episode zu springen. Eingefärbt ist, wie weit ein Element in der laufenden Episode bereits bearbeitet ist.</p>' +
+
+      '<section class="wp-section">' +
+      '<span class="section-pill orange">Die richtige Drehrichtung</span>' +
+      '<h2 class="wp-headline">Von innen nach außen. In die Umsetzung.</h2>' +
+      "<p class='wp-sub'>Veränderung beginnt mit Sinn – und wirkt im Alltag.</p>" +
+      drehStripHtml(adapter, function (key) {
+        return "#/init/" + id + "/episode/" + ep.nr + "/observe";
+      }) +
+      '<div class="rainbow-bar"></div>' +
+      "</section>" +
 
       (historyHtml ? '<section class="panel"><h2>Episoden-Historie</h2><div class="episode-history">' + historyHtml + "</div></section>" : "") +
       "</div>";
@@ -716,7 +891,9 @@
         return (
           "<details class='reference-details element-details'" + (text.trim() ? " open" : "") + ">" +
           "<summary><span class='sphere-tag sphere-" + elm.sphere + "'>" + escapeHtml(sphere.label) + "</span> " +
-          "<strong>" + escapeHtml(elm.title) + "</strong> — " + escapeHtml(loopInfo.leitfrage) + "</summary>" +
+          "<strong>" + escapeHtml(elm.title) + "</strong>" +
+          (elm.wirkung ? "<span class='wirkung-tag'>" + escapeHtml(elm.wirkung) + "</span>" : "") +
+          " — " + escapeHtml(loopInfo.leitfrage) + "</summary>" +
           "<div class='details-body'>" +
           "<ul class='fragen-liste'>" + fragenHtml + "</ul>" +
           '<textarea data-element-note="' + elm.key + '" rows="3" placeholder="Notiz zu ' + escapeHtml(elm.title) + '…">' + escapeHtml(text) + "</textarea>" +
@@ -1177,9 +1354,13 @@
 
   function route() {
     var r = parseHash();
+    // Beim Seitenwechsel oben beginnen – ohne das landet man nach einem Klick
+    // weit unten auf einer Seite mitten in der nächsten Ansicht.
+    window.scrollTo(0, 0);
     if (r.view === "dashboard") renderDashboard();
     else if (r.view === "projekte") renderProjekte();
     else if (r.view === "soon") renderSoon(r.key);
+    else if (r.view === "framework") renderFramework();
     else if (r.view === "hilfe") renderHilfe();
     else if (r.view === "overview") renderOverview(r.id);
     else if (r.view === "intention") renderIntention(r.id);

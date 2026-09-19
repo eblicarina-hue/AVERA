@@ -1,31 +1,43 @@
 /*
- * Rendert das AVERA-Rad als SVG: 6 Gestaltungselemente im Kreis (Drehrichtung),
- * Raum & Zeit als Dreh- und Angelpunkt im Zentrum, Intention als Startpunkt oben.
+ * Rendert das Admonter Veränderungsrad als SVG – nachgebaut nach der
+ * Framework-Grafik des AVERA White Paper 2.0 (Seite 6/8):
+ *
+ *   - sechs pastellfarbene Ringsegmente mit weichen Ecken, in der Drehrichtung
+ *     1 Story (links) -> 2 Organisation -> 3 Führung -> 4 Entdecken -> 5 Peers ->
+ *     6 Methoden, also von innen nach außen in die Umsetzung,
+ *   - je Segment ein Nummern-Badge am Außenrand, ein Icon und der Elementtitel,
+ *   - im Zentrum "Raum & Zeit" mit dem AVERA-Blütenlogo,
+ *   - außen der magentafarbene Intentions-Bogen mit Pfeilspitze.
+ *
+ * Funktional bleibt alles anklickbar; die Sättigung eines Segments zeigt den
+ * Bearbeitungsstand des Elements in der laufenden Episode.
  */
 (function (global) {
   "use strict";
 
   var RING_KEYS = ["story", "orgkultur", "fuehrung", "entdecken", "peers", "methoden"];
-  var ELEMENT_ICON = {
-    story: "💬",
-    orgkultur: "👥",
-    fuehrung: "🧭",
-    entdecken: "🌱",
-    peers: "🤝",
-    methoden: "⚙️"
-  };
-  var SIZE = 600;
+
+  var SIZE = 620;
   var CX = SIZE / 2;
   var CY = SIZE / 2;
-  var OUTER_R = 260;
-  var INNER_R = 150;
-  var HUB_R = 100;
-  var INTENTION_R = 34;
-  var INTENTION_W = 118;
-  var INTENTION_CY = 60;
+  var OUTER_R = 248;
+  var INNER_R = 136;
+  var HUB_R = 112;
+  var MID_R = (OUTER_R + INNER_R) / 2;
+  var BAND = OUTER_R - INNER_R - 8;
+  var PAD_DEG = 2.6;
 
-  // Farbfamilien: je Gestaltungselement eine eigene Farbe (aus der Logo-Palette),
-  // moduliert nach Standortbestimmung (offen/in Arbeit/etabliert).
+  var ICON_R = 19;
+  var ANCHOR_RADIUS = MID_R;
+  var ICON_DY = -31;
+  var LABEL_DY = 19;
+  var BADGE_RADIUS = OUTER_R + 2;
+
+  var INTENTION_ARC_R = OUTER_R + 28;
+  var INTENTION_TEXT_R = OUTER_R + 44;
+
+  // Farbfamilien: je Gestaltungselement eine eigene Farbe (White-Paper-Palette),
+  // moduliert nach Bearbeitungsstand (offen / in Arbeit / etabliert).
   var SHADES = {
     story: shadeTrio("el-story"),
     orgkultur: shadeTrio("el-orgkultur"),
@@ -33,15 +45,16 @@
     entdecken: shadeTrio("el-entdecken"),
     peers: shadeTrio("el-peers"),
     methoden: shadeTrio("el-methoden"),
-    raumzeit: shadeTrio("sphere-cross"),
-    intention: shadeTrio("avera-red")
+    raumzeit: shadeTrio("el-raumzeit"),
+    intention: shadeTrio("el-intention")
   };
 
   function shadeTrio(tokenBase) {
     return {
       offen: "var(--" + tokenBase + "-soft)",
-      in_arbeit: "color-mix(in srgb, var(--" + tokenBase + ") 55%, var(--" + tokenBase + "-soft))",
-      etabliert: "var(--" + tokenBase + ")"
+      in_arbeit: "color-mix(in srgb, var(--" + tokenBase + ") 42%, var(--" + tokenBase + "-soft))",
+      etabliert: "color-mix(in srgb, var(--" + tokenBase + ") 72%, var(--" + tokenBase + "-soft))",
+      showcase: "color-mix(in srgb, var(--" + tokenBase + ") 26%, var(--" + tokenBase + "-soft))"
     };
   }
 
@@ -49,6 +62,44 @@
     var shades = SHADES[key] || SHADES.story;
     return shades[status] || shades.offen;
   }
+
+  function solid(key) {
+    return "var(--el-" + key + ")";
+  }
+
+  // Strichzeichnungen im 24x24-Raster, angelehnt an die Symbole der Grafik.
+  var ICONS = {
+    story: [["path", { d: "M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v6.5a2 2 0 0 1-2 2h-6l-4.2 3.6V15h-0.8a2 2 0 0 1-2-2z" }]],
+    orgkultur: [
+      ["circle", { cx: 9, cy: 8, r: 2.7 }],
+      ["path", { d: "M3.8 18.6a5.2 5.2 0 0 1 10.4 0" }],
+      ["circle", { cx: 16.8, cy: 9.4, r: 2.1 }],
+      ["path", { d: "M15.6 13.1a4.6 4.6 0 0 1 4.6 4.4" }]
+    ],
+    fuehrung: [
+      ["circle", { cx: 12, cy: 12, r: 8 }],
+      ["path", { d: "M15.6 8.4l-2.3 5.4-5.4 2.3 2.3-5.4z" }]
+    ],
+    entdecken: [
+      ["path", { d: "M12 20.5v-7" }],
+      ["path", { d: "M12 13.5C12 10.4 9.5 7.9 6.4 7.9c0 3.1 2.5 5.6 5.6 5.6z" }],
+      ["path", { d: "M12 13.5c0-3.5 2.8-6.3 6.3-6.3 0 3.5-2.8 6.3-6.3 6.3z" }]
+    ],
+    peers: [
+      ["circle", { cx: 12, cy: 5.4, r: 2.3 }],
+      ["circle", { cx: 5.6, cy: 17, r: 2.3 }],
+      ["circle", { cx: 18.4, cy: 17, r: 2.3 }],
+      ["path", { d: "M10.3 7.3 7.1 14.9M13.7 7.3l3.2 7.6M7.9 17h8.2" }]
+    ],
+    methoden: [
+      ["circle", { cx: 12, cy: 12, r: 3.2 }],
+      ["path", { d: "M12 3.2v2.6M12 18.2v2.6M3.2 12h2.6M18.2 12h2.6M5.8 5.8l1.9 1.9M16.3 16.3l1.9 1.9M18.2 5.8l-1.9 1.9M7.7 16.3l-1.9 1.9" }]
+    ],
+    raumzeit: [
+      ["circle", { cx: 12, cy: 12, r: 8 }],
+      ["path", { d: "M12 6.8v5.5l3.6 2.1" }]
+    ]
+  };
 
   function polar(cx, cy, r, angleDeg) {
     var a = ((angleDeg - 90) * Math.PI) / 180;
@@ -60,7 +111,7 @@
     var p2 = polar(cx, cy, outerR, endAngle);
     var p3 = polar(cx, cy, innerR, endAngle);
     var p4 = polar(cx, cy, innerR, startAngle);
-    var largeArc = endAngle - startAngle > 180 ? 1 : 0;
+    var largeArc = Math.abs(endAngle - startAngle) > 180 ? 1 : 0;
     return [
       "M", p1.x, p1.y,
       "A", outerR, outerR, 0, largeArc, 1, p2.x, p2.y,
@@ -70,13 +121,15 @@
     ].join(" ");
   }
 
-  // Ein einzelnes Ring-Segment als dick gestrichener, rund gekappter Bogen
-  // (statt spitzer Kuchenstück-Ecken) – das ergibt die weiche, "blobby" Form.
-  function arcStrokePath(cx, cy, midR, startAngle, endAngle) {
-    var p1 = polar(cx, cy, midR, startAngle);
-    var p2 = polar(cx, cy, midR, endAngle);
-    var largeArc = endAngle - startAngle > 180 ? 1 : 0;
-    return ["M", p1.x, p1.y, "A", midR, midR, 0, largeArc, 1, p2.x, p2.y].join(" ");
+  // Ein Ringsegment als dick gestrichener, rund gekappter Bogen – das ergibt die
+  // weichen Ecken der Segmente in der Original-Grafik.
+  function arcPath(cx, cy, r, startAngle, endAngle) {
+    var p1 = polar(cx, cy, r, startAngle);
+    var p2 = polar(cx, cy, r, endAngle);
+    var delta = endAngle - startAngle;
+    var largeArc = Math.abs(delta) > 180 ? 1 : 0;
+    var sweep = delta >= 0 ? 1 : 0;
+    return ["M", p1.x, p1.y, "A", r, r, 0, largeArc, sweep, p2.x, p2.y].join(" ");
   }
 
   function svgEl(tag, attrs) {
@@ -104,8 +157,30 @@
     return lines;
   }
 
-  // AVERA-Blütenlogo als eigenständiges, wiederverwendbares SVG-Fragment
-  // (6 Blütenblätter im Uhrzeigersinn: Blau, Türkis, Gelb, Koralle, Magenta, Violett).
+  function multilineText(x, y, lines, cls, lineHeight) {
+    var text = svgEl("text", { x: x, y: y - ((lines.length - 1) * lineHeight) / 2, class: cls, "text-anchor": "middle" });
+    lines.forEach(function (line, li) {
+      var tspan = svgEl("tspan", { x: x, dy: li === 0 ? 0 : lineHeight });
+      tspan.textContent = line;
+      text.appendChild(tspan);
+    });
+    return text;
+  }
+
+  function buildIconNode(key, cx, cy, size) {
+    var shapes = ICONS[key] || [];
+    var scale = size / 24;
+    var g = svgEl("g", {
+      class: "wheel-icon-glyph",
+      transform: "translate(" + (cx - size / 2) + " " + (cy - size / 2) + ") scale(" + scale + ")"
+    });
+    shapes.forEach(function (spec) {
+      g.appendChild(svgEl(spec[0], spec[1]));
+    });
+    return g;
+  }
+
+  // AVERA-Blütenlogo (6 Blütenblätter: Blau, Türkis, Gelb, Koralle, Magenta, Violett).
   var LOGO_PETAL_D = "M50,50 C36,45 26,26 41,8 C46,2 54,2 59,8 C74,26 64,45 50,50 Z";
   var LOGO_COLORS = [
     ["#2f6fe0", "#9cc9f7"],
@@ -115,11 +190,11 @@
     ["#e0468f", "#f6a9d3"],
     ["#7c4fd1", "#c6aef2"]
   ];
-  var logoIdSeq = 0;
+  var idSeq = 0;
 
   function buildLogoNode(x, y, size) {
-    logoIdSeq += 1;
-    var uid = "avera-logo-" + logoIdSeq;
+    idSeq += 1;
+    var uid = "avera-logo-" + idSeq;
     var nested = svgEl("svg", { x: x, y: y, width: size, height: size, viewBox: "0 0 100 100" });
     var defs = svgEl("defs", {});
     LOGO_COLORS.forEach(function (pair, i) {
@@ -145,134 +220,165 @@
     return nested;
   }
 
+  // Segment i liegt bei 270° - i*60° (0° = oben, im Uhrzeigersinn gezählt):
+  // Story links, dann in Drehrichtung über unten nach rechts und oben zurück.
+  function segmentAngles(i) {
+    var center = 270 - i * 60;
+    return { center: center, start: center - 30, end: center + 30 };
+  }
+
+  function bindActivate(node, handler) {
+    node.addEventListener("click", handler);
+    node.addEventListener("keydown", function (evt) {
+      if (evt.key === "Enter" || evt.key === " ") {
+        evt.preventDefault();
+        handler();
+      }
+    });
+  }
+
   function render(container, initiative, onSelect) {
     container.innerHTML = "";
+    idSeq += 1;
+    var uid = "avera-wheel-" + idSeq;
+
     var svg = svgEl("svg", {
       viewBox: "0 0 " + SIZE + " " + SIZE,
       class: "avera-wheel",
       role: "img",
-      "aria-label": "AVERA Veränderungsrad"
+      "aria-label": "Das Admonter Veränderungsrad"
     });
+
+    var intentionState = (initiative.stations && initiative.stations.intention) || { status: "offen" };
 
     var defs = svgEl("defs", {});
     var marker = svgEl("marker", {
-      id: "avera-arrow",
+      id: uid + "-arrow",
       viewBox: "0 0 10 10",
-      refX: "8",
+      refX: "6",
       refY: "5",
-      markerWidth: "6",
-      markerHeight: "6",
-      orient: "auto-start-reverse"
+      markerWidth: "5",
+      markerHeight: "5",
+      orient: "auto"
     });
-    marker.appendChild(svgEl("path", { d: "M 0 0 L 10 5 L 0 10 z", class: "wheel-arrowhead" }));
+    var head = svgEl("path", { d: "M 0 0 L 10 5 L 0 10 z", class: "wheel-arrowhead" });
+    head.setAttribute("fill", solid("intention"));
+    marker.appendChild(head);
     defs.appendChild(marker);
+
+    // Unsichtbarer Pfad für den Schriftzug "INTENTION" – läuft von unten nach
+    // oben an der linken Außenseite, damit die Buchstaben aufrecht lesbar sind.
+    defs.appendChild(
+      svgEl("path", {
+        id: uid + "-intention-text-path",
+        d: arcPath(CX, CY, INTENTION_TEXT_R, 232, 296),
+        fill: "none"
+      })
+    );
     svg.appendChild(defs);
 
-    var segAngle = 360 / RING_KEYS.length;
-
-    // Grauer Backdrop-Halo hinter dem Ring (dezente Tiefe)
-    svg.appendChild(svgEl("circle", { cx: CX, cy: CY, r: OUTER_R + 14, class: "wheel-backdrop" }));
-    // Gepunkteter Führungsring außen (dekorativ, wie im White Paper)
-    svg.appendChild(svgEl("circle", { cx: CX, cy: CY, r: OUTER_R + 26, class: "wheel-guide-ring" }));
-
-    // Verbindungsspeichen (dezent)
-    RING_KEYS.forEach(function (key, i) {
-      var startAngle = i * segAngle;
-      var mid = startAngle + segAngle / 2;
-      var p1 = polar(CX, CY, HUB_R, mid);
-      var p2 = polar(CX, CY, INNER_R, mid);
-      svg.appendChild(svgEl("line", { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, class: "wheel-spoke" }));
+    // ---- Intentions-Bogen außen (Drehrichtung 1 -> 2 -> 3 ...) ----
+    var intentG = svgEl("g", { class: "wheel-intention", "data-key": "intention", tabindex: "0", role: "button" });
+    var intentArc = svgEl("path", {
+      d: arcPath(CX, CY, INTENTION_ARC_R, 300, 142),
+      class: "wheel-intention-arc status-" + intentionState.status,
+      fill: "none",
+      stroke: solid("intention"),
+      "marker-end": "url(#" + uid + "-arrow)"
     });
+    intentG.appendChild(intentArc);
 
-    // Ring-Segmente: unsichtbare Sektor-Fläche fürs Klicken + sichtbarer, rund
-    // gekappter Bogen fürs Aussehen (weiche "Blob"-Form statt spitzer Ecken).
-    var midR = (OUTER_R + INNER_R) / 2;
-    var strokeWidth = OUTER_R - INNER_R - 6;
+    var intentText = svgEl("text", { class: "wheel-intention-label" });
+    intentText.setAttribute("fill", solid("intention"));
+    var textPath = svgEl("textPath", { startOffset: "50%", "text-anchor": "middle" });
+    textPath.setAttributeNS("http://www.w3.org/1999/xlink", "href", "#" + uid + "-intention-text-path");
+    textPath.setAttribute("href", "#" + uid + "-intention-text-path");
+    textPath.textContent = "INTENTION";
+    intentText.appendChild(textPath);
+    intentG.appendChild(intentText);
+    bindActivate(intentG, function () {
+      onSelect("intention");
+    });
+    svg.appendChild(intentG);
+
+    // ---- Ringsegmente ----
     RING_KEYS.forEach(function (key, i) {
       var element = AVERA_DATA.getElement(key);
       var stState = (initiative.stations && initiative.stations[key]) || { status: "offen" };
-      var startAngle = i * segAngle + 3;
-      var endAngle = (i + 1) * segAngle - 3;
+      var ang = segmentAngles(i);
+      var startAngle = ang.start + PAD_DEG;
+      var endAngle = ang.end - PAD_DEG;
 
-      var g = svgEl("g", { class: "wheel-segment", "data-key": key, tabindex: "0", role: "button" });
-
-      var hit = svgEl("path", {
-        d: annularSectorPath(CX, CY, INNER_R, OUTER_R, i * segAngle + 1, (i + 1) * segAngle - 1),
-        class: "wheel-segment-hit"
+      var g = svgEl("g", {
+        class: "wheel-segment",
+        "data-key": key,
+        tabindex: "0",
+        role: "button",
+        "aria-label": element.title
       });
-      g.appendChild(hit);
+      g.appendChild(svgEl("title", {})).textContent = element.title + " – " + (element.wirkung || "");
 
-      var arc = svgEl("path", {
-        d: arcStrokePath(CX, CY, midR, startAngle, endAngle),
-        class: "wheel-segment-path status-" + stState.status + " el-" + key,
-        fill: "none",
-        stroke: fillFor(key, stState.status),
-        "stroke-width": strokeWidth,
-        "stroke-linecap": "round"
-      });
-      g.appendChild(arc);
+      // Unsichtbarer Vollsektor als großzügige Klickfläche
+      g.appendChild(
+        svgEl("path", {
+          d: annularSectorPath(CX, CY, INNER_R, OUTER_R + 16, ang.start + 1, ang.end - 1),
+          class: "wheel-segment-hit"
+        })
+      );
 
-      var midAngle = startAngle + (endAngle - startAngle) / 2;
+      g.appendChild(
+        svgEl("path", {
+          d: arcPath(CX, CY, MID_R, startAngle, endAngle),
+          class: "wheel-segment-path status-" + stState.status + " el-" + key,
+          fill: "none",
+          stroke: fillFor(key, stState.status),
+          "stroke-width": BAND,
+          "stroke-linecap": "round"
+        })
+      );
 
-      var iconPos = polar(CX, CY, midR + 12, midAngle);
-      var iconText = svgEl("text", { x: iconPos.x, y: iconPos.y, class: "wheel-segment-icon", "text-anchor": "middle" });
-      iconText.textContent = ELEMENT_ICON[key] || "";
-      g.appendChild(iconText);
+      // Icon über dem Titel – bewusst im Bildschirmraster gestapelt und nicht
+      // radial versetzt, sonst überlagern sich beide bei den waagrechten
+      // Segmenten (Story links, Entdecken rechts).
+      var anchor = polar(CX, CY, ANCHOR_RADIUS, ang.center);
+      var iconY = anchor.y + ICON_DY;
+      g.appendChild(
+        svgEl("circle", { cx: anchor.x, cy: iconY, r: ICON_R, class: "wheel-icon-circle", fill: solid(key) })
+      );
+      g.appendChild(buildIconNode(key, anchor.x, iconY, ICON_R * 1.5));
+      g.appendChild(
+        multilineText(anchor.x, anchor.y + LABEL_DY, wrapLabel(element.title, 10), "wheel-segment-label", 15)
+      );
 
-      var labelPos = polar(CX, CY, midR - 32, midAngle);
-      var lines = wrapLabel(element.title, 12);
-      var text = svgEl("text", {
-        x: labelPos.x,
-        y: labelPos.y - ((lines.length - 1) * 7),
-        class: "wheel-segment-label",
-        "text-anchor": "middle"
-      });
-      lines.forEach(function (line, li) {
-        var tspan = svgEl("tspan", { x: labelPos.x, dy: li === 0 ? 0 : 14 });
-        tspan.textContent = line;
-        text.appendChild(tspan);
-      });
-      g.appendChild(text);
-
-      var badgePos = polar(CX, CY, OUTER_R - 16, startAngle + 4);
-      g.appendChild(svgEl("circle", { cx: badgePos.x, cy: badgePos.y, r: 11, class: "wheel-badge" }));
+      // Nummern-Badge am Außenrand
+      var badgePos = polar(CX, CY, BADGE_RADIUS, ang.center);
+      g.appendChild(svgEl("circle", { cx: badgePos.x, cy: badgePos.y, r: 14, class: "wheel-badge", fill: solid(key) }));
       var badgeText = svgEl("text", { x: badgePos.x, y: badgePos.y, class: "wheel-badge-num", "text-anchor": "middle" });
-      badgeText.textContent = element.num;
+      badgeText.textContent = String(parseInt(element.num, 10) || element.num);
       g.appendChild(badgeText);
 
-      // Dezentes Signal: Element wurde in einer früheren Episode schon
-      // bearbeitet, ist aber in der aktuellen Episode noch offen.
+      // Dezentes Signal: in einer früheren Episode schon bearbeitet, in der
+      // laufenden aber noch offen – sonst wirkte jede neue Episode, als wäre
+      // die bisherige Arbeit spurlos verschwunden.
       if (stState.status === "offen" && stState.touchedBefore) {
-        var touchedPos = polar(CX, CY, OUTER_R - 16, endAngle - 4);
+        var dotPos = polar(CX, CY, BADGE_RADIUS, ang.center + 15);
         g.appendChild(
-          svgEl("circle", {
-            cx: touchedPos.x,
-            cy: touchedPos.y,
-            r: 5,
-            class: "wheel-touched-dot",
-            fill: fillFor(key, "etabliert")
-          })
+          svgEl("circle", { cx: dotPos.x, cy: dotPos.y, r: 5, class: "wheel-touched-dot", fill: solid(key) })
         );
       }
 
-      g.addEventListener("click", function () {
+      bindActivate(g, function () {
         onSelect(key);
       });
-      g.addEventListener("keydown", function (evt) {
-        if (evt.key === "Enter" || evt.key === " ") {
-          evt.preventDefault();
-          onSelect(key);
-        }
-      });
-
       svg.appendChild(g);
     });
 
-    // Roter Rahmen um den gesamten Ring (Signaturelement aus dem White Paper)
-    svg.appendChild(svgEl("circle", { cx: CX, cy: CY, r: OUTER_R + 4, class: "wheel-frame" }));
-
-    // Zentrum: Raum & Zeit – weißer Kern mit Blütenlogo, Status als Ringfarbe.
+    // ---- Zentrum: Raum & Zeit ----
     var hubState = (initiative.stations && initiative.stations.raumzeit) || { status: "offen" };
+    var hubInfo = (AVERA_DATA.FRAMEWORK && AVERA_DATA.FRAMEWORK.hub) || {
+      titel: "Raum & Zeit",
+      sub: "Für Reflexion, Austausch und nachhaltige Wirkung"
+    };
     var hubG = svgEl("g", { class: "wheel-hub", "data-key": "raumzeit", tabindex: "0", role: "button" });
     hubG.appendChild(
       svgEl("circle", {
@@ -282,68 +388,18 @@
         class: "wheel-hub-circle status-" + hubState.status,
         fill: "var(--panel-bg)",
         stroke: fillFor("raumzeit", hubState.status),
-        "stroke-width": 6
+        "stroke-width": 5
       })
     );
-    hubG.appendChild(buildLogoNode(CX - 22, CY - 46, 44));
-    var hubText1 = svgEl("text", { x: CX, y: CY + 18, class: "wheel-hub-label", "text-anchor": "middle" });
-    hubText1.textContent = "Raum & Zeit";
-    var hubText2 = svgEl("text", { x: CX, y: CY + 34, class: "wheel-hub-sub", "text-anchor": "middle" });
-    hubText2.textContent = "Dreh- und Angelpunkt";
-    hubG.appendChild(hubText1);
-    hubG.appendChild(hubText2);
-    hubG.addEventListener("click", function () {
+    hubG.appendChild(buildLogoNode(CX - 23, CY - 64, 46));
+    var hubTitle = svgEl("text", { x: CX, y: CY + 2, class: "wheel-hub-label", "text-anchor": "middle" });
+    hubTitle.textContent = hubInfo.titel.toUpperCase();
+    hubG.appendChild(hubTitle);
+    hubG.appendChild(multilineText(CX, CY + 30, wrapLabel(hubInfo.sub, 26), "wheel-hub-sub", 13));
+    bindActivate(hubG, function () {
       onSelect("raumzeit");
     });
-    hubG.addEventListener("keydown", function (evt) {
-      if (evt.key === "Enter" || evt.key === " ") {
-        evt.preventDefault();
-        onSelect("raumzeit");
-      }
-    });
     svg.appendChild(hubG);
-
-    // Intention: Startpunkt oben, außerhalb des Rings – als Pill wie im White Paper.
-    var intentionState = (initiative.stations && initiative.stations.intention) || { status: "offen" };
-    var iPos = { x: CX, y: INTENTION_CY };
-    var connectorStart = { x: CX, y: INTENTION_CY + INTENTION_R };
-    var connectorEnd = { x: CX, y: CY - OUTER_R - 26 };
-    svg.appendChild(
-      svgEl("line", {
-        x1: connectorStart.x,
-        y1: connectorStart.y,
-        x2: connectorEnd.x,
-        y2: connectorEnd.y,
-        class: "wheel-intention-connector",
-        "marker-end": "url(#avera-arrow)"
-      })
-    );
-
-    var intentG = svgEl("g", { class: "wheel-intention", "data-key": "intention", tabindex: "0", role: "button" });
-    intentG.appendChild(
-      svgEl("rect", {
-        x: iPos.x - INTENTION_W / 2,
-        y: iPos.y - INTENTION_R / 2,
-        width: INTENTION_W,
-        height: INTENTION_R,
-        rx: INTENTION_R / 2,
-        class: "wheel-intention-circle status-" + intentionState.status,
-        fill: fillFor("intention", intentionState.status)
-      })
-    );
-    var intentText = svgEl("text", { x: iPos.x, y: iPos.y + 4, class: "wheel-intention-label", "text-anchor": "middle" });
-    intentText.textContent = "Intention";
-    intentG.appendChild(intentText);
-    intentG.addEventListener("click", function () {
-      onSelect("intention");
-    });
-    intentG.addEventListener("keydown", function (evt) {
-      if (evt.key === "Enter" || evt.key === " ") {
-        evt.preventDefault();
-        onSelect("intention");
-      }
-    });
-    svg.appendChild(intentG);
 
     container.appendChild(svg);
   }
