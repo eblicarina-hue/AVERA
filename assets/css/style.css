@@ -1636,6 +1636,157 @@ a.dreh-item:hover { background: var(--bg); }
 }
 .luecken-box.ok { background: var(--el-methoden-soft); line-height: 1.55; }
 
+/* --- Element-für-Element-Durchgang --- */
+.el-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.el-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel-bg);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 5px 12px 5px 5px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.el-tab:hover { border-color: var(--tab-farbe, var(--accent)); color: var(--text); }
+.el-tab-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--tab-farbe, var(--border));
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.74rem;
+  line-height: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.el-tab.ueberblick .el-tab-num { background: var(--text-muted); }
+.el-tab-count {
+  background: var(--bg);
+  border-radius: 999px;
+  padding: 0 7px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.el-tab.gefuellt { color: var(--text); }
+.el-tab.active {
+  background: var(--tab-farbe-soft, var(--accent-soft));
+  border-color: var(--tab-farbe, var(--accent));
+  color: var(--tab-farbe, var(--accent-dark));
+  font-weight: 700;
+}
+.el-tab.active .el-tab-count { background: var(--panel-bg); }
+.el-tab.ueberblick.active { background: var(--bg); border-color: var(--text-muted); color: var(--heading); }
+
+.element-panel { border-top: 3px solid var(--el-farbe, var(--accent)); }
+.element-kopf { margin-bottom: 14px; }
+.element-kopf-meta { display: flex; align-items: center; gap: 10px; }
+.element-kopf-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--el-farbe);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 32px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.element-kopf-meta strong { display: block; font-family: var(--font-display); font-size: 1.15rem; color: var(--heading); }
+.element-kopf-meta span { display: block; font-size: 0.72rem; color: var(--text-muted); }
+.element-leitfrage {
+  font-family: var(--font-display);
+  font-size: 1.28rem;
+  font-weight: 600;
+  color: var(--heading);
+  margin: 12px 0 0;
+  line-height: 1.25;
+}
+
+.denkanstoesse {
+  background: var(--el-farbe-soft, var(--bg));
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+}
+.denkanstoesse-kopf {
+  display: block;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--el-farbe, var(--text-muted));
+  margin-bottom: 8px;
+}
+.denkanstoesse ul { margin: 0; padding-left: 18px; font-size: 0.89rem; }
+.denkanstoesse li { margin-bottom: 6px; }
+.denkanstoesse li:last-child { margin-bottom: 0; }
+
+.element-befunde, .element-hypothesen { background: var(--bg); border-radius: 14px; padding: 12px 18px; margin-bottom: 18px; }
+.element-befunde ul, .element-hypothesen ul { margin: 0; padding-left: 18px; font-size: 0.87rem; }
+.element-befunde li, .element-hypothesen li { margin-bottom: 5px; }
+.element-befunde .denkanstoesse-kopf, .element-hypothesen .denkanstoesse-kopf { color: var(--text-muted); }
+.element-befunde p, .element-hypothesen p { margin: 0; }
+
+.element-form { margin-bottom: 18px; }
+.element-liste { margin-bottom: 18px; }
+.element-liste-kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.element-liste-kopf span { background: var(--bg); border-radius: 999px; padding: 1px 8px; }
+
+.element-notiz { border-top: 1px dashed var(--border-strong); padding-top: 14px; margin-top: 4px; }
+.element-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.element-nav-pos { font-size: 0.72rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* Auf schmalen Schirmen eine waagrecht scrollbare Leiste statt acht
+   gestapelter Reiter über dem eigentlichen Inhalt. */
+@media (max-width: 760px) {
+  .el-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 12px; scrollbar-width: thin; }
+  .el-tab { flex-shrink: 0; }
+}
+
+.el-tag-link { border: none; cursor: pointer; font-family: var(--font-body); }
+.el-tag-link:hover { outline: 1px solid currentColor; }
+
+.design-werkbank { margin-bottom: 18px; }
+.design-werkbank > .text-input { margin-bottom: 14px; }
+
 /* --- Verstehen: Wirkmodell --- */
 .befund-liste .befund-gruppe { margin-bottom: 14px; }
 .befund-gruppe ul { margin: 6px 0 0; padding-left: 20px; font-size: 0.87rem; }

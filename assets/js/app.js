@@ -57,6 +57,10 @@
   var designWirkstufe = "beruehren";
   var observeFilter = "alle";
 
+  // Welches Gestaltungselement ist in der aktuellen Schleife aufgeschlagen?
+  // "ueberblick" zeigt stattdessen alles auf einmal.
+  var elementTab = { scope: null, key: "ueberblick" };
+
   function escapeHtml(str) {
     return String(str == null ? "" : str)
       .replace(/&/g, "&amp;")
@@ -737,6 +741,7 @@
       "<h2>So läuft eine Episode</h2>" +
       "<p>Jedes <strong>Projekt</strong> hat eine Intention und läuft in <strong>Episoden</strong>. Eine Episode ist eine volle Drehung: <strong>Beobachten → Verstehen → Entwerfen → Komponieren</strong>, danach „in die Welt bringen“. Das erneute Beobachten startet die nächste Episode.</p>" +
       "<p>Zwischen den Schleifen liegt je ein <strong>Gate</strong>. Ein Gate ist kein Weiter-Button: Ihr beantwortet eine Reflexionsfrage und begründet sie schriftlich. Erst dann wird die nächste Schleife freigeschaltet. Reicht die Grundlage nicht, führt das Gate ausdrücklich zurück.</p>" +
+      "<p>Innerhalb einer Schleife arbeitet ihr <strong>Element für Element</strong>: Ihr schlagt ein Gestaltungselement auf, lest die Leitfrage und die Denkanstöße der AVERA-Matrix für genau diese Schleife – und erfasst direkt darunter, was dabei herauskommt. Über „Nächstes Element“ klickt ihr euch durch alle sieben; der <strong>Überblick</strong> zeigt jederzeit alles auf einmal.</p>" +
       "</section>" +
 
       '<section class="panel">' +
@@ -1134,36 +1139,6 @@
     );
   }
 
-  function elementAccordionHtml(episode, loopKey) {
-    var items = AVERA_DATA.ELEMENTS
-      .map(function (elm) {
-        var sphere = AVERA_DATA.SPHERES[elm.sphere];
-        var loopInfo = elm.loops[loopKey];
-        var text = episode.loops[loopKey].elemente[elm.key] || "";
-        var fragenHtml = loopInfo.fragen.map(function (f) { return "<li>" + escapeHtml(f) + "</li>"; }).join("");
-        return (
-          "<details class='reference-details element-details'" + (text.trim() ? " open" : "") + ">" +
-          "<summary><span class='sphere-tag sphere-" + elm.sphere + "'>" + escapeHtml(sphere.label) + "</span> " +
-          "<strong>" + escapeHtml(elm.title) + "</strong>" +
-          (elm.wirkung ? "<span class='wirkung-tag'>" + escapeHtml(elm.wirkung) + "</span>" : "") +
-          " — " + escapeHtml(loopInfo.leitfrage) + "</summary>" +
-          "<div class='details-body'>" +
-          "<ul class='fragen-liste'>" + fragenHtml + "</ul>" +
-          '<textarea data-element-note="' + elm.key + '" rows="3" placeholder="Notiz zu ' + escapeHtml(elm.title) + '…">' + escapeHtml(text) + "</textarea>" +
-          "</div>" +
-          "</details>"
-        );
-      })
-      .join("");
-
-    return (
-      "<details class='reference-details denkanstoss-block'>" +
-      "<summary><strong>Denkanstöße je Gestaltungselement</strong> — die Fragen der AVERA-Matrix für diese Schleife</summary>" +
-      "<div class='details-body'>" + items + "</div>" +
-      "</details>"
-    );
-  }
-
   function statusQuoHtml(episode) {
     if (episode.nr === 1 && !episode.statusQuo) {
       return "<p class='hint-text'>Episode 1 startet ohne Vorgeschichte – der Status quo entsteht erst aus euren Beobachtungen.</p>";
@@ -1234,26 +1209,147 @@
     );
   }
 
+  // ---------- Element-für-Element-Durchgang ----------
+  //
+  // Die Fragen der AVERA-Matrix sind der Einstieg in die Arbeit, nicht ein
+  // Nachschlagewerk darunter: Man wählt ein Gestaltungselement, liest die
+  // Denkanstöße dieser Schleife dazu und erfasst direkt daneben, was dabei
+  // herauskommt – und klickt sich so durch alle Elemente.
+
+  // Was liegt in dieser Schleife bereits zu einem Element vor?
+  function elementCount(ep, loopKey, elKey) {
+    if (loopKey === "observe") {
+      return ep.beobachtungen.filter(function (b) { return b.element === elKey; }).length;
+    }
+    if (loopKey === "understand") {
+      return ep.wirkmodell.hypothesen.filter(function (h) { return h.element === elKey; }).length;
+    }
+    var hypIds = ep.wirkmodell.hypothesen
+      .filter(function (h) { return h.element === elKey; })
+      .map(function (h) { return h.id; });
+    var impulse = ep.impulse.filter(function (imp) { return imp.hypotheseId && hypIds.indexOf(imp.hypotheseId) !== -1; });
+    if (loopKey === "design") return impulse.length;
+    return impulse.filter(function (imp) { return ep.architektur.gewaehlt.indexOf(imp.id) !== -1; }).length;
+  }
+
+  function elementTabsHtml(ep, loopKey) {
+    var tabs = AVERA_DATA.ELEMENTS.map(function (el) {
+      var n = elementCount(ep, loopKey, el.key);
+      var aktiv = elementTab.key === el.key;
+      return (
+        '<button type="button" class="el-tab' + (aktiv ? " active" : "") + (n ? " gefuellt" : "") + '"' +
+        ' data-el-tab="' + el.key + '" style="--tab-farbe: var(--el-' + el.key + '); --tab-farbe-soft: var(--el-' + el.key + '-soft)">' +
+        '<span class="el-tab-num">' + escapeHtml(String(parseInt(el.num, 10) || "★")) + "</span>" +
+        '<span class="el-tab-name">' + escapeHtml(el.title) + "</span>" +
+        (n ? '<span class="el-tab-count">' + n + "</span>" : "") +
+        "</button>"
+      );
+    }).join("");
+
+    return (
+      '<div class="el-tabs">' +
+      '<button type="button" class="el-tab ueberblick' + (elementTab.key === "ueberblick" ? " active" : "") + '" data-el-tab="ueberblick">' +
+      '<span class="el-tab-num">≡</span><span class="el-tab-name">Überblick</span></button>' +
+      tabs +
+      "</div>"
+    );
+  }
+
+  function denkanstoesseHtml(elm, loopKey) {
+    var loopInfo = elm.loops[loopKey];
+    return (
+      '<div class="denkanstoesse">' +
+      '<span class="denkanstoesse-kopf">Denkanstöße</span>' +
+      "<ul>" + loopInfo.fragen.map(function (f) { return "<li>" + escapeHtml(f) + "</li>"; }).join("") + "</ul>" +
+      "</div>"
+    );
+  }
+
+  function elementKopfHtml(elm, loopKey) {
+    var sphere = AVERA_DATA.SPHERES[elm.sphere];
+    var loopInfo = elm.loops[loopKey];
+    return (
+      '<div class="element-kopf" style="--el-farbe: var(--el-' + elm.key + '); --el-farbe-soft: var(--el-' + elm.key + '-soft)">' +
+      '<div class="element-kopf-meta">' +
+      '<span class="element-kopf-num">' + escapeHtml(String(parseInt(elm.num, 10) || "★")) + "</span>" +
+      "<div><strong>" + escapeHtml(elm.title) + "</strong>" +
+      "<span>" + escapeHtml(sphere.label) + (elm.wirkung ? " · " + escapeHtml(elm.wirkung) : "") + "</span></div>" +
+      "</div>" +
+      '<p class="element-leitfrage">' + escapeHtml(loopInfo.leitfrage) + "</p>" +
+      "</div>"
+    );
+  }
+
+  function elementNotizHtml(ep, loopKey, elKey, label) {
+    return (
+      '<div class="element-notiz">' +
+      '<label class="reflexion-label" for="element-notiz-feld">' + escapeHtml(label) + "</label>" +
+      '<textarea id="element-notiz-feld" data-element-note="' + elKey + '" rows="2" placeholder="Optional – was sonst noch zu diesem Element gehört.">' +
+      escapeHtml(ep.loops[loopKey].elemente[elKey] || "") + "</textarea>" +
+      "</div>"
+    );
+  }
+
+  function elementNavHtml(elKey) {
+    var keys = AVERA_DATA.ELEMENTS.map(function (e) { return e.key; });
+    var i = keys.indexOf(elKey);
+    var prev = i > 0 ? AVERA_DATA.getElement(keys[i - 1]) : null;
+    var next = i < keys.length - 1 ? AVERA_DATA.getElement(keys[i + 1]) : null;
+    return (
+      '<div class="element-nav">' +
+      (prev
+        ? '<button type="button" class="btn btn-ghost btn-small" data-el-tab="' + prev.key + '">← ' + escapeHtml(prev.title) + "</button>"
+        : '<button type="button" class="btn btn-ghost btn-small" data-el-tab="ueberblick">← Überblick</button>') +
+      '<span class="element-nav-pos">' + (i + 1) + " von " + keys.length + "</span>" +
+      (next
+        ? '<button type="button" class="btn btn-secondary btn-small" data-el-tab="' + next.key + '">' + escapeHtml(next.title) + " →</button>"
+        : '<button type="button" class="btn btn-secondary btn-small" data-el-tab="ueberblick">Zum Überblick →</button>') +
+      "</div>"
+    );
+  }
+
+  function elementPanelHtml(elm, loopKey, innenHtml, ep, notizLabel) {
+    return (
+      '<section class="panel element-panel">' +
+      elementKopfHtml(elm, loopKey) +
+      denkanstoesseHtml(elm, loopKey) +
+      innenHtml +
+      elementNotizHtml(ep, loopKey, elm.key, notizLabel) +
+      elementNavHtml(elm.key) +
+      "</section>"
+    );
+  }
+
+  function typWahlHtml() {
+    return (
+      '<div class="segmented" id="beob-typ-group">' +
+      AVERA_DATA.BEOBACHTUNG_TYPEN.map(function (t, i) {
+        return '<button type="button" class="seg-btn' + (i === 0 ? " active" : "") + '" data-beob-typ-choice="' + t.key + '" title="' + escapeHtml(t.hinweis) + '">' + escapeHtml(t.label) + "</button>";
+      }).join("") +
+      "</div>"
+    );
+  }
+
+  function beobKarteHtml(b, mitTag) {
+    return (
+      '<article class="beob-karte typ-' + b.typ + '" data-beob-id="' + b.id + '">' +
+      '<p class="beob-text">' + escapeHtml(b.text) + "</p>" +
+      '<div class="beob-foot">' +
+      (mitTag ? elementTagHtml(b.element) : '<span class="befund-typ ' + b.typ + '">' + (b.typ === "fakt" ? "Fakt" : "Vermutung") + "</span>") +
+      '<span class="beob-actions">' +
+      '<button type="button" class="btn-icon-delete" data-beob-typ="' + b.id + '" title="Als ' + (b.typ === "fakt" ? "Vermutung" : "Fakt") + ' markieren">⇄</button>' +
+      '<button type="button" class="btn-icon-delete" data-beob-edit="' + b.id + '" title="Bearbeiten">✎</button>' +
+      '<button type="button" class="btn-icon-delete" data-beob-del="' + b.id + '" title="Löschen">✕</button>' +
+      "</span></div></article>"
+    );
+  }
+
   // ---------- Schleife 1: Beobachten ----------
 
-  function observeBodyHtml(v, ep) {
+  function observeUeberblickHtml(ep) {
     var gefiltert = ep.beobachtungen.filter(function (b) {
       return observeFilter === "alle" || b.element === observeFilter || (observeFilter === "ungetaggt" && !b.element);
     });
-
-    function karteHtml(b) {
-      return (
-        '<article class="beob-karte typ-' + b.typ + '" data-beob-id="' + b.id + '">' +
-        '<p class="beob-text">' + escapeHtml(b.text) + "</p>" +
-        '<div class="beob-foot">' +
-        elementTagHtml(b.element) +
-        '<span class="beob-actions">' +
-        '<button type="button" class="btn-icon-delete" data-beob-typ="' + b.id + '" title="Als ' + (b.typ === "fakt" ? "Vermutung" : "Fakt") + ' markieren">⇄</button>' +
-        '<button type="button" class="btn-icon-delete" data-beob-edit="' + b.id + '" title="Bearbeiten">✎</button>' +
-        '<button type="button" class="btn-icon-delete" data-beob-del="' + b.id + '" title="Löschen">✕</button>' +
-        "</span></div></article>"
-      );
-    }
 
     var spalten = AVERA_DATA.BEOBACHTUNG_TYPEN.map(function (t) {
       var karten = gefiltert.filter(function (b) { return b.typ === t.key; });
@@ -1261,7 +1357,7 @@
         '<div class="beob-spalte spalte-' + t.key + '">' +
         '<div class="beob-spalte-kopf"><strong>' + escapeHtml(t.label) + "</strong><span>" + karten.length + "</span>" +
         "<em>" + escapeHtml(t.hinweis) + "</em></div>" +
-        (karten.length ? karten.map(karteHtml).join("") : "<p class='hint-text'>Noch keine Karte.</p>") +
+        (karten.length ? karten.map(function (b) { return beobKarteHtml(b, true); }).join("") : "<p class='hint-text'>Noch keine Karte.</p>") +
         "</div>"
       );
     }).join("");
@@ -1284,39 +1380,59 @@
     });
     var luecken = unberuehrt.length
       ? '<div class="luecken-box"><strong>Noch unberührt:</strong> ' +
-        unberuehrt.map(function (el) { return elementTagHtml(el.key); }).join(" ") +
+        unberuehrt.map(function (el) {
+          return '<button type="button" class="el-tag el-tag-link" data-el-tab="' + el.key + '" style="background: var(--el-' + el.key + '-soft); color: var(--el-' + el.key + ')">' + escapeHtml(el.title) + "</button>";
+        }).join(" ") +
         "</div>"
       : '<div class="luecken-box ok"><strong>Alle Gestaltungselemente sind berührt.</strong> Das heißt nicht, dass das Bild vollständig ist – aber kein Blickwinkel fehlt ganz.</div>';
 
     return (
-      statusQuoHtml(ep) +
-      rollenBoxHtml("observe") +
-
       '<section class="panel">' +
-      "<h2>Neue Beobachtung</h2>" +
-      "<p class='hint-text'>Eine Karte = eine Beobachtung. Trennt bewusst, was ihr gesehen habt (Fakt) von dem, was ihr daraus schließt (Vermutung).</p>" +
-      '<form id="beob-form" class="beob-form">' +
-      '<textarea id="beob-text" rows="2" placeholder="Was habt ihr beobachtet?" required></textarea>' +
-      '<div class="beob-form-row">' +
-      '<div class="segmented" id="beob-typ-group">' +
-      AVERA_DATA.BEOBACHTUNG_TYPEN.map(function (t, i) {
-        return '<button type="button" class="seg-btn' + (i === 0 ? " active" : "") + '" data-beob-typ-choice="' + t.key + '">' + escapeHtml(t.label) + "</button>";
-      }).join("") +
-      "</div>" +
-      '<select id="beob-element" class="text-input">' + elementOptionsHtml("", "— Gestaltungselement —") + "</select>" +
-      '<button type="submit" class="btn btn-primary">Karte hinzufügen</button>' +
-      "</div></form>" +
-      "</section>" +
-
-      '<section class="panel">' +
-      "<h2>Beobachtungs-Board</h2>" +
+      "<h2>Alle Beobachtungen</h2>" +
       luecken +
       '<div class="chip-row obs-filter">' + filterChips + "</div>" +
       '<div class="beob-board">' + spalten + "</div>" +
       "</section>" +
 
+      '<section class="panel">' +
+      "<h2>Beobachtung ohne Element erfassen</h2>" +
+      "<p class='hint-text'>Wenn ihr schon wisst, wohin sie gehört, geht es oben über das Gestaltungselement schneller – dort stehen auch die passenden Fragen.</p>" +
+      '<form id="beob-form" class="beob-form">' +
+      '<textarea id="beob-text" rows="2" placeholder="Was habt ihr beobachtet?" required></textarea>' +
+      '<div class="beob-form-row">' + typWahlHtml() +
+      '<select id="beob-element" class="text-input">' + elementOptionsHtml("", "— Gestaltungselement —") + "</select>" +
+      '<button type="submit" class="btn btn-primary">Karte hinzufügen</button>' +
+      "</div></form>" +
+      "</section>"
+    );
+  }
+
+  function observeElementHtml(ep, elm) {
+    var karten = ep.beobachtungen.filter(function (b) { return b.element === elm.key; });
+    var inner =
+      '<form id="beob-form" class="beob-form element-form">' +
+      '<textarea id="beob-text" rows="2" placeholder="Was habt ihr zu ' + escapeHtml(elm.title) + ' beobachtet?" required></textarea>' +
+      '<div class="beob-form-row">' + typWahlHtml() +
+      '<input type="hidden" id="beob-element" value="' + elm.key + '" />' +
+      '<button type="submit" class="btn btn-primary">Beobachtung erfassen</button>' +
+      "</div></form>" +
+      '<div class="element-liste">' +
+      '<div class="element-liste-kopf">Erfasst zu diesem Element<span>' + karten.length + "</span></div>" +
+      (karten.length
+        ? karten.map(function (b) { return beobKarteHtml(b, false); }).join("")
+        : "<p class='hint-text'>Noch nichts erfasst – die Fragen oben sind der Einstieg.</p>") +
+      "</div>";
+    return elementPanelHtml(elm, "observe", inner, ep, "Zwischenfazit zu " + elm.title);
+  }
+
+  function observeBodyHtml(v, ep) {
+    var elm = elementTab.key === "ueberblick" ? null : AVERA_DATA.getElement(elementTab.key);
+    return (
+      statusQuoHtml(ep) +
+      rollenBoxHtml("observe") +
+      elementTabsHtml(ep, "observe") +
+      (elm ? observeElementHtml(ep, elm) : observeUeberblickHtml(ep)) +
       kiPanelHtml("observe") +
-      elementAccordionHtml(ep, "observe") +
       generalSectionHtml(ep, "observe")
     );
   }
@@ -1331,17 +1447,20 @@
       });
     });
 
-    document.getElementById("beob-form").addEventListener("submit", function (evt) {
-      evt.preventDefault();
-      var text = document.getElementById("beob-text").value.trim();
-      if (!text) return;
-      AVERA_STORE.addBeobachtung(id, nr, {
-        text: text,
-        typ: typWahl,
-        element: document.getElementById("beob-element").value
+    var form = document.getElementById("beob-form");
+    if (form) {
+      form.addEventListener("submit", function (evt) {
+        evt.preventDefault();
+        var text = document.getElementById("beob-text").value.trim();
+        if (!text) return;
+        AVERA_STORE.addBeobachtung(id, nr, {
+          text: text,
+          typ: typWahl,
+          element: document.getElementById("beob-element").value
+        });
+        renderLoop(id, nr, "observe");
       });
-      renderLoop(id, nr, "observe");
-    });
+    }
 
     root.querySelectorAll("[data-obs-filter]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -1397,7 +1516,42 @@
 
   // ---------- Schleife 2: Verstehen ----------
 
-  function understandBodyHtml(v, ep) {
+  function hypKarteHtml(h, mitTag) {
+    var fehlt = !h.gegenhypothese || !h.gegenhypothese.trim();
+    return (
+      '<article class="hyp-karte' + (fehlt ? " unvollstaendig" : "") + '">' +
+      '<div class="hyp-kopf">' + (mitTag ? elementTagHtml(h.element) : "<span></span>") +
+      '<button type="button" class="btn-icon-delete" data-hyp-del="' + h.id + '" title="Löschen">✕</button></div>' +
+      '<div class="hyp-paar">' +
+      '<div class="hyp-seite these"><span class="hyp-label">Hypothese</span>' +
+      '<textarea data-hyp-text="' + h.id + '" rows="2">' + escapeHtml(h.text) + "</textarea></div>" +
+      '<div class="hyp-seite gegen"><span class="hyp-label">Gegenhypothese</span>' +
+      '<textarea data-hyp-gegen="' + h.id + '" rows="2" placeholder="Was wäre genauso plausibel?">' + escapeHtml(h.gegenhypothese || "") + "</textarea></div>" +
+      "</div>" +
+      (fehlt ? '<p class="hyp-warnung">Ohne Gegenhypothese ist die Hypothese unvollständig – dann ist es ein Befund, der keiner ist.</p>' : "") +
+      "</article>"
+    );
+  }
+
+  function hypFormHtml(elKey) {
+    return (
+      '<form id="hyp-form" class="hyp-form">' +
+      '<div class="hyp-paar">' +
+      '<div class="hyp-seite these"><span class="hyp-label">Neue Hypothese</span>' +
+      '<textarea id="hyp-text" rows="2" placeholder="Was könnte erklären, warum sich das Verhalten so zeigt?" required></textarea></div>' +
+      '<div class="hyp-seite gegen"><span class="hyp-label">Gegenhypothese (Pflicht)</span>' +
+      '<textarea id="hyp-gegen" rows="2" placeholder="Welche andere Erklärung wäre genauso plausibel?" required></textarea></div>' +
+      "</div>" +
+      '<div class="beob-form-row">' +
+      (elKey
+        ? '<input type="hidden" id="hyp-element" value="' + elKey + '" />'
+        : '<select id="hyp-element" class="text-input">' + elementOptionsHtml("", "— Gestaltungselement —") + "</select>") +
+      '<button type="submit" class="btn btn-primary">Hypothese anlegen</button></div>' +
+      "</form>"
+    );
+  }
+
+  function understandUeberblickHtml(ep) {
     var befundeHtml = ep.beobachtungen.length
       ? AVERA_DATA.ELEMENTS.map(function (el) {
           var karten = ep.beobachtungen.filter(function (b) { return b.element === el.key; });
@@ -1431,33 +1585,16 @@
       : "<p class='hint-text'>Noch keine Hebel benannt.</p>";
 
     var hypothesenHtml = ep.wirkmodell.hypothesen.length
-      ? ep.wirkmodell.hypothesen.map(function (h) {
-          var fehlt = !h.gegenhypothese || !h.gegenhypothese.trim();
-          return (
-            '<article class="hyp-karte' + (fehlt ? " unvollstaendig" : "") + '">' +
-            '<div class="hyp-kopf">' + elementTagHtml(h.element) +
-            '<button type="button" class="btn-icon-delete" data-hyp-del="' + h.id + '" title="Löschen">✕</button></div>' +
-            '<div class="hyp-paar">' +
-            '<div class="hyp-seite these"><span class="hyp-label">Hypothese</span>' +
-            '<textarea data-hyp-text="' + h.id + '" rows="2">' + escapeHtml(h.text) + "</textarea></div>" +
-            '<div class="hyp-seite gegen"><span class="hyp-label">Gegenhypothese</span>' +
-            '<textarea data-hyp-gegen="' + h.id + '" rows="2" placeholder="Was wäre genauso plausibel?">' + escapeHtml(h.gegenhypothese || "") + "</textarea></div>" +
-            "</div>" +
-            (fehlt ? '<p class="hyp-warnung">Ohne Gegenhypothese ist die Hypothese unvollständig – dann ist es ein Befund, der keiner ist.</p>' : "") +
-            "</article>"
-          );
-        }).join("")
+      ? ep.wirkmodell.hypothesen.map(function (h) { return hypKarteHtml(h, true); }).join("")
       : "<p class='hint-text'>Noch keine Gestaltungshypothese formuliert.</p>";
 
     return (
-      rollenBoxHtml("understand") +
-
       "<details class='reference-details' open><summary><strong>Befunde aus Beobachten</strong> — " + ep.beobachtungen.length + " Karten</summary>" +
       "<div class='details-body befund-liste'>" + befundeHtml + "</div></details>" +
 
       '<section class="panel">' +
       "<h2>Hebel</h2>" +
-      "<p class='hint-text'>Wo im Wirkgefüge könnte Gestaltung überhaupt ansetzen?</p>" +
+      "<p class='hint-text'>Wo im Wirkgefüge könnte Gestaltung überhaupt ansetzen? Hebel gelten für die ganze Episode, nicht für ein einzelnes Element.</p>" +
       '<div id="hebel-liste">' + hebelHtml + "</div>" +
       '<form id="hebel-form" class="inline-form small">' +
       '<input type="text" id="hebel-input" class="text-input" placeholder="Neuer Hebel…" />' +
@@ -1465,22 +1602,44 @@
       "</section>" +
 
       '<section class="panel">' +
-      "<h2>Gestaltungshypothesen</h2>" +
+      "<h2>Alle Gestaltungshypothesen</h2>" +
       "<p class='hint-text'>Jede Hypothese ist eine Lesart, kein Befund. Zu jeder gehört eine Gegenhypothese, die genauso plausibel wäre.</p>" +
       hypothesenHtml +
-      '<form id="hyp-form" class="hyp-form">' +
-      '<div class="hyp-paar">' +
-      '<div class="hyp-seite these"><span class="hyp-label">Neue Hypothese</span>' +
-      '<textarea id="hyp-text" rows="2" placeholder="Was könnte erklären, warum sich das Verhalten so zeigt?" required></textarea></div>' +
-      '<div class="hyp-seite gegen"><span class="hyp-label">Gegenhypothese (Pflicht)</span>' +
-      '<textarea id="hyp-gegen" rows="2" placeholder="Welche andere Erklärung wäre genauso plausibel?" required></textarea></div>' +
-      "</div>" +
-      '<div class="beob-form-row">' +
-      '<select id="hyp-element" class="text-input">' + elementOptionsHtml("", "— Gestaltungselement —") + "</select>" +
-      '<button type="submit" class="btn btn-primary">Hypothese anlegen</button></div>' +
-      "</form>" +
-      "</section>" +
+      hypFormHtml(null) +
+      "</section>"
+    );
+  }
 
+  function understandElementHtml(ep, elm) {
+    var befunde = ep.beobachtungen.filter(function (b) { return b.element === elm.key; });
+    var hypothesen = ep.wirkmodell.hypothesen.filter(function (h) { return h.element === elm.key; });
+
+    var inner =
+      '<div class="element-befunde">' +
+      '<span class="denkanstoesse-kopf">Eure Befunde zu diesem Element</span>' +
+      (befunde.length
+        ? "<ul>" + befunde.map(function (b) {
+            return '<li><span class="befund-typ ' + b.typ + '">' + (b.typ === "fakt" ? "Fakt" : "Vermutung") + "</span> " + escapeHtml(b.text) + "</li>";
+          }).join("") + "</ul>"
+        : "<p class='hint-text'>Zu diesem Element wurde in der Beobachten-Schleife nichts erfasst. Eine Hypothese ohne Befund ist möglich – sie steht dann aber auf dünnem Eis.</p>") +
+      "</div>" +
+      '<div class="element-liste">' +
+      '<div class="element-liste-kopf">Hypothesen zu diesem Element<span>' + hypothesen.length + "</span></div>" +
+      (hypothesen.length
+        ? hypothesen.map(function (h) { return hypKarteHtml(h, false); }).join("")
+        : "<p class='hint-text'>Noch keine Hypothese zu diesem Element.</p>") +
+      "</div>" +
+      hypFormHtml(elm.key);
+
+    return elementPanelHtml(elm, "understand", inner, ep, "Zwischenfazit zu " + elm.title);
+  }
+
+  function understandBodyHtml(v, ep) {
+    var elm = elementTab.key === "ueberblick" ? null : AVERA_DATA.getElement(elementTab.key);
+    return (
+      rollenBoxHtml("understand") +
+      elementTabsHtml(ep, "understand") +
+      (elm ? understandElementHtml(ep, elm) : understandUeberblickHtml(ep)) +
       kiPanelHtml("understand") +
 
       "<details class='reference-details'><summary><strong>Intention kurz reflektieren</strong> — " + escapeHtml(AVERA_DATA.INTENTION_PHASEN.reflektieren.leitfrage) + "</summary>" +
@@ -1490,19 +1649,21 @@
       '<button type="button" id="save-intention-reflexion-btn" class="btn btn-secondary btn-small">Reflexion speichern</button>' +
       "</div></details>" +
 
-      elementAccordionHtml(ep, "understand") +
       generalSectionHtml(ep, "understand")
     );
   }
 
   function wireUnderstand(id, nr) {
-    document.getElementById("hebel-form").addEventListener("submit", function (evt) {
-      evt.preventDefault();
-      var input = document.getElementById("hebel-input");
-      if (!input.value.trim()) return;
-      AVERA_STORE.addHebel(id, nr, input.value.trim());
-      renderLoop(id, nr, "understand");
-    });
+    var hebelForm = document.getElementById("hebel-form");
+    if (hebelForm) {
+      hebelForm.addEventListener("submit", function (evt) {
+        evt.preventDefault();
+        var input = document.getElementById("hebel-input");
+        if (!input.value.trim()) return;
+        AVERA_STORE.addHebel(id, nr, input.value.trim());
+        renderLoop(id, nr, "understand");
+      });
+    }
     root.querySelectorAll("[data-hebel-id]").forEach(function (ta) {
       ta.addEventListener("blur", function () {
         AVERA_STORE.updateHebel(id, nr, ta.getAttribute("data-hebel-id"), ta.value);
@@ -1515,14 +1676,17 @@
       });
     });
 
-    document.getElementById("hyp-form").addEventListener("submit", function (evt) {
-      evt.preventDefault();
-      var text = document.getElementById("hyp-text").value.trim();
-      var gegen = document.getElementById("hyp-gegen").value.trim();
-      if (!text || !gegen) return;
-      AVERA_STORE.addHypothese(id, nr, { text: text, gegenhypothese: gegen, element: document.getElementById("hyp-element").value });
-      renderLoop(id, nr, "understand");
-    });
+    var hypForm = document.getElementById("hyp-form");
+    if (hypForm) {
+      hypForm.addEventListener("submit", function (evt) {
+        evt.preventDefault();
+        var text = document.getElementById("hyp-text").value.trim();
+        var gegen = document.getElementById("hyp-gegen").value.trim();
+        if (!text || !gegen) return;
+        AVERA_STORE.addHypothese(id, nr, { text: text, gegenhypothese: gegen, element: document.getElementById("hyp-element").value });
+        renderLoop(id, nr, "understand");
+      });
+    }
     root.querySelectorAll("[data-hyp-text]").forEach(function (ta) {
       ta.addEventListener("blur", function () {
         AVERA_STORE.updateHypothese(id, nr, ta.getAttribute("data-hyp-text"), { text: ta.value });
@@ -1540,13 +1704,16 @@
       });
     });
 
-    document.getElementById("save-intention-reflexion-btn").addEventListener("click", function () {
-      var ta = document.getElementById("intention-reflexion-input");
-      if (!ta.value.trim()) return;
-      AVERA_STORE.addIntentionReflexion(id, nr, ta.value.trim());
-      ta.value = "";
-      alert("Reflexion gespeichert. Ihr findet sie auf der Intention-Seite wieder.");
-    });
+    var refBtn = document.getElementById("save-intention-reflexion-btn");
+    if (refBtn) {
+      refBtn.addEventListener("click", function () {
+        var ta = document.getElementById("intention-reflexion-input");
+        if (!ta.value.trim()) return;
+        AVERA_STORE.addIntentionReflexion(id, nr, ta.value.trim());
+        ta.value = "";
+        alert("Reflexion gespeichert. Ihr findet sie auf der Intention-Seite wieder.");
+      });
+    }
   }
 
   // ---------- Schleife 3: Entwerfen ----------
@@ -1587,85 +1754,6 @@
     );
   }
 
-  function designBodyHtml(v, ep) {
-    if (!ep.wirkmodell.hypothesen.length) {
-      return (
-        rollenBoxHtml("design") +
-        '<section class="panel locked-panel">' +
-        "<span class='icon'>💭</span><h2>Noch keine Gestaltungshypothese</h2>" +
-        "<p>Das 4Fakte-Raster arbeitet je Hypothese. Formuliert in der Verstehen-Schleife mindestens eine Hypothese – sonst entwerft ihr ins Blaue.</p>" +
-        '<a class="btn btn-primary" href="' + loopUrl(v.id, ep.nr, "understand") + '">Zurück zu Verstehen</a>' +
-        "</section>"
-      );
-    }
-
-    var hypOpts = ep.wirkmodell.hypothesen.map(function (h) {
-      var label = h.text.length > 70 ? h.text.slice(0, 69) + "…" : h.text;
-      return '<option value="' + h.id + '"' + (h.id === designDraft.hypotheseId ? " selected" : "") + ">" + escapeHtml(label) + "</option>";
-    }).join("");
-
-    var aktuelleHyp = ep.wirkmodell.hypothesen.find(function (h) { return h.id === designDraft.hypotheseId; });
-
-    var draftHtml = designDraft.objekte.length
-      ? '<div class="chip-row">' + designDraft.objekte.map(function (o, i) {
-          return '<button type="button" class="chip active" data-draft-remove="' + i + '">' + escapeHtml(o.beispiel) + " ✕</button>";
-        }).join("") + "</div>"
-      : "<p class='hint-text'>Noch keine Gestaltungsobjekte ausgewählt. Klickt im Raster oben Beispiele an.</p>";
-
-    var impulseHtml = ep.wirkmodell.hypothesen.map(function (h) {
-      var impulse = ep.impulse.filter(function (imp) { return imp.hypotheseId === h.id; });
-      return (
-        '<div class="impuls-gruppe">' +
-        '<div class="impuls-gruppe-kopf">' + elementTagHtml(h.element) + "<p>" + escapeHtml(h.text) + "</p></div>" +
-        (impulse.length
-          ? impulse.map(impulsKarteHtml).join("")
-          : "<p class='hint-text'>Für diese Hypothese liegt noch kein Impuls vor.</p>") +
-        "</div>"
-      );
-    }).join("");
-
-    var ohneHyp = ep.impulse.filter(function (imp) { return !imp.hypotheseId; });
-    if (ohneHyp.length) {
-      impulseHtml +=
-        '<div class="impuls-gruppe"><div class="impuls-gruppe-kopf">' + elementTagHtml("") +
-        "<p>Ohne Hypothese – aus einer früheren Fassung übernommen</p></div>" +
-        ohneHyp.map(impulsKarteHtml).join("") + "</div>";
-    }
-
-    return (
-      rollenBoxHtml("design") +
-
-      '<section class="panel">' +
-      "<h2>Wofür entwerft ihr gerade?</h2>" +
-      '<select id="design-hyp-select" class="text-input">' + hypOpts + "</select>" +
-      (aktuelleHyp
-        ? '<div class="hyp-kontext"><p><strong>Hypothese:</strong> ' + escapeHtml(aktuelleHyp.text) + "</p>" +
-          (aktuelleHyp.gegenhypothese ? "<p><strong>Gegenhypothese:</strong> " + escapeHtml(aktuelleHyp.gegenhypothese) + "</p>" : "") + "</div>"
-        : "") +
-      "</section>" +
-
-      '<section class="panel">' +
-      "<h2>4Fakte-Raster</h2>" +
-      "<p class='hint-text'>Ein wirksamer Impuls greift auf mehreren Ebenen zugleich an. Klickt Beispiele an, um sie in den Impuls zu übernehmen.</p>" +
-      fakteRasterHtml() +
-      "<h3>Ausgewählt für diesen Impuls</h3>" +
-      draftHtml +
-      '<form id="impuls-form" class="inline-form small">' +
-      '<input type="text" id="impuls-titel" class="text-input" placeholder="Titel des Gestaltungsimpulses…" value="' + escapeHtml(designDraft.titel) + '" />' +
-      '<button type="submit" class="btn btn-primary">Impuls anlegen</button></form>' +
-      "</section>" +
-
-      '<section class="panel">' +
-      "<h2>Impulse dieser Episode</h2>" +
-      impulseHtml +
-      "</section>" +
-
-      kiPanelHtml("design") +
-      elementAccordionHtml(ep, "design") +
-      generalSectionHtml(ep, "design")
-    );
-  }
-
   function impulsKarteHtml(imp) {
     var proTyp = AVERA_DATA.FAKTE_TYPEN.map(function (t) {
       var objekte = imp.objekte.filter(function (o) { return o.typ === t.key; });
@@ -1693,16 +1781,144 @@
     );
   }
 
-  function wireDesign(id, nr, ep) {
-    document.getElementById("fakte-wirkstufe-select").addEventListener("change", function (evt) {
-      designWirkstufe = evt.target.value;
-      renderLoop(id, nr, "design");
-    });
+  // Das Raster samt Entwurf und Formular – einmal für den Überblick, einmal
+  // innerhalb eines Elements, dort auf dessen Hypothesen eingegrenzt.
+  function designWerkbankHtml(ep, hypListe) {
+    if (!hypListe.length) return "";
+    var hypOpts = hypListe.map(function (h) {
+      var label = h.text.length > 70 ? h.text.slice(0, 69) + "…" : h.text;
+      return '<option value="' + h.id + '"' + (h.id === designDraft.hypotheseId ? " selected" : "") + ">" + escapeHtml(label) + "</option>";
+    }).join("");
+    var aktuelle = hypListe.find(function (h) { return h.id === designDraft.hypotheseId; });
 
-    document.getElementById("design-hyp-select").addEventListener("change", function (evt) {
-      designDraft.hypotheseId = evt.target.value;
-      renderLoop(id, nr, "design");
-    });
+    var draftHtml = designDraft.objekte.length
+      ? '<div class="chip-row">' + designDraft.objekte.map(function (o, i) {
+          return '<button type="button" class="chip active" data-draft-remove="' + i + '">' + escapeHtml(o.beispiel) + " ✕</button>";
+        }).join("") + "</div>"
+      : "<p class='hint-text'>Noch keine Gestaltungsobjekte ausgewählt. Klickt im Raster Beispiele an.</p>";
+
+    return (
+      '<div class="design-werkbank">' +
+      '<label class="reflexion-label" for="design-hyp-select">Für welche Hypothese entwerft ihr gerade?</label>' +
+      '<select id="design-hyp-select" class="text-input">' + hypOpts + "</select>" +
+      (aktuelle && aktuelle.gegenhypothese
+        ? '<div class="hyp-kontext"><p><strong>Gegenhypothese:</strong> ' + escapeHtml(aktuelle.gegenhypothese) + "</p></div>"
+        : "") +
+      fakteRasterHtml() +
+      "<h3>Ausgewählt für diesen Impuls</h3>" +
+      draftHtml +
+      '<form id="impuls-form" class="inline-form small">' +
+      '<input type="text" id="impuls-titel" class="text-input" placeholder="Titel des Gestaltungsimpulses…" value="' + escapeHtml(designDraft.titel) + '" />' +
+      '<button type="submit" class="btn btn-primary">Impuls anlegen</button></form>' +
+      "</div>"
+    );
+  }
+
+  function designUeberblickHtml(v, ep) {
+    if (!ep.wirkmodell.hypothesen.length) {
+      return (
+        '<section class="panel locked-panel">' +
+        "<span class='icon'>💭</span><h2>Noch keine Gestaltungshypothese</h2>" +
+        "<p>Das 4Fakte-Raster arbeitet je Hypothese. Formuliert in der Verstehen-Schleife mindestens eine Hypothese – sonst entwerft ihr ins Blaue.</p>" +
+        '<a class="btn btn-primary" href="' + loopUrl(v.id, ep.nr, "understand") + '">Zurück zu Verstehen</a>' +
+        "</section>"
+      );
+    }
+
+    var impulseHtml = ep.wirkmodell.hypothesen.map(function (h) {
+      var impulse = ep.impulse.filter(function (imp) { return imp.hypotheseId === h.id; });
+      return (
+        '<div class="impuls-gruppe">' +
+        '<div class="impuls-gruppe-kopf">' + elementTagHtml(h.element) + "<p>" + escapeHtml(h.text) + "</p></div>" +
+        (impulse.length
+          ? impulse.map(impulsKarteHtml).join("")
+          : "<p class='hint-text'>Für diese Hypothese liegt noch kein Impuls vor.</p>") +
+        "</div>"
+      );
+    }).join("");
+
+    var ohneHyp = ep.impulse.filter(function (imp) { return !imp.hypotheseId; });
+    if (ohneHyp.length) {
+      impulseHtml +=
+        '<div class="impuls-gruppe"><div class="impuls-gruppe-kopf">' + elementTagHtml("") +
+        "<p>Ohne Hypothese – aus einer früheren Fassung übernommen</p></div>" +
+        ohneHyp.map(impulsKarteHtml).join("") + "</div>";
+    }
+
+    return (
+      '<section class="panel">' +
+      "<h2>4Fakte-Raster</h2>" +
+      "<p class='hint-text'>Ein wirksamer Impuls greift auf mehreren Ebenen zugleich an. Wählt eine Hypothese, klickt Beispiele an und bündelt sie zu einem Impuls.</p>" +
+      designWerkbankHtml(ep, ep.wirkmodell.hypothesen) +
+      "</section>" +
+
+      '<section class="panel">' +
+      "<h2>Alle Impulse dieser Episode</h2>" +
+      impulseHtml +
+      "</section>"
+    );
+  }
+
+  function designElementHtml(v, ep, elm) {
+    var hypListe = ep.wirkmodell.hypothesen.filter(function (h) { return h.element === elm.key; });
+    var hypIds = hypListe.map(function (h) { return h.id; });
+    var impulse = ep.impulse.filter(function (imp) { return imp.hypotheseId && hypIds.indexOf(imp.hypotheseId) !== -1; });
+
+    var inner;
+    if (!hypListe.length) {
+      inner =
+        "<p class='hint-text'>Zu diesem Element gibt es keine Gestaltungshypothese – hier lässt sich noch nichts entwerfen. " +
+        "Entweder ist das Element in dieser Episode bewusst nicht dran, oder in der Verstehen-Schleife fehlt noch eine Lesart dazu.</p>" +
+        '<a class="btn btn-ghost btn-small" href="' + loopUrl(v.id, ep.nr, "understand") + '">Zu Verstehen wechseln →</a>';
+    } else {
+      inner =
+        '<div class="element-hypothesen">' +
+        '<span class="denkanstoesse-kopf">Eure Hypothesen zu diesem Element</span>' +
+        "<ul>" + hypListe.map(function (h) { return "<li>" + escapeHtml(h.text) + "</li>"; }).join("") + "</ul>" +
+        "</div>" +
+        designWerkbankHtml(ep, hypListe) +
+        '<div class="element-liste">' +
+        '<div class="element-liste-kopf">Impulse zu diesem Element<span>' + impulse.length + "</span></div>" +
+        (impulse.length
+          ? impulse.map(impulsKarteHtml).join("")
+          : "<p class='hint-text'>Noch kein Impuls zu diesem Element.</p>") +
+        "</div>";
+    }
+    return elementPanelHtml(elm, "design", inner, ep, "Zwischenfazit zu " + elm.title);
+  }
+
+  function designBodyHtml(v, ep) {
+    var elm = elementTab.key === "ueberblick" ? null : AVERA_DATA.getElement(elementTab.key);
+    return (
+      rollenBoxHtml("design") +
+      elementTabsHtml(ep, "design") +
+      (elm ? designElementHtml(v, ep, elm) : designUeberblickHtml(v, ep)) +
+      kiPanelHtml("design") +
+      generalSectionHtml(ep, "design")
+    );
+  }
+
+  function wireDesign(id, nr, ep) {
+    var wsSelect = document.getElementById("fakte-wirkstufe-select");
+    if (wsSelect) {
+      wsSelect.addEventListener("change", function (evt) {
+        designWirkstufe = evt.target.value;
+        renderLoop(id, nr, "design");
+      });
+    }
+
+    var hypSelect = document.getElementById("design-hyp-select");
+    if (hypSelect) {
+      hypSelect.addEventListener("change", function (evt) {
+        designDraft.hypotheseId = evt.target.value;
+        renderLoop(id, nr, "design");
+      });
+    }
+
+    function merkeTitel() {
+      var t = document.getElementById("impuls-titel");
+      if (t) designDraft.titel = t.value;
+    }
 
     root.querySelectorAll("[data-fakte-beispiel]").forEach(function (chip) {
       chip.addEventListener("click", function () {
@@ -1717,7 +1933,7 @@
         });
         if (idx === -1) designDraft.objekte.push(eintrag);
         else designDraft.objekte.splice(idx, 1);
-        designDraft.titel = document.getElementById("impuls-titel").value;
+        merkeTitel();
         renderLoop(id, nr, "design");
       });
     });
@@ -1725,26 +1941,29 @@
     root.querySelectorAll("[data-draft-remove]").forEach(function (chip) {
       chip.addEventListener("click", function () {
         designDraft.objekte.splice(parseInt(chip.getAttribute("data-draft-remove"), 10), 1);
-        designDraft.titel = document.getElementById("impuls-titel").value;
+        merkeTitel();
         renderLoop(id, nr, "design");
       });
     });
 
-    document.getElementById("impuls-form").addEventListener("submit", function (evt) {
-      evt.preventDefault();
-      var titel = document.getElementById("impuls-titel").value.trim();
-      if (!titel || !designDraft.objekte.length) {
-        alert("Ein Impuls braucht einen Titel und mindestens ein Gestaltungsobjekt.");
-        return;
-      }
-      AVERA_STORE.addImpuls(id, nr, {
-        titel: titel,
-        hypotheseId: designDraft.hypotheseId,
-        objekte: designDraft.objekte.slice()
+    var impulsForm = document.getElementById("impuls-form");
+    if (impulsForm) {
+      impulsForm.addEventListener("submit", function (evt) {
+        evt.preventDefault();
+        var titel = document.getElementById("impuls-titel").value.trim();
+        if (!titel || !designDraft.objekte.length) {
+          alert("Ein Impuls braucht einen Titel und mindestens ein Gestaltungsobjekt.");
+          return;
+        }
+        AVERA_STORE.addImpuls(id, nr, {
+          titel: titel,
+          hypotheseId: designDraft.hypotheseId,
+          objekte: designDraft.objekte.slice()
+        });
+        resetDesignDraft(id + ":" + nr, designDraft.hypotheseId);
+        renderLoop(id, nr, "design");
       });
-      resetDesignDraft(id + ":" + nr, designDraft.hypotheseId);
-      renderLoop(id, nr, "design");
-    });
+    }
 
     root.querySelectorAll("[data-remove-impuls]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -1808,10 +2027,32 @@
     return warn;
   }
 
-  function architectBodyHtml(v, ep) {
+  function archZeileHtml(ep, imp, mitHypothese) {
+    var checked = (ep.architektur.gewaehlt || []).indexOf(imp.id) !== -1;
+    var hyp = ep.wirkmodell.hypothesen.find(function (h) { return h.id === imp.hypotheseId; });
+    return (
+      '<div class="arch-zeile' + (checked ? " gewaehlt" : "") + '">' +
+      '<label class="impuls-select-row">' +
+      '<input type="checkbox" data-select-impuls="' + imp.id + '"' + (checked ? " checked" : "") + " />" +
+      "<span><strong>" + escapeHtml(imp.titel) + "</strong>" +
+      (mitHypothese
+        ? hyp
+          ? '<span class="arch-hyp">zu: ' + escapeHtml(hyp.text) + "</span>"
+          : '<span class="arch-hyp warn">keiner Hypothese zugeordnet</span>'
+        : "") +
+      '<span class="impuls-objekte">' + imp.objekte.map(function (o) { return '<span class="impuls-objekt-tag">' + escapeHtml(o.beispiel) + "</span>"; }).join("") + "</span>" +
+      "</span></label>" +
+      (checked
+        ? '<div class="weglass-box"><label class="reflexion-label">Was passiert, wenn dieser Impuls entfällt?</label>' +
+          '<textarea data-weglass="' + imp.id + '" rows="2" placeholder="Ein Satz genügt – aber er muss stehen.">' + escapeHtml(ep.architektur.weglassen[imp.id] || "") + "</textarea></div>"
+        : "") +
+      "</div>"
+    );
+  }
+
+  function architectUeberblickHtml(v, ep) {
     if (!ep.impulse.length) {
       return (
-        rollenBoxHtml("architect") +
         '<section class="panel locked-panel">' +
         "<span class='icon'>🧩</span><h2>Noch keine Impulse zum Komponieren</h2>" +
         "<p>In der Entwerfen-Schleife wurden noch keine Gestaltungsimpulse gebaut.</p>" +
@@ -1821,24 +2062,7 @@
     }
 
     var gewaehlt = ep.architektur.gewaehlt || [];
-    var auswahlHtml = ep.impulse.map(function (imp) {
-      var checked = gewaehlt.indexOf(imp.id) !== -1;
-      var hyp = ep.wirkmodell.hypothesen.find(function (h) { return h.id === imp.hypotheseId; });
-      return (
-        '<div class="arch-zeile' + (checked ? " gewaehlt" : "") + '">' +
-        '<label class="impuls-select-row">' +
-        '<input type="checkbox" data-select-impuls="' + imp.id + '"' + (checked ? " checked" : "") + " />" +
-        "<span><strong>" + escapeHtml(imp.titel) + "</strong>" +
-        (hyp ? '<span class="arch-hyp">zu: ' + escapeHtml(hyp.text) + "</span>" : '<span class="arch-hyp warn">keiner Hypothese zugeordnet</span>') +
-        '<span class="impuls-objekte">' + imp.objekte.map(function (o) { return '<span class="impuls-objekt-tag">' + escapeHtml(o.beispiel) + "</span>"; }).join("") + "</span>" +
-        "</span></label>" +
-        (checked
-          ? '<div class="weglass-box"><label class="reflexion-label">Was passiert, wenn dieser Impuls entfällt?</label>' +
-            '<textarea data-weglass="' + imp.id + '" rows="2" placeholder="Ein Satz genügt – aber er muss stehen.">' + escapeHtml(ep.architektur.weglassen[imp.id] || "") + "</textarea></div>"
-          : "") +
-        "</div>"
-      );
-    }).join("");
+    var auswahlHtml = ep.impulse.map(function (imp) { return archZeileHtml(ep, imp, true); }).join("");
 
     var warnungen = kohaerenzWarnungen(ep);
     var warnHtml = gewaehlt.length
@@ -1850,8 +2074,6 @@
       : "<p class='hint-text'>Wählt oben Impulse aus, dann prüft die App auf Doppelungen, Lücken und flache Impulse.</p>";
 
     return (
-      rollenBoxHtml("architect") +
-
       '<section class="panel">' +
       "<h2>Architektur zusammenstellen</h2>" +
       "<p class='hint-text'>So wenig wie möglich, so viel wie nötig: Wählt die Impulse, denen ihr unter den gegenwärtigen Bedingungen die größte Wirkwahrscheinlichkeit zuschreibt – und die sich gegenseitig stützen statt widersprechen.</p>" +
@@ -1863,10 +2085,33 @@
       warnHtml +
       '<label class="reflexion-label" for="kohaerenz-notiz">Kohärenz-Notiz – warum genau diese Zusammenstellung?</label>' +
       '<textarea id="kohaerenz-notiz" rows="3" placeholder="Wie stützen die gewählten Impulse einander?">' + escapeHtml(ep.architektur.kohaerenzNotiz || "") + "</textarea>" +
-      "</section>" +
+      "</section>"
+    );
+  }
 
+  function architectElementHtml(v, ep, elm) {
+    var hypIds = ep.wirkmodell.hypothesen
+      .filter(function (h) { return h.element === elm.key; })
+      .map(function (h) { return h.id; });
+    var impulse = ep.impulse.filter(function (imp) { return imp.hypotheseId && hypIds.indexOf(imp.hypotheseId) !== -1; });
+
+    var inner = impulse.length
+      ? '<div class="element-liste">' +
+        '<div class="element-liste-kopf">Impulse zu diesem Element<span>' + impulse.length + "</span></div>" +
+        impulse.map(function (imp) { return archZeileHtml(ep, imp, false); }).join("") +
+        "</div>"
+      : "<p class='hint-text'>Zu diesem Element liegt kein Impuls vor. Nicht jedes Element muss in jeder Episode in die Architektur – hinreichend statt vollständig.</p>";
+
+    return elementPanelHtml(elm, "architect", inner, ep, "Zwischenfazit zu " + elm.title);
+  }
+
+  function architectBodyHtml(v, ep) {
+    var elm = elementTab.key === "ueberblick" ? null : AVERA_DATA.getElement(elementTab.key);
+    return (
+      rollenBoxHtml("architect") +
+      elementTabsHtml(ep, "architect") +
+      (elm ? architectElementHtml(v, ep, elm) : architectUeberblickHtml(v, ep)) +
       kiPanelHtml("architect") +
-      elementAccordionHtml(ep, "architect") +
       generalSectionHtml(ep, "architect")
     );
   }
@@ -1915,9 +2160,18 @@
     if (designDraft.scope !== scope) {
       resetDesignDraft(scope, ep.wirkmodell.hypothesen.length ? ep.wirkmodell.hypothesen[0].id : null);
     }
-    if (loopKey === "design" && ep.wirkmodell.hypothesen.length &&
-        !ep.wirkmodell.hypothesen.some(function (h) { return h.id === designDraft.hypotheseId; })) {
-      designDraft.hypotheseId = ep.wirkmodell.hypothesen[0].id;
+    var tabScope = scope + ":" + loopKey;
+    if (elementTab.scope !== tabScope) elementTab = { scope: tabScope, key: "ueberblick" };
+
+    // Im Entwerfen hängt der Entwurf an einer Hypothese. Ist ein Element
+    // aufgeschlagen, kommen nur dessen Hypothesen in Frage.
+    if (loopKey === "design") {
+      var hypListe = ep.wirkmodell.hypothesen.filter(function (h) {
+        return elementTab.key === "ueberblick" || h.element === elementTab.key;
+      });
+      if (hypListe.length && !hypListe.some(function (h) { return h.id === designDraft.hypotheseId; })) {
+        designDraft.hypotheseId = hypListe[0].id;
+      }
     }
 
     var erreichbar = AVERA_STORE.loopErreichbar(ep, loopKey);
@@ -1973,10 +2227,17 @@
       });
     });
 
+    root.querySelectorAll("[data-el-tab]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        elementTab = { scope: tabScope, key: btn.getAttribute("data-el-tab") };
+        renderLoop(id, nr, loopKey);
+      });
+    });
+
     if (loopKey === "observe") wireObserve(id, nr, ep);
     if (loopKey === "understand") wireUnderstand(id, nr);
-    if (loopKey === "design" && ep.wirkmodell.hypothesen.length) wireDesign(id, nr, ep);
-    if (loopKey === "architect" && ep.impulse.length) wireArchitect(id, nr);
+    if (loopKey === "design") wireDesign(id, nr, ep);
+    if (loopKey === "architect") wireArchitect(id, nr);
 
     wireKiPanel(loopKey, v, ep);
   }
