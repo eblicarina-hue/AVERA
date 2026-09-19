@@ -53,7 +53,7 @@
   function newInitiative(name, org) {
     return {
       id: uid("init"),
-      name: name || "Neue Veränderungsinitiative",
+      name: name || "Neues Projekt",
       org: org || "",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
