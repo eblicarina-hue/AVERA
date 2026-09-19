@@ -211,6 +211,15 @@
     return created;
   }
 
+  function renameImpuls(id, episodeNr, impulsId, name) {
+    return update(id, function (init) {
+      var ep = getEpisode(init, episodeNr);
+      if (!ep) return;
+      var imp = ep.loops.design.impulse.find(function (i) { return i.id === impulsId; });
+      if (imp) imp.name = name;
+    });
+  }
+
   function removeImpuls(id, episodeNr, impulsId) {
     return update(id, function (init) {
       var ep = getEpisode(init, episodeNr);
@@ -323,6 +332,7 @@
     setLoopElementNote: setLoopElementNote,
     addImpuls: addImpuls,
     removeImpuls: removeImpuls,
+    renameImpuls: renameImpuls,
     setArchitectSelection: setArchitectSelection,
     setArchitectBegruendung: setArchitectBegruendung,
     setStatusQuoNotiz: setStatusQuoNotiz,

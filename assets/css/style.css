@@ -161,11 +161,12 @@ html, body {
   color: var(--text);
   font-family: var(--font-body);
   line-height: 1.55;
+  overflow-x: hidden;
 }
 
 #app { min-height: 100vh; }
 
-h1, h2, h3 { line-height: 1.2; margin: 0 0 8px; text-wrap: balance; }
+h1, h2, h3 { line-height: 1.2; margin: 0 0 8px; text-wrap: balance; overflow-wrap: break-word; }
 h1 { font-family: var(--font-display); font-weight: 700; font-size: 2rem; letter-spacing: -0.01em; color: var(--heading); }
 h2 {
   font-family: var(--font-body);
@@ -253,6 +254,7 @@ a { color: var(--accent); }
 .inline-form input[type="text"]:focus { border-color: var(--accent); }
 
 .btn {
+  display: inline-block;
   border: none;
   border-radius: var(--radius-sm);
   padding: 10px 16px;
@@ -261,6 +263,8 @@ a { color: var(--accent); }
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: center;
+  text-decoration: none;
   cursor: pointer;
   transition: opacity 0.15s ease, background 0.15s ease;
 }
@@ -435,6 +439,7 @@ a { color: var(--accent); }
 .wheel-segment-label { font-family: var(--font-display); font-size: 13px; font-weight: 700; pointer-events: none; fill: var(--heading); }
 .wheel-badge { fill: var(--panel-bg); stroke: var(--border-strong); stroke-width: 1.5; pointer-events: none; }
 .wheel-badge-num { font-family: var(--font-display); font-size: 10px; font-weight: 700; fill: var(--heading); pointer-events: none; dominant-baseline: middle; }
+.wheel-touched-dot { stroke: var(--panel-bg); stroke-width: 2; pointer-events: none; }
 .wheel-hub-label { font-family: var(--font-display); font-size: 15px; fill: var(--heading); font-weight: 700; pointer-events: none; }
 .wheel-hub-sub { font-family: var(--font-body); font-size: 9px; letter-spacing: 0.04em; fill: var(--text-muted); pointer-events: none; text-transform: uppercase; }
 .wheel-intention-label { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.03em; font-weight: 700; pointer-events: none; text-transform: uppercase; }
@@ -589,7 +594,9 @@ a { color: var(--accent); }
 .kernfrage { font-family: var(--font-display); font-style: italic; font-weight: 500; color: var(--accent); font-size: 1.05rem; }
 .reflexion-item { margin-bottom: 14px; }
 .reflexion-label { display: block; font-size: 0.92rem; margin-bottom: 6px; }
-.reflexion-item textarea, #station-notiz {
+/* Alle Notizfelder wachsen automatisch mit dem Inhalt (siehe wireAutosize
+   in app.js) statt den Text zu verstecken und intern zu scrollen. */
+textarea {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--border-strong);
@@ -598,9 +605,11 @@ a { color: var(--accent); }
   color: var(--text);
   font-family: var(--font-body);
   font-size: 0.92rem;
-  resize: vertical;
+  resize: none;
+  overflow-y: hidden;
+  min-height: 44px;
 }
-.reflexion-item textarea:focus, #station-notiz:focus { border-color: var(--accent); }
+textarea:focus { border-color: var(--accent); }
 
 .hint-text { color: var(--text-muted); font-size: 0.85rem; margin-top: -4px; }
 .objekt-group { margin-bottom: 18px; }
@@ -781,6 +790,7 @@ a { color: var(--accent); }
 
 .fakte-filter-bar { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
 .fakte-filter-bar label { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; color: var(--text-muted); }
+.hint-inline { font-weight: 400; text-transform: none; letter-spacing: 0; font-style: italic; }
 .fakte-filter-bar select {
   font-family: var(--font-body);
   font-size: 0.88rem;
@@ -802,6 +812,7 @@ a { color: var(--accent); }
   background: var(--panel-bg);
 }
 .impuls-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.impuls-card-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .impuls-objekte { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .impuls-objekt-tag {
   display: inline-block;

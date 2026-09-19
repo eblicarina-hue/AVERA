@@ -240,6 +240,21 @@
       badgeText.textContent = element.num;
       g.appendChild(badgeText);
 
+      // Dezentes Signal: Element wurde in einer früheren Episode schon
+      // bearbeitet, ist aber in der aktuellen Episode noch offen.
+      if (stState.status === "offen" && stState.touchedBefore) {
+        var touchedPos = polar(CX, CY, OUTER_R - 16, endAngle - 4);
+        g.appendChild(
+          svgEl("circle", {
+            cx: touchedPos.x,
+            cy: touchedPos.y,
+            r: 5,
+            class: "wheel-touched-dot",
+            fill: fillFor(key, "etabliert")
+          })
+        );
+      }
+
       g.addEventListener("click", function () {
         onSelect(key);
       });

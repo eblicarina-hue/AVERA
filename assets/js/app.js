@@ -152,6 +152,29 @@
     );
   }
 
+  function autosizeTextarea(ta) {
+    ta.style.height = "auto";
+    ta.style.height = ta.scrollHeight + "px";
+  }
+
+  // Jedes Notizfeld soll mit seinem Inhalt wachsen, statt den eigenen Text
+  // zu verstecken und intern wegzuscrollen. Läuft einmal je Render über
+  // alle Textareas (inkl. der in noch geschlossenen <details>, die beim
+  // Öffnen per "toggle" nachträglich korrekt bemessen werden).
+  function wireAutosize(container) {
+    container.querySelectorAll("textarea").forEach(function (ta) {
+      autosizeTextarea(ta);
+      ta.addEventListener("input", function () {
+        autosizeTextarea(ta);
+      });
+    });
+    container.querySelectorAll("details").forEach(function (det) {
+      det.addEventListener("toggle", function () {
+        if (det.open) det.querySelectorAll("textarea").forEach(autosizeTextarea);
+      });
+    });
+  }
+
   function renderShell(activeKey, contentHtml) {
     root.innerHTML =
       '<div class="app-shell">' +
@@ -161,6 +184,8 @@
       '<main class="app-main">' + contentHtml + "</main>" +
       "</div>" +
       "</div>";
+
+    wireAutosize(root);
 
     var search = document.getElementById("topbar-search");
     if (search) {
@@ -177,10 +202,26 @@
 
   // ---------- Ableitungen ----------
 
+  // Wurde ein Element in irgendeiner Episode (auch früheren) schon einmal
+  // beschrieben? Zeigt sich als dezenter Punkt, wenn die aktuelle Episode
+  // dafür noch offen ist – sonst würde jede neue Episode optisch wirken,
+  // als wäre die bisherige Arbeit spurlos verschwunden.
+  function elementEverTouched(init, elementKey) {
+    return init.episodes.some(function (ep) {
+      return LOOP_ORDER.some(function (lk) {
+        var text = ep.loops[lk].elemente[elementKey];
+        return !!(text && text.trim());
+      });
+    });
+  }
+
   function buildWheelAdapter(init, episode) {
     var adapter = { stations: {} };
     AVERA_DATA.ELEMENTS.forEach(function (elm) {
-      adapter.stations[elm.key] = { status: AVERA_STORE.deriveElementStatus(episode, elm.key) };
+      adapter.stations[elm.key] = {
+        status: AVERA_STORE.deriveElementStatus(episode, elm.key),
+        touchedBefore: elementEverTouched(init, elm.key)
+      };
     });
     adapter.stations.intention = { status: AVERA_STORE.deriveIntentionStatus(init) };
     return adapter;
@@ -234,8 +275,30 @@
 
   // ---------- Dashboard ----------
 
+  function renderFirstVisitDashboard() {
+    var html =
+      '<div class="view view-dashboard">' +
+      "<h1>Willkommen bei AVERA</h1>" +
+      "<p class='hint-text'>Diese App begleitet euch durch den AVERA-Workflow: Veränderung entsteht nicht in einem einmaligen Durchlauf, sondern in <strong>Episoden</strong> – jede Episode ist eine volle Drehung im Rad mit vier Schleifen: Beobachten → Verstehen → Entwerfen → Komponieren, gefolgt von der Realisierung.</p>" +
+      '<div class="dash-hero">' +
+      "<blockquote class='dash-hero-quote'>Legt euer erstes Veränderungsprojekt an und startet mit der Intention – dem Nullpunkt jeder Gestaltung.</blockquote>" +
+      '<a class="btn btn-primary" href="#/projekte">Erstes Projekt anlegen →</a>' +
+      "</div>" +
+      '<section class="panel about-panel">' +
+      "<h2>Worauf AVERA hinweist</h2>" +
+      '<p><strong>Die Geisterfahrt:</strong> Viele Change-Vorhaben scheitern, weil vorschnell von einer Beobachtung zu einer vertrauten Maßnahme gesprungen wird – ohne Verstehen und Entwerfen dazwischen.</p>' +
+      '<p><strong>Hinreichend statt vollständig:</strong> Ihr müsst nicht jedes Element in jeder Episode bearbeiten – eine für den Moment tragfähige Grundlage reicht für den nächsten Schritt.</p>' +
+      "</section>" +
+      "</div>";
+    renderShell("dashboard", html);
+  }
+
   function renderDashboard() {
     var projects = AVERA_STORE.list();
+    if (!projects.length) {
+      renderFirstVisitDashboard();
+      return;
+    }
     var today = new Date();
 
     var quotedElements = AVERA_DATA.ELEMENTS.filter(function (e) { return e.zitat; });
@@ -591,6 +654,10 @@
       intentionPhaseHtml(id, "erarbeiten", init.intention.erarbeiten) +
       intentionPhaseHtml(id, "schaerfen", init.intention.schaerfen) +
       reflexionHtml +
+      '<div class="station-nav">' +
+      "<span></span>" +
+      '<a class="btn btn-primary btn-next" href="#/init/' + id + '">Weiter zur aktuellen Episode →</a>' +
+      "</div>" +
       "</div>";
 
     renderShell("projekte", html);
@@ -668,13 +735,13 @@
       .join("");
     var wsOpts = AVERA_DATA.WIRKSTUFEN
       .map(function (w) {
-        return '<option value="' + w.key + '"' + (w.key === designFilter.wirkstufe ? " selected" : "") + ">" + escapeHtml(w.label) + "</option>";
+        return '<option value="' + w.key + '"' + (w.key === designFilter.wirkstufe ? " selected" : "") + ">" + escapeHtml(w.label) + " — " + escapeHtml(w.subtitle) + "</option>";
       })
       .join("");
     return (
       '<div class="fakte-filter-bar">' +
       '<label>Fakt-Typ<select id="fakte-typ-select">' + typOpts + "</select></label>" +
-      '<label>Wirkstufe<select id="fakte-wirkstufe-select">' + wsOpts + "</select></label>" +
+      '<label>Wirkstufe <span class="hint-inline">(auf welcher Stufe der Aneignung setzt der Impuls an?)</span><select id="fakte-wirkstufe-select">' + wsOpts + "</select></label>" +
       "</div>"
     );
   }
@@ -722,7 +789,10 @@
             return (
               '<div class="impuls-card">' +
               '<div class="impuls-card-head"><strong>' + escapeHtml(imp.name) + "</strong>" +
-              '<button type="button" class="btn-icon-delete" data-remove-impuls="' + imp.id + '" title="Löschen">✕</button></div>' +
+              '<span class="impuls-card-actions">' +
+              '<button type="button" class="btn-icon-delete" data-rename-impuls="' + imp.id + '" title="Umbenennen">✎</button>' +
+              '<button type="button" class="btn-icon-delete" data-remove-impuls="' + imp.id + '" title="Löschen">✕</button>' +
+              "</span></div>" +
               '<div class="impuls-objekte">' + tags + "</div>" +
               (imp.notiz ? "<p>" + escapeHtml(imp.notiz) + "</p>" : "") +
               "</div>"
@@ -952,6 +1022,16 @@
       root.querySelectorAll("[data-remove-impuls]").forEach(function (btn) {
         btn.addEventListener("click", function () {
           AVERA_STORE.removeImpuls(id, nr, btn.getAttribute("data-remove-impuls"));
+          renderLoop(id, nr, loopKey);
+        });
+      });
+      root.querySelectorAll("[data-rename-impuls]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var impulsId = btn.getAttribute("data-rename-impuls");
+          var current = ep.loops.design.impulse.find(function (i) { return i.id === impulsId; });
+          var name = prompt("Name des Gestaltungsimpulses", current ? current.name : "");
+          if (name === null || !name.trim()) return;
+          AVERA_STORE.renameImpuls(id, nr, impulsId, name.trim());
           renderLoop(id, nr, loopKey);
         });
       });
